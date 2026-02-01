@@ -1,7 +1,6 @@
 import { rgbToHsv } from "../utils";
 import { Pixel } from "../classes";
 
-// TODO: rename it to cut value?
 export const cutValue = (
   data: Uint8ClampedArray,
   neededValue: number,
