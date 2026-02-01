@@ -1,16 +1,17 @@
-import type { CompositionConstructor } from "./composition.interfaces";
 import { cutValue } from "../cutters";
 import { Channel } from "./composition.interfaces";
 import { cutChannel } from "../cutters";
 import { Layer } from "./layer.class";
 import { cutHue } from "../cutters";
 import { cutSaturation } from "../cutters";
-import type { CompositionOpitons } from "./composition.interfaces";
-import type { HexString } from "../interfaces";
 import { hexToRgba } from "../utils";
 import { transformedLayersMapper } from "../mappers";
 import { getSolidColorData } from "../colors";
 import { mergedLayerReducer } from "../reducers";
+
+import type { CompositionConstructor } from "./composition.interfaces";
+import type { CompositionOpitons } from "./composition.interfaces";
+import type { HexString } from "../interfaces";
 
 const DEFAULT_WIDTH = 100;
 const DEFAULT_HEIGHT = 100;
