@@ -5,7 +5,7 @@ import { cutChannel } from "../cutters";
 import { Layer } from "./layer.class";
 import { cutHue } from "../cutters";
 import { cutSaturation } from "../cutters";
-import type { CompositionOpitons } from "./composition.interfaces";
+import type { CompositionOptions } from "./composition.interfaces";
 import type { HexString } from "../interfaces";
 import { hexToRgba } from "../utils";
 import { transformedLayersMapper } from "../mappers";
@@ -24,8 +24,8 @@ export class Composition {
   layers: Array<Layer>;
   imageData: ImageData | null;
   imageDataLength: number;
-  width: CompositionOpitons["width"];
-  height: CompositionOpitons["height"];
+  width: CompositionOptions["width"];
+  height: CompositionOptions["height"];
 
   constructor({ canvasId, imgQuerySelector, options }: CompositionConstructor) {
     this.canvas = null;

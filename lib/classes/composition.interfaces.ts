@@ -1,10 +1,10 @@
 export interface CompositionConstructor {
   canvasId: string;
   imgQuerySelector: string;
-  options?: CompositionOpitons;
+  options?: CompositionOptions;
 }
 
-export interface CompositionOpitons {
+export interface CompositionOptions {
   width: number;
   height: number;
 }
