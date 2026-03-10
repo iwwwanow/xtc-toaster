@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>xtc-toaster</title>
+  <!-- TODO: embed owo styles -->
+</head>
+<body>
+  <h1>toasts</h1>
+  <!-- TODO: htmx + alpinejs -->
+  <ul>
+    {{range .Toasts}}
+    <li>
+      <a href="/toasts/{{.ID}}">{{.Name}}</a>
+      {{if .Description}} — {{.Description}}{{end}}
+    </li>
+    {{else}}
+    <li>no toasts yet</li>
+    {{end}}
+  </ul>
+</body>
+</html>

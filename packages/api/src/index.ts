@@ -1,11 +1,8 @@
-import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import app from "./app.js";
 
-const app = new Hono();
+const PORT = Number(process.env.PORT ?? 3000);
 
-app.get("/", (c) => c.json({ name: "xtc-toaster api", version: "0.0.0" }));
-
-// TODO: GET  /toasts        — list all toasts
-// TODO: GET  /toasts/:id    — toast metadata + preview
-// TODO: POST /toasts        — publish new toast (auth required)
-
-export default app;
+serve({ fetch: app.fetch, port: PORT }, () => {
+  console.log(`xtc-toaster api listening on :${PORT}`);
+});

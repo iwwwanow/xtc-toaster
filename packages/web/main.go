@@ -3,19 +3,35 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+
+	"github.com/iwwwanow/xtc-toaster/web/handlers"
 )
 
 func main() {
+	apiURL := os.Getenv("API_URL")
+	if apiURL == "" {
+		apiURL = "http://localhost:3000"
+	}
+
+	h := handlers.New(apiURL)
 	mux := http.NewServeMux()
 
-	// TODO: GET /           — list toasts (htmx + alpinejs + owo styles)
-	// TODO: GET /toasts/:id — toast preview page
-	// TODO: POST /run       — run image through a toast, return result
+	// GET /              — toasts list page
+	// GET /toasts/{id}   — toast detail page
+	// POST /run          — run image through a toast, return result
+	mux.HandleFunc("GET /", h.Index)
+	mux.HandleFunc("GET /toasts/{id}", h.ToastDetail)
+	mux.HandleFunc("POST /run", h.Run)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "xtc-toaster web")
-	})
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	fmt.Println("web listening on :8080")
-	http.ListenAndServe(":8080", mux)
+	fmt.Printf("xtc-toaster web listening on :%s\n", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

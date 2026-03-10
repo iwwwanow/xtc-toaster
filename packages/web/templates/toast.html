@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{.Toast.Name}} — xtc-toaster</title>
+  <!-- TODO: embed owo styles -->
+</head>
+<body>
+  <a href="/">← back</a>
+  <h1>{{.Toast.Name}}</h1>
+  {{if .Toast.Description}}<p>{{.Toast.Description}}</p>{{end}}
+  <img src="{{.Toast.PreviewURL}}" alt="preview" />
+
+  <!-- TODO: image upload form → POST /run (htmx) -->
+  <form method="post" action="/run" enctype="multipart/form-data">
+    <input type="hidden" name="toast_id" value="{{.Toast.ID}}" />
+    <input type="file" name="image" accept="image/*" />
+    <button type="submit">bake</button>
+  </form>
+</body>
+</html>
