@@ -1,4 +1,4 @@
-import { Composition } from "../../lib";
+import { Composition } from "@xtc-toaster/core";
 
 export const compositionStore = (() => {
   let instance = $state<Composition | null>(null);

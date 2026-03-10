@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Composition } from "../../../lib";
+  import { Composition } from "@xtc-toaster/core";
   import { compositionStore } from "../../stores/composition.store.svelte";
 
   export const CANVAS_ID = "__gui_canvas__";

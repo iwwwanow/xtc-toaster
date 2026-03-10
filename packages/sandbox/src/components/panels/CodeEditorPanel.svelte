@@ -8,8 +8,8 @@
   import { compositionStore } from "../../stores/composition.store.svelte";
   import { editorStore, HELP_TEXT } from "../../stores/editor.store.svelte";
 
-  import { Layer, LayerEffect, BlendMod, Channel } from "../../../lib";
-  import { cutHue, cutSaturation, cutValue, cutChannel } from "../../../lib";
+  import { Layer, LayerEffect, BlendMod, Channel } from "@xtc-toaster/core";
+  import { cutHue, cutSaturation, cutValue, cutChannel } from "@xtc-toaster/core";
 
   // ── GIF export progress (shared with ViewportPanel via binding) ────────────
   let exportProgress = $state({ active: false, current: 0, total: 0 });
