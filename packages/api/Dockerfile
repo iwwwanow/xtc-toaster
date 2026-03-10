@@ -1,14 +1,13 @@
 FROM node:22-alpine AS build
 RUN apk add --no-cache python3 make g++
-RUN npm install -g pnpm
 
 WORKDIR /app
 COPY package.json ./
-RUN pnpm install --frozen-lockfile
+RUN npm install
 
 COPY tsconfig.json ./
 COPY src ./src
-RUN pnpm build
+RUN npx tsc
 
 FROM node:22-alpine
 WORKDIR /app
