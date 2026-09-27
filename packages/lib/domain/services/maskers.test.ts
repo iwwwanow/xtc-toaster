@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hueMask, saturationMask, valueMask, isolateChannel } from "./maskers";
-import { Channel } from "../types";
+import { hueMask, saturationMask, valueMask } from "./maskers";
 
 const pixel = (r: number, g: number, b: number, a = 255) =>
   new Uint8ClampedArray([r, g, b, a]);
@@ -40,14 +39,5 @@ describe("valueMask", () => {
   test("far-off value yields zero alpha", () => {
     const data = pixel(255, 0, 0);
     expect(valueMask(data, 0)[3]).toBe(0);
-  });
-});
-
-describe("isolateChannel", () => {
-  test("moves the channel's raw value into alpha and flags RGB by channel", () => {
-    const data = pixel(10, 20, 30, 40);
-    expect([...isolateChannel(data, Channel.Green)]).toEqual([0, 255, 0, 20]);
-    expect([...isolateChannel(data, Channel.Red)]).toEqual([255, 0, 0, 10]);
-    expect([...isolateChannel(data, Channel.Blue)]).toEqual([0, 0, 255, 30]);
   });
 });

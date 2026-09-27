@@ -1,70 +1,5 @@
 import { Matrix } from "../utils/matrix";
-import { readPixel } from "../utils/pixel-io";
-import type { ImageRawDataArray, LayerDimensions, Quad, Transform } from "../types";
-
-// point*M convention (row-vector on the left) — translation lives in the
-// matrix's last row, not last column. Matches legacy Transformation class.
-const getAffineMatrix = (transform: Transform): Matrix => {
-  switch (transform.name) {
-    case "translate": {
-      const { tx, ty } = transform.params;
-      return new Matrix(3, 3, [1, 0, 0, 0, 1, 0, tx, ty, 1]);
-    }
-    case "rotate": {
-      const radians = (Math.PI / 180) * transform.params.alpha;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-      return new Matrix(3, 3, [cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
-    }
-    case "scale": {
-      const { scaleX, scaleY } = transform.params;
-      return new Matrix(3, 3, [scaleX, 0, 0, 0, scaleY, 0, 0, 0, 1]);
-    }
-    case "skew": {
-      const { tx, ty } = transform.params;
-      return new Matrix(3, 3, [1, tx, 0, ty, 1, 0, 0, 0, 1]);
-    }
-    default:
-      throw new Error(`getAffineMatrix called with non-affine transform: ${(transform as Transform).name}`);
-  }
-};
-
-// Forward mapping (src pixel -> dest pixel), ported as-is from legacy —
-// destination cells with no mapped source pixel stay transparent black
-// (holes). Not fixed here; see docs/diary — known compositing quirk to
-// revisit independently of the Zig port.
-export const applyAffineTransform = (
-  data: ImageRawDataArray,
-  dimensions: LayerDimensions,
-  transform: Transform,
-): ImageRawDataArray => {
-  const { width, height } = dimensions;
-  const matrix = getAffineMatrix(transform);
-  const output = new Uint8ClampedArray(data.length);
-
-  for (let pixelIndex = 0; pixelIndex < data.length; pixelIndex += 4) {
-    const pixel = readPixel(data, pixelIndex);
-    const pixelNum = pixelIndex / 4;
-    const srcX = pixelNum % width;
-    const srcY = Math.floor(pixelNum / width);
-
-    const point = new Matrix(3, 1, [srcX, srcY, 1]);
-    const transformed = Matrix.multiply(point, matrix);
-
-    const destX = Math.round(transformed.getItem(0, 0));
-    const destY = Math.round(transformed.getItem(1, 0));
-
-    if (destX < 0 || destX >= width || destY < 0 || destY >= height) continue;
-
-    const destIndex = (destY * width + destX) * 4;
-    output[destIndex] = pixel[0];
-    output[destIndex + 1] = pixel[1];
-    output[destIndex + 2] = pixel[2];
-    output[destIndex + 3] = pixel[3];
-  }
-
-  return output;
-};
+import type { ImageRawDataArray, LayerDimensions, Quad } from "../types";
 
 // Solve n×n system Ax=b via Gaussian elimination with partial pivoting.
 const gaussianElimination = (A: number[][], b: number[]): number[] => {
@@ -122,6 +57,11 @@ export const homographyFromQuad = (dimensions: LayerDimensions, corners: Quad): 
 };
 
 // Backward-mapped homography: for each output pixel finds its source via H_inv.
+// The coordinate math here survives the Zig port unchanged — libvips has no
+// vips_perspective (docs/backlog/2026-09-06_libvips-signature-verification.md).
+// Only the tail changes in 4d: instead of copying src pixels directly, Zig
+// writes (srcX, srcY) into a map image and hands it to vips_mapim, which does
+// the actual (bilinear) resampling.
 export const applyHomographyTransform = (
   data: ImageRawDataArray,
   dimensions: LayerDimensions,

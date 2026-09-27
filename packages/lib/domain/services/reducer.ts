@@ -1,4 +1,5 @@
-import { alphaCompose, addCompose, lchHueCompose } from "./composers";
+import { alphaCompose, addCompose } from "./composers.libvips";
+import { lchHueCompose } from "./composers";
 import type { BlendMode, ImageRawDataArray } from "../types";
 
 // Opacity уже должна быть запечена в alpha-канал до вызова — редьюсер её не читает.

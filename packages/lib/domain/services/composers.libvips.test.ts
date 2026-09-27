@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { alphaCompose, addCompose } from "./composers";
+import { alphaCompose, addCompose } from "./composers.libvips";
 
 describe("alphaCompose", () => {
   test("opaque foreground fully replaces background", () => {

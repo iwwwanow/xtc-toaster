@@ -1,11 +1,9 @@
-import { addHueNoise, boxBlur } from "../services/effects";
-import {
-  hueMask,
-  saturationMask,
-  valueMask,
-  isolateChannel as isolateChannelService,
-} from "../services/maskers";
-import { applyAffineTransform, applyHomographyTransform, homographyFromQuad } from "../services/transforms";
+import { addHueNoise } from "../services/effects";
+import { boxBlur } from "../services/effects.libvips";
+import { hueMask, saturationMask, valueMask } from "../services/maskers";
+import { isolateChannel as isolateChannelService } from "../services/maskers.libvips";
+import { applyHomographyTransform, homographyFromQuad } from "../services/transforms";
+import { applyAffineTransform } from "../services/transforms.libvips";
 import { Matrix } from "../utils/matrix";
 import type { Color } from "./color";
 import type {

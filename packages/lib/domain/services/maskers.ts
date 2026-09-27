@@ -1,6 +1,6 @@
 import { readPixel } from "../utils/pixel-io";
-import { rgbToHsv, getChannelIndex } from "../utils/color-space";
-import { Channel, type ImageRawDataArray } from "../types";
+import { rgbToHsv } from "../utils/color-space";
+import type { ImageRawDataArray } from "../types";
 
 const HUE_TOLERANCE = 0.02;
 const SATURATION_TOLERANCE = 0.1;
@@ -51,18 +51,3 @@ export const saturationMask = (data: ImageRawDataArray, saturation: number, tole
 
 export const valueMask = (data: ImageRawDataArray, value: number, tolerance = VALUE_TOLERANCE): ImageRawDataArray =>
   hsvMask(data, 2, value / 100, tolerance, false);
-
-// НЕ маска: RGB заменяется на цвет-индикатор канала, значение канала уходит в alpha.
-export const isolateChannel = (data: ImageRawDataArray, channel: Channel): ImageRawDataArray => {
-  const neededColorIndex = getChannelIndex(channel);
-  const output = new Uint8ClampedArray(data.length);
-
-  for (let i = 0; i < data.length; i += 4) {
-    output[i + 3] = data[i + neededColorIndex];
-    output[i] = neededColorIndex === 0 ? 255 : 0;
-    output[i + 1] = neededColorIndex === 1 ? 255 : 0;
-    output[i + 2] = neededColorIndex === 2 ? 255 : 0;
-  }
-
-  return output;
-};
