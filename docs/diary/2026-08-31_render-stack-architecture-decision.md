@@ -103,12 +103,48 @@ Rust здесь не участвует в нашем стеке — берём 
 - `docs/specs/lib.spec.md` переписан под libvips: убран раздел "Источник libskia" (заменён на "Источник libvips" — линковка системного пакета через pkg-config, шим не нужен, у vips родной C API), таблица "Функции — куда переезжает" переведена на `vips_boxblur`/`vips_composite2`/`vips_affine`/`vips_perspective`/`vips_extract_band`/`vips_image_new_from_buffer` и т.д. (сверка уже была сделана раньше в `docs/backlog/2026-08-30_sharp-libvips-integration.md`, просто перенесена в актуальную спеку), добавлен раздел про GPU-Фазу-2 как decoupled
 - `docs/planning.md` пункт 4: 4a-0 помечен как тупиковая ветка (зачёркнут, оставлен для истории), 4a-1..4a-3 переформулированы под libvips (линковка через `build.zig`+pkg-config, `vips/bindings.zig` вместо `shim.cpp`), добавлен 4e — Фаза 2 GPU, низкий приоритет, без дедлайна
 
+## Пятая сессия (2026-09-06, продолжение) — 4a-1, 4a-2, 4a-3, 4b, 4c реализованы
+
+Отдельная сессия, тот же день. Первая сессия, где `lib-native` реально начал существовать физически (до этого — только планирование/спайки/отмены).
+
+### 4a-1 — libvips слинкован через build.zig
+
+`packages/lib-native/build.zig` + `src/main.zig` + `package.json`. Zig 0.16.0 module-based API (`b.createModule` + `root_module`), `linkSystemLibrary("vips", .{})` сам дёргает pkg-config. `build.zig.zon` **не понадобился** — `zig build run` прошёл без него с первой попытки. Проверено реальным запуском (не только компиляцией): `vips_init` вызван, `--verbose-link` подтвердил настоящие `-lvips -lgio-2.0 -lgobject-2.0 -lglib-2.0`, не голый фоллбэк.
+
+### 4a-2 — bindings.zig, и находка: `vips_perspective` не существует
+
+Перед написанием биндингов перепроверил вручную (не по памяти) все сигнатуры из старого списка через три источника: заголовки `/usr/include/vips/*.h`, `nm -D libvips.so`, `vips -l`. Результат — `docs/backlog/2026-09-06_libvips-signature-verification.md`:
+- `vips_boxblur` — не существует, только `vips_gaussblur`
+- **`vips_perspective` — не существует вообще**, ни в одной современной libvips. Реальный путь для гомографии/перспективы — `vips_mapim(in, out, index, ...)`: Zig как и планировалось решает гомографию по 4 точкам, но теперь ещё и сам строит map-картинку (per-pixel исходные координаты), а vips только ресемплит по готовой карте
+- `vips_affine` берёт только 2×2 линейную часть позиционно, трансляция — именованный vararg
+- Почти всё API — GObject variadic, `NULL`-terminated
+
+Написал `packages/lib-native/src/vips/bindings.zig` по исправленному списку (`vips_gaussblur`, `vips_affine`, `vips_composite2`/`vips_composite`, `vips_extract_band`/`vips_bandjoin_const`, `vips_mapim`, `vips_image_new_from_buffer`/`vips_image_write_to_buffer`, плюс `vips_copy`). Проверил не чтением, а реальным вызовом каждой функции на тестовом 4×4 RGBA-буфере (`zig build run`), включая PNG round-trip и настоящий remap через `vips_mapim` с identity map-картинкой. По ходу всплыл нюанс: `vips_image_new_from_memory` оставляет `interpretation=multiband`, `vips_composite2`/`vips_composite` отказываются блендить без явного колорспейса — чинится `vips_copy(in, &out, "interpretation", VIPS_INTERPRETATION_sRGB, NULL)` перед блендом.
+
+`docs/specs/lib.spec.md` и `docs/planning.md` (4a-2) поправлены на месте под реальные сигнатуры.
+
+### 4a-3 — оказалось уже сделано
+
+Пункт был помечен "готовит пользователь руками", но по факту спецификация методов libvips (с юз-кейсами) и FFI-ручек Bun уже была написана в `lib.spec.md` (разделы "Функции — куда переезжает" и "FFI-контракт Bun ↔ Zig") в рамках предыдущих сессий — просто чекбокс не был проставлен. Отмечен выполненным без дополнительной работы.
+
+### 4b — схемы границ рантаймов
+
+Добавлен раздел "Схемы границ рантаймов (4b)" в `lib.spec.md`: ASCII-диаграмма Bun/lib-native/libvips/ffmpeg с явным типом каждой связи (dlopen в рантайме / compile-time линковка / subprocess), таблица "граница → тип связи → когда → кто кого не видит", и sequence-диаграмма типичного рендера кадра через FFI-хэндлы.
+
+### 4c — domain/services разделён по судьбе функций
+
+Каждый файл `composers.ts`/`effects.ts`/`maskers.ts`/`transforms.ts` разбит на пару: то, что **целиком заменяется libvips** в 4d, вынесено в соседний `*.libvips.ts` (alphaCompose/addCompose → `composers.libvips.ts`; boxBlur → `effects.libvips.ts`; isolateChannel → `maskers.libvips.ts`; getAffineMatrix+applyAffineTransform → `transforms.libvips.ts`); то, что переезжает в Zig как есть (lchHueCompose, addHueNoise, hsv/hue/saturation/value-маски, вся homography-математика включая `applyHomographyTransform` — его координатный код переживает перенос, в 4d меняется только хвост на запись в map-картинку) — осталось на месте. Тесты разнесены 1:1 вслед за кодом. Чисто файловый рефакторинг, без изменения логики.
+
+Заодно всплыла и починена независимая проблема окружения: `@types/bun` был объявлен в `package.json`, но не установлен (`tsc` падал с `TS2688`) — `bun install` починил, заодно зарегистрировал `lib-native` в `bun.lock` (не хватало с 4a-1).
+
+**Проверено**: `bun run typecheck` — exit 0 на обоих пакетах (`lib`, `toasts`); `bun test packages/lib/domain` — 58/58, ни один тест не потерян при разбивке.
+
 ## Остаток
 
-- Ветка для реализации — `feat/lib-native`
-- Физической реализации пиксельного слоя всё ещё нет — `lib-native` пакет пуст (директория удалена вместе с vendor/), `build.zig` не написан, `vips/bindings.zig` не написан, `bun:ffi`-обвязка не написана
-- Следующий шаг — 4a-1 из `docs/planning.md`: создать `packages/lib-native/build.zig`, слинковать системную `libvips` через pkg-config, проверить что линковка вообще работает (голый `zig build` с одним extern-вызовом типа `vips_init`) прежде чем писать весь `bindings.zig`
+- Ветка для реализации — `feat/lib-native`, ничего не закоммичено (коммитит пользователь вручную)
+- Следующий пункт плана — **4d**: профилировать/убрать per-pixel аллокации `Matrix` в `transforms.ts`/`transforms.libvips.ts` (`applyAffineTransform`/`applyHomographyTransform`) — вероятная причина ~8.3 сек/кадр на рендере от 2026-08-30; актуально до переноса, снимется архитектурно после (Zig не аллоцирует так в hot path)
+- После 4d — 4e (Фаза 2 GPU, низкий приоритет, без дедлайна), затем пункт 5 (bun:ffi биндинг-слой, handle-паттерн), 6 (Bun-инфра/watchexec), 7 (класс `Toast`), 8 (package.json + CI для `packages/lib`)
+- Реального переноса доменной математики на Zig (composition.zig/layer.zig/services/*.zig) всё ещё нет — 4a-1..4c подготовили фундамент (линковка, биндинги, схемы, файловая структура), но `vips/bindings.zig` пока используется только в собственном smoke-тесте `main.zig`, не из доменного кода
 - `valueMask` — рассмотреть Гауссов спад вместо квадратичного
 - `CanvasRenderer` для браузера — техдолг
 - Превью в терминале не работает в Zellij (`docs/backlog/2026-08-30_zellij-kitty-graphics-protocol.md`)
-- Профилировать/убрать per-pixel аллокации `Matrix` в `transforms.ts` — не блокер, отложено

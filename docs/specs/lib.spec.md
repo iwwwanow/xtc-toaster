@@ -70,13 +70,15 @@ packages/
 
 | Текущий код | libvips-эквивалент |
 |---|---|
-| `boxBlur` (effects.ts, ручной two-pass) | `vips_boxblur`/`vips_gaussblur` |
-| `alphaCompose`/`addCompose` (composers.ts) | `vips_composite2(bg, fg, mode)` — весь набор Photoshop/SVG blend-мод встроен из коробки; для стека из N слоёв со стандартными модами есть множественная форма `vips_composite`, схлопывающая весь reducer за один вызов |
-| `isolateChannel` (maskers.ts) | `vips_extract_band` + `vips_bandjoin_const` |
-| `applyAffineTransform` | `vips_affine` — backward-mapped, без дыр (текущий TS-вариант forward-mapped и потому дырявый) |
-| `applyHomographyTransform` | `vips_perspective(matrix)` — матрица подаётся готовая, саму гомографию по 4 точкам vips не решает, остаётся в Zig |
-| `applyYRotationPerspective` | сводится к 3×3-матрице (angle, focalLength → матрица), дальше через `vips_perspective` |
-| `imageFileToRawData`/`rawDataToImageFile` (node-canvas) | `vips_image_new_from_buffer` (декод) / `vips_image_write_to_buffer` (энкод) — node-canvas убирается целиком |
+| `boxBlur` (effects.ts, ручной two-pass) | `vips_gaussblur` — **проверено 2026-09-06** по заголовкам/`nm`/`vips -l` установленного libvips 8.18.6: `vips_boxblur` **не существует** ни в этой, ни, судя по всему, ни в одной современной версии — старая формулировка "boxblur/gaussblur" была неверной, единственный реальный вызов — gaussblur |
+| `alphaCompose`/`addCompose` (composers.ts) | `vips_composite2(bg, fg, mode)` — весь набор Photoshop/SVG blend-мод встроен из коробки (`VipsBlendMode`, `conversion.h`); для стека из N слоёв со стандартными модами есть множественная форма `vips_composite`, схлопывающая весь reducer за один вызов. Обе подтверждены существующими символами в `libvips.so` |
+| `isolateChannel` (maskers.ts) | `vips_extract_band` + `vips_bandjoin_const` — подтверждено |
+| `applyAffineTransform` | `vips_affine(in, out, a, b, c, d, ...)` — подтверждено; берёт только 2×2 линейную часть матрицы (`a,b,c,d`) позиционно, трансляция (`odx`/`ody`) — через опциональные varargs-параметры, не отдельные позиционные аргументы. Backward-mapped, без дыр (текущий TS-вариант forward-mapped и потому дырявый) |
+| `applyHomographyTransform` | ~~`vips_perspective(matrix)`~~ — **не существует, проверено 2026-09-06** (нет ни в заголовках, ни в `vips -l`, ни как символ в `.so`). Реальный путь — `vips_mapim(in, out, index, ...)`: Zig решает гомографию по 4 точкам (как и раньше) **и дополнительно сам строит map-картинку** (per-pixel исходные координаты, обычно 2-band float image) применением обратной матрицы к каждому выходному пикселю, затем отдаёт эту map-картинку в `vips_mapim` — vips делает только ресемплинг по готовой карте, не решает проекцию сам. Точный формат index-image (band count/`VipsBandFormat`) — уточнить в 4a-2 при реальной реализации, не гадать заранее |
+| `applyYRotationPerspective` | сводится к 3×3-матрице (angle, focalLength → матрица), дальше — тот же путь через `vips_mapim` + самодельная map-картинка (см. строку выше), не через несуществующий `vips_perspective` |
+| `imageFileToRawData`/`rawDataToImageFile` (node-canvas) | `vips_image_new_from_buffer` (декод) / `vips_image_write_to_buffer` (энкод) — подтверждено, node-canvas убирается целиком |
+
+**Важно про сигнатуры**: почти все операции libvips — GObject-style variadic, `NULL`-terminated (`G_GNUC_NULL_TERMINATED` в заголовках) с опциональными именованными параметрами (`"property_name", value, ..., NULL`), а не фиксированный список аргументов. В Zig это означает `extern` объявления с завершающим `...` и вызовы с явным `NULL`-сентинелом — деталь, которую нужно закладывать в `vips/bindings.zig` (4a-2), а не пытаться дать каждому вызову плоскую фиксированную сигнатуру.
 
 ### Zig (`lib-native`) — оркестрация + математика без libvips-аналога
 
@@ -129,3 +131,73 @@ layer_get_image_data(handle) -> ptr, len   // только когда TS реа�
 ```
 
 Zig ↔ libvips — внутренняя граница, Bun её не видит (Bun никогда не говорит с libvips напрямую).
+
+## Схемы границ рантаймов (4b)
+
+Три рантайма и один внешний процесс, три принципиально разных типа границы между ними — важно не путать их между собой, у каждой свои гарантии и своя цена:
+
+```
+┌──────────────────────────────────────────────┐
+│  Bun / TS  —  packages/lib                    │
+│  Toast, *.binding.ts (proxy-классы над хэндлами)│
+└──────────────┬─────────────────┬──────────────┘
+               │                 │
+     dlopen/dlsym, RUNTIME       spawn, child_process
+     (bun:ffi, см. native.ts)   (не FFI — обычный subprocess)
+               │                 │
+               ▼                 ▼
+┌──────────────────────────┐   ┌─────────────────────┐
+│  lib-native.so  (Zig)     │   │  ffmpeg (бинарник)   │
+│  packages/lib-native      │   │  внешний, не в repo  │
+│  Composition/Layer state, │   └─────────────────────┘
+│  математика без vips-     │
+│  эквивалента (маски,      │
+│  hue-noise, lch-compose,  │
+│  решение гомографии)      │
+└──────────────┬────────────┘
+               │
+     extern "c", COMPILE-TIME
+     (build.zig + pkg-config,
+      обычная линковка — не dlopen)
+               │
+               ▼
+┌────────────────────────────┐
+│  libvips.so  (C)            │
+│  тупой калькулятор пикселей │
+│  gaussblur/composite/affine/│
+│  mapim/extract_band/...     │
+└──────────────────────────────┘
+```
+
+| Граница | Тип связи | Когда разрешается | Кто не видит кого |
+|---|---|---|---|
+| Bun ↔ lib-native | `dlopen`/`dlsym` (`bun:ffi`) | В рантайме — Bun не знает заранее, какую `.so` грузить | Bun не видит libvips вообще |
+| Zig ↔ libvips | `extern "c"`, статическая линковка | На этапе сборки (`zig build`, `build.zig` + pkg-config) | — (это внутренняя деталь lib-native, не пересекает FFI-границу с Bun) |
+| Bun ↔ ffmpeg | `spawn`/`child_process`, subprocess | В рантайме, как отдельный процесс ОС | Не FFI вообще — обмен через CLI-флаги/stdio, не указатели |
+
+Типичный поток рендера одного кадра (иллюстрация FFI-контракта выше, не буквальный код):
+
+```
+Bun                          lib-native (Zig)                libvips
+ │                                  │                            │
+ ├─ composition_create(w,h) ──────▶│                            │
+ │◀──────────────── handle ────────┤                            │
+ ├─ composition_create_layer_      │                            │
+ │  from_pixels(handle, ptr,len) ─▶│                            │
+ │◀──────────── layer_handle ──────┤                            │
+ ├─ layer_set_transform_          │                            │
+ │  perspective(handle, corners) ─▶│                            │
+ │                                  ├─ solve homography (свой код)│
+ │                                  ├─ build index-image ────────▶│
+ │                                  │                            ├─ vips_mapim(...)
+ │                                  │◀──────── VipsImage* ────────┤
+ ├─ composition_render(handle) ───▶│                            │
+ │                                  ├─ dispatch blend по слоям ──▶│
+ │                                  │                            ├─ vips_composite2/...
+ │                                  │◀──────── VipsImage* ────────┤
+ │                                  ├─ vips_image_write_to_buffer▶│
+ │◀──────────── ptr, len ───────────┤                            │
+ ├─ (raw RGBA bytes) ──▶ ffmpeg (subprocess, не через Zig/vips)  │
+```
+
+Ключевой инвариант: Bun **никогда** не держит указатель на `VipsImage*` и не вызывает vips напрямую — только хэндлы на Zig-объекты и сырые байты, когда они реально нужны (`*_get_image_data`, `composition_render`). ffmpeg — вообще отдельная ветка, не проходит ни через Zig, ни через libvips, получает готовые байты/файлы через собственный узкий контракт (`assemble-gif.ts`).
