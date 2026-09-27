@@ -16,6 +16,10 @@
         "canvas": "^3.2.3",
       },
     },
+    "packages/lib-native": {
+      "name": "@xtc-toaster/lib-native",
+      "version": "0.0.0",
+    },
     "packages/toasts": {
       "name": "@xtc-toaster/toasts",
       "version": "0.0.0",
@@ -230,6 +234,8 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
     "@xtc-toaster/lib": ["@xtc-toaster/lib@workspace:packages/lib"],
+
+    "@xtc-toaster/lib-native": ["@xtc-toaster/lib-native@workspace:packages/lib-native"],
 
     "@xtc-toaster/toasts": ["@xtc-toaster/toasts@workspace:packages/toasts"],
 

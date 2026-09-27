@@ -29,6 +29,10 @@ assets/inputs/*.webm
 packages/*/compositions/*/assets/
 packages/sandbox/public/*.webp
 
+# Zig build artifacts (packages/lib-native)
+.zig-cache/
+zig-out/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
