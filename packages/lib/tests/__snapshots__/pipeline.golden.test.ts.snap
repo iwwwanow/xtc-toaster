@@ -1,0 +1,9 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`toast-1 pipeline on poppies.jpg decoded input is stable (guards the JPEG decoder, not our math) 1`] = `"0bb6c5df898b333efb8c4e498d2d3184127d5ccc3344bc5970d645043eb268dc"`;
+
+exports[`toast-1 pipeline on poppies.jpg frame t=0 matches the golden hash 1`] = `"3a0027536a75ae018be57d480cd53684974560d36b981c339dc86b10b1eb12a3"`;
+
+exports[`toast-1 pipeline on poppies.jpg frame t=0.5 matches the golden hash 1`] = `"190ee0800b0a654bb16dbd02ded16c74c2b7c1ac85b05bec3a325f0f1522b2cf"`;
+
+exports[`toast-1 pipeline on poppies.jpg frame t=0.95 matches the golden hash 1`] = `"563d34aeda909167795aa532d7fa93c80706597c9085ec1838846922a2cbb0fb"`;

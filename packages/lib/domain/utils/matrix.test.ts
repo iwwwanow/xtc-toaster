@@ -45,4 +45,27 @@ describe("Matrix", () => {
     const b = new Matrix(3, 3, [1, 0, 0, 0, 1, 0, 0, 0, 1]);
     expect(() => Matrix.multiply(a, b)).toThrow();
   });
+
+  test("inverse: A · inverse(A) = I", () => {
+    const a = new Matrix(3, 3, [2, 1, 0, 0.5, 3, 0, 4, -2, 1]);
+    const product = Matrix.multiply(a, Matrix.inverse(a));
+    const identity = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    [0, 1, 2].forEach((row) =>
+      [0, 1, 2].forEach((col) => expect(product.getItem(col, row)).toBeCloseTo(identity[row * 3 + col], 12)),
+    );
+  });
+
+  test("inverse of a translation negates the offset", () => {
+    const inv = Matrix.inverse(new Matrix(3, 3, [1, 0, 0, 0, 1, 0, 3, -2, 1]));
+    expect(inv.getItem(0, 2)).toBeCloseTo(-3, 12);
+    expect(inv.getItem(1, 2)).toBeCloseTo(2, 12);
+  });
+
+  test("inverse throws on a singular matrix", () => {
+    expect(() => Matrix.inverse(new Matrix(3, 3, [1, 2, 3, 2, 4, 6, 0, 0, 1]))).toThrow();
+  });
+
+  test("inverse is only implemented for 3×3", () => {
+    expect(() => Matrix.inverse(new Matrix(2, 2, [1, 0, 0, 1]))).toThrow();
+  });
 });

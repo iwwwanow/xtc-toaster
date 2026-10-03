@@ -9,6 +9,10 @@ const VALUE_TOLERANCE = 0.1;
 /**
  * Extract pixels by HSV component proximity with quadratic falloff.
  * RGB is left untouched — alpha becomes the match weight (0-255).
+ * tolerance 0 selects exact matches only.
+ * Hue only: the weight is multiplied by the pixel's saturation — grays have no
+ * hue (rgbToHsv reports 0°) and must not land in a red mask; pale colors count
+ * partially, which also drops JPEG noise in near-gray areas.
  */
 export const hsvMask = (
   data: ImageRawDataArray,
@@ -29,10 +33,13 @@ export const hsvMask = (
     if (circular && diff > 0.5) diff = 1 - diff;
 
     let alpha = 0;
-    if (diff <= tolerance) {
+    if (tolerance <= 0) {
+      alpha = diff === 0 ? 1 : 0;
+    } else if (diff <= tolerance) {
       const t = diff / tolerance;
       alpha = 1 - t * t;
     }
+    if (componentIndex === 0) alpha *= hsv[1] / 100;
 
     output[i] = r;
     output[i + 1] = g;

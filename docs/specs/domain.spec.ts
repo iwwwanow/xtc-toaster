@@ -66,7 +66,7 @@ type MaskParams =
 
 type EffectParams = {
   name: "noize";
-  options: { deviationCoefficient: number; preserveAlpha: boolean };
+  options: { deviationCoefficient: number }; // alpha всегда сохраняется (preserveAlpha удалён 2026-10-03)
 };
 
 interface LayerOptions {

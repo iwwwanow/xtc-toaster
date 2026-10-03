@@ -7,7 +7,8 @@
     "main.ts",
     "domain/**/*.ts",
     "application/**/*.ts",
-    "infrastructure/**/*.ts"
+    "infrastructure/**/*.ts",
+    "tests/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

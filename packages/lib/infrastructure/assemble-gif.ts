@@ -55,12 +55,16 @@ export async function loopVideoTo(
   targetSeconds: number,
   outputPath: string
 ): Promise<void> {
+  // Re-encode instead of `-c copy`: stream copy can only cut on packet
+  // boundaries and overshoots (3 s → 3.33 s), leaving a partial cycle at the
+  // loop seam. Re-encoding cuts on the exact frame.
   const args = [
     "-y",
     "-stream_loop", "-1",
     "-i", inputPath,
     "-t", String(targetSeconds),
-    "-c", "copy",
+    "-c:v", "libx264",
+    "-pix_fmt", "yuv420p",
     outputPath,
   ];
   const proc = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
@@ -82,7 +86,9 @@ export async function speedUpVideo(
   const args = [
     "-y",
     "-i", inputPath,
-    "-vf", `setpts=PTS/${speed}`,
+    // fps=source_fps keeps the input frame rate by dropping frames; without it
+    // ffmpeg duplicates frames and the clip comes out longer than duration/speed
+    "-vf", `setpts=PTS/${speed},fps=source_fps`,
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
     outputPath,

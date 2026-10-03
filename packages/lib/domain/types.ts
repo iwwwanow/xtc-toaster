@@ -42,7 +42,7 @@ export type MaskParams =
   | { name: "value"; value: number; tolerance?: number };
 
 export type EffectParams =
-  | { name: "noize"; options: { deviationCoefficient: number; preserveAlpha: boolean } }
+  | { name: "noize"; options: { deviationCoefficient: number } }
   | { name: "blur"; options: { radius: number } };
 
 export interface LayerOptions {
