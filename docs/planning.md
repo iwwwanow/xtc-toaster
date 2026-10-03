@@ -4,10 +4,10 @@
 
 Интерфейс делаем на текущем TS-функционале из master, нативный бэк заморожен до конца спринта. Подробности — `docs/diary/2026-10-03_skia-status-and-interface-sprint.md`.
 
-- [x] Добить тесты `packages/lib` до покрытия всех фильтров + golden-тест кадра toast-1 — **до** любой оптимизации hot loops. Аудит и список дыр/багов — `docs/backlog/2026-10-03_lib-test-audit.md`. Сделано в ветке `test/lib-coverage`: 176 тестов, визуальный прогон фикстуры по каждому фильтру в `packages/lib/tests/output/`
-- [x] Баги из аудита (`docs/backlog/2026-10-03_lib-test-audit.md`) закрыты 2026-10-03 в ветке `test/lib-coverage`: `preserveAlpha` удалён, hue-маска взвешивается по насыщенности, `tolerance: 0` = точное совпадение, affine через backward mapping вокруг центра (без дыр), `lch-hue` масштабируется по хроме FG, blur premultiplied, `loopVideoTo`/`speedUpVideo` дают точную длину
+- [x] Добить тесты `packages/lib` до покрытия всех фильтров + golden-тест кадра toast-1 — **до** любой оптимизации hot loops. Аудит и список дыр/багов — `docs/backlog/2026-10-03_lib-test-audit.md`. Сделано (влито в master 2026-10-03): 180 тестов, визуальный прогон фикстуры по каждому фильтру в `packages/lib/tests/output/`
+- [x] Баги из аудита (`docs/backlog/2026-10-03_lib-test-audit.md`) закрыты 2026-10-03 (влито в master): `preserveAlpha` удалён, hue-маска взвешивается по насыщенности, `tolerance: 0` = точное совпадение, affine через backward mapping вокруг центра (без дыр), `lch-hue` масштабируется по хроме FG, blur premultiplied, `loopVideoTo`/`speedUpVideo` дают точную длину
 - [ ] Ускорение TS: убрать per-pixel аллокации во **всех** hot loops (не только `Matrix`) — `lchHueCompose` 3.2 с, `addHueNoise` 1.8 с на 2K-кадре; `Matrix`-трансформы всего 0.5–0.7 с (пункт 4d ниже, ≈2–3 ч на весь проход)
-- [ ] `packages/server` — WebSocket-сервер на `Bun.serve` с серверным рендером: клиент шлёт параметры тоста, сервер отвечает картинкой (сейчас там пустой незакоммиченный `package.json`)
+- [ ] `packages/server` — WebSocket-сервер на `Bun.serve` с серверным рендером: клиент шлёт параметры тоста, сервер отвечает картинкой (сейчас там пустой `package.json`)
 - [ ] Сервер говорит только с `Toast` (пункт 7 ниже) — граница, за которой TS-рендер потом подменяется нативным без изменений в UI
 - [ ] Превью в уменьшенном разрешении, полное — только на экспорт
 - [ ] `packages/web` — подключить к серверу вместо собственной hue-логики в `+page.svelte`
