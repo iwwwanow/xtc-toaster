@@ -39,3 +39,7 @@ packages/sandbox/public/*.webp
 *.njsproj
 *.sln
 *.sw?
+
+# Zig build artifacts (packages/lib-native)
+.zig-cache/
+zig-out/
