@@ -11,7 +11,7 @@ npm run build      # Type check + production build
 npm run preview    # Preview production build
 ```
 
-No test framework is set up. There are no linting tools configured.
+Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. Known bugs are pinned as `test.failing`. No linting tools are configured.
 
 ## Architecture
 
