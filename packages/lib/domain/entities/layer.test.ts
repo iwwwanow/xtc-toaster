@@ -42,7 +42,7 @@ describe("Layer", () => {
 
   test("applyEffect(noize) replaces imageData with the effect output", () => {
     const layer = makeLayer([255, 0, 0, 255], 1);
-    layer.applyEffect({ name: "noize", options: { deviationCoefficient: 0, preserveAlpha: true } });
+    layer.applyEffect({ name: "noize", options: { deviationCoefficient: 0 } });
     // deviation 0 => no hue shift, output should equal input
     expect([...layer.imageData]).toEqual([255, 0, 0, 255]);
   });

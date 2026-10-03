@@ -65,7 +65,7 @@ const maskedShare = (data: ImageRawDataArray) => {
 };
 
 describe("masks", () => {
-  test("hue 0° — red petals (and, bug #2, every gray pixel)", async () => {
+  test("hue 0° — red petals only (grays weighted out by saturation)", async () => {
     const out = await run("10_mask_hue-0", withLayer((l) => l.mask({ name: "hue", value: 0, tolerance: 0.05 })));
     const share = maskedShare(out);
     expect(share).toBeGreaterThan(0);
@@ -120,7 +120,7 @@ describe("effects", () => {
     expect(changedRatio(strong, source)).toBeGreaterThan(changedRatio(soft, source));
   });
 
-  test("blur after mask — shows the dark halo of straight-alpha blur (bug candidate #6)", async () => {
+  test("blur after mask — premultiplied, no dark halo at the mask edge", async () => {
     const out = await run(
       "32_mask-hue-0_blur_r4",
       withLayer((l) => {
@@ -134,11 +134,11 @@ describe("effects", () => {
   test("hue noise 0.05 / 0.3 (random — differs between runs)", async () => {
     const subtle = await run(
       "33_hue-noise_0.05",
-      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.05, preserveAlpha: true } })),
+      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.05 } })),
     );
     const loud = await run(
       "34_hue-noise_0.3",
-      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.3, preserveAlpha: true } })),
+      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.3 } })),
     );
     expect(changedRatio(subtle, source)).toBeGreaterThan(0);
     expect(changedRatio(loud, source)).toBeGreaterThan(0);
@@ -154,17 +154,17 @@ describe("transforms", () => {
     expect(alphaChannel(out)[0]).toBe(0); // top-left corner uncovered
   });
 
-  test("rotate 15° — pivots around (0,0), bug #4", async () => {
+  test("rotate 15° around the center", async () => {
     const out = await run("41_rotate_15", withLayer((l) => l.setTransform({ name: "rotate", params: { alpha: 15 } })));
     expect(changedRatio(out, source)).toBeGreaterThan(0.3);
   });
 
-  test("scale 1.5 — forward mapping leaves holes", async () => {
+  test("scale 1.5 around the center — fills the frame, no holes", async () => {
     const out = await run(
       "42_scale_1.5",
       withLayer((l) => l.setTransform({ name: "scale", params: { scaleX: 1.5, scaleY: 1.5 } })),
     );
-    expect(alphaChannel(out).some((a) => a === 0)).toBe(true);
+    expect(alphaChannel(out).every((a) => a === 255)).toBe(true);
   });
 
   test("skew", async () => {
@@ -235,7 +235,7 @@ describe("blend modes", () => {
     expect(changedRatio(out, source)).toBeGreaterThan(0.3);
   });
 
-  test("lch-hue with a gray layer — should be a no-op, recolors instead (bug #5)", async () => {
+  test("lch-hue with a gray layer — no hue to take, image unchanged", async () => {
     const out = await run(
       "53_blend_lch-hue_gray",
       renderWith((comp) => {
@@ -243,6 +243,6 @@ describe("blend modes", () => {
         comp.createColorLayer(Color.fromHex("#808080")).setBlendMode("lch-hue");
       }),
     );
-    expect(out.length).toBe(source.length);
+    expect(changedRatio(out, source)).toBe(0);
   });
 });

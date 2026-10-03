@@ -24,10 +24,15 @@ describe("hueMask", () => {
     expect(hueMask(pixel(255, 21, 0), 355, 0.05)[3]).toBe(177);
   });
 
-  // Баг №2: у серых/белых/чёрных hue = 0 по определению → они целиком попадают
-  // в маску красного. Ожидание: пиксель без насыщенности не матчится по hue.
-  test.failing("grays are not selected by a hue mask", () => {
+  test("grays have no hue and are never selected", () => {
     expect(hueMask(pixel(128, 128, 128), 0)[3]).toBe(0);
+    expect(hueMask(pixel(255, 255, 255), 0)[3]).toBe(0);
+    expect(hueMask(pixel(0, 0, 0), 0)[3]).toBe(0);
+  });
+
+  test("the match weight is scaled by saturation (pale colors count partially)", () => {
+    // pale red: hue 0, saturation 50% → half of the full match
+    expect(hueMask(pixel(255, 128, 128), 0)[3]).toBe(127);
   });
 });
 
@@ -73,9 +78,9 @@ describe("valueMask", () => {
     expect(valueMask(pixel(255, 0, 0, 40), 100)[3]).toBe(255);
   });
 
-  // Баг №3: tolerance 0 → 0/0 = NaN → alpha 0 даже при точном совпадении.
-  test.failing("tolerance 0 still selects an exact match", () => {
+  test("tolerance 0 selects exact matches only", () => {
     expect(valueMask(pixel(255, 0, 0), 100, 0)[3]).toBe(255);
+    expect(valueMask(pixel(254, 0, 0), 100, 0)[3]).toBe(0);
   });
 });
 

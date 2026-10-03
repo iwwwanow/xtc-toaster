@@ -38,17 +38,20 @@ describe("boxBlur", () => {
     expect([result[0], result[4], result[8]]).toEqual([45, 90, 135]);
   });
 
-  test("current behavior: transparent black bleeds into color (straight alpha)", () => {
+  test("premultiplied: a half-covered edge keeps its color, only alpha drops", () => {
     const result = boxBlur(px(255, 0, 0, 255, 0, 0, 0, 0), 2, 1, 1);
-    expect([...result]).toEqual([128, 0, 0, 128, 128, 0, 0, 128]);
+    expect([...result]).toEqual([255, 0, 0, 128, 255, 0, 0, 128]);
   });
 
-  // Баг-кандидат №6 (docs/backlog/2026-10-03_lib-test-audit.md): без premultiplied
-  // alpha прозрачный чёрный затемняет цвет на краях маски. Ожидание — красный
-  // остаётся красным, меняется только alpha.
-  test.failing("premultiplied blur keeps the color of a half-covered edge", () => {
-    const result = boxBlur(px(255, 0, 0, 255, 0, 0, 0, 0), 2, 1, 1);
-    expect(result[0]).toBe(255);
+  test("premultiplied: a low-alpha pixel barely tints an opaque neighbour", () => {
+    // opaque white next to a near-transparent red: straight averaging would give ~(255,128,128)
+    const result = boxBlur(px(255, 255, 255, 255, 255, 0, 0, 10), 2, 1, 1);
+    expect([result[0], result[1], result[2]]).toEqual([255, 245, 245]);
+  });
+
+  test("fully transparent areas stay transparent black", () => {
+    const result = boxBlur(new Uint8ClampedArray(3 * 4), 3, 1, 1);
+    expect([...result]).toEqual(new Array(12).fill(0));
   });
 });
 
@@ -59,50 +62,46 @@ describe("addHueNoise", () => {
 
   test("rejects deviationCoefficient outside 0..1", () => {
     const data = px(255, 0, 0, 255);
-    expect(() => addHueNoise(data, { deviationCoefficient: -0.1, preserveAlpha: true })).toThrow();
-    expect(() => addHueNoise(data, { deviationCoefficient: 1.1, preserveAlpha: true })).toThrow();
+    expect(() => addHueNoise(data, { deviationCoefficient: -0.1 })).toThrow();
+    expect(() => addHueNoise(data, { deviationCoefficient: 1.1 })).toThrow();
   });
 
   test("deviation 0 is an identity for colors, grays and partial alpha", () => {
     const data = px(255, 0, 0, 255, 12, 200, 99, 128, 128, 128, 128, 255, 0, 0, 0, 0);
-    const result = addHueNoise(data, { deviationCoefficient: 0, preserveAlpha: true });
+    const result = addHueNoise(data, { deviationCoefficient: 0 });
     expect([...result]).toEqual([...data]);
   });
 
   test("shifts hue by +deviation when random() is at its max", () => {
     spyOn(Math, "random").mockReturnValue(1);
     // red (hue 0) + 1/3 turn → green
-    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3, preserveAlpha: true });
+    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
     expect([...result]).toEqual([0, 255, 0, 255]);
   });
 
   test("wraps negative hue shifts around the circle", () => {
     spyOn(Math, "random").mockReturnValue(0);
     // red (hue 0) − 1/3 turn → hue 2/3 → blue
-    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3, preserveAlpha: true });
+    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
     expect([...result]).toEqual([0, 0, 255, 255]);
   });
 
   test("grays have no hue to shift and stay gray", () => {
     spyOn(Math, "random").mockReturnValue(1);
-    const result = addHueNoise(px(77, 77, 77, 255), { deviationCoefficient: 0.5, preserveAlpha: true });
+    const result = addHueNoise(px(77, 77, 77, 255), { deviationCoefficient: 0.5 });
     expect([...result]).toEqual([77, 77, 77, 255]);
   });
 
   test("returns a new buffer and keeps the input intact", () => {
     const data = px(255, 0, 0, 255);
-    const result = addHueNoise(data, { deviationCoefficient: 0.2, preserveAlpha: true });
+    const result = addHueNoise(data, { deviationCoefficient: 0.2 });
     expect(result).not.toBe(data);
     expect([...data]).toEqual([255, 0, 0, 255]);
   });
 
-  // Баг №1: обе ветки preserveAlpha пишут одно и то же значение — опция
-  // ни на что не влияет (унаследовано из legacy layer.class.ts). Какое поведение
-  // нужно при false — решение открыто; тест фиксирует только, что разница должна быть.
-  test.failing("preserveAlpha: false behaves differently from true", () => {
-    const data = px(255, 0, 0, 100);
-    const keep = addHueNoise(data, { deviationCoefficient: 0, preserveAlpha: true });
-    const drop = addHueNoise(data, { deviationCoefficient: 0, preserveAlpha: false });
-    expect([...drop]).not.toEqual([...keep]);
+  test("alpha is always preserved", () => {
+    spyOn(Math, "random").mockReturnValue(1);
+    const result = addHueNoise(px(255, 0, 0, 100), { deviationCoefficient: 1 / 3 });
+    expect(result[3]).toBe(100);
   });
 });

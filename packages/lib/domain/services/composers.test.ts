@@ -91,9 +91,16 @@ describe("lchHueCompose", () => {
     expect(lchHueCompose(px(180, 120, 100, 77), fg)[3]).toBe(77);
   });
 
-  // Баг №5: у серого FG хрома 0, hue не определён, atan2(0,0) = 0 — фон
-  // перекрашивается (синий → [0,102,0]). Ожидание: без хромы FG фон не меняется.
-  test.failing("a gray foreground leaves the background hue alone", () => {
+  test("a gray foreground has no hue and leaves the background alone", () => {
     expect([...lchHueCompose(px(0, 0, 255, 255), px(128, 128, 128, 255))]).toEqual([0, 0, 255, 255]);
+  });
+
+  test("a low-chroma foreground applies the hue only partially", () => {
+    const bgBlue = px(0, 0, 255, 255);
+    const pale = lchHueCompose(bgBlue, px(180, 160, 144, 255)); // beige, chroma ≈ 12
+    const vivid = lchHueCompose(bgBlue, px(180, 120, 60, 255)); // same hue family, chroma > 20
+    const shift = (out: Uint8ClampedArray) => Math.abs(out[0] - 0) + Math.abs(out[1] - 0) + Math.abs(out[2] - 255);
+    expect(shift(pale)).toBeGreaterThan(0);
+    expect(shift(pale)).toBeLessThan(shift(vivid));
   });
 });

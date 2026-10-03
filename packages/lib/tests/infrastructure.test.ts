@@ -106,7 +106,7 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     width = fixture.width;
     height = fixture.height;
     frames = Array.from({ length: 6 }, (_, i) =>
-      addHueNoise(fixture.data, { deviationCoefficient: i * 0.05, preserveAlpha: true }),
+      addHueNoise(fixture.data, { deviationCoefficient: i * 0.05 }),
     );
   });
 
@@ -125,34 +125,20 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     expect(info.duration).toBeCloseTo(1, 1);
   });
 
-  test("loopVideoTo repeats the clip to cover at least the target length", async () => {
+  test("loopVideoTo repeats the clip and cuts exactly at the target length", async () => {
     const path = resolve(outDir, "noise_looped-3s.mp4");
     await loopVideoTo(resolve(outDir, "noise.mp4"), 3, path);
-    const { duration } = probe(path);
-    expect(duration).toBeGreaterThanOrEqual(3);
-    expect(duration).toBeLessThan(3.5); // current: 3.33 s
+    const info = probe(path);
+    expect(info.frames).toBe(18); // 3 s · 6 fps
+    expect(info.duration).toBeCloseTo(3, 2);
   });
 
-  // Баг-кандидат №7: `-c copy` режет только по границе пакета — 3 с превращаются
-  // в 3.33 с (20 кадров вместо 18). Для toast-1 это неполный цикл на шве петли.
-  test.failing("loopVideoTo cuts exactly at the target length (±1 frame)", async () => {
-    const path = resolve(outDir, "noise_looped-3s.mp4");
-    expect(Math.abs(probe(path).duration - 3)).toBeLessThanOrEqual(1 / 6);
-  });
-
-  test("speedUpVideo shortens the clip", async () => {
-    const input = resolve(outDir, "noise_looped-3s.mp4");
+  test("speedUpVideo divides the duration by the speed factor, keeping the frame rate", async () => {
     const path = resolve(outDir, "noise_looped_x2.mp4");
-    await speedUpVideo(input, 2, path);
-    expect(probe(path).duration).toBeLessThan(probe(input).duration);
-  });
-
-  // Баг-кандидат №8: x2 из 3.33 с даёт 2.0 с вместо 1.67 с — ffmpeg держит
-  // исходный fps и дублирует кадры после setpts.
-  test.failing("speedUpVideo divides the duration by the speed factor (±1 frame)", async () => {
-    const input = probe(resolve(outDir, "noise_looped-3s.mp4"));
-    const output = probe(resolve(outDir, "noise_looped_x2.mp4"));
-    expect(Math.abs(output.duration - input.duration / 2)).toBeLessThanOrEqual(1 / 6);
+    await speedUpVideo(resolve(outDir, "noise_looped-3s.mp4"), 2, path);
+    const info = probe(path);
+    expect(info.frames).toBe(9); // every other frame of 18, still 6 fps
+    expect(info.duration).toBeCloseTo(1.5, 2);
   });
 
   test("ffmpeg failures reject with its stderr", async () => {

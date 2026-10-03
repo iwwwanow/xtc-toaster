@@ -66,33 +66,58 @@ describe("applyAffineTransform", () => {
     expect([...result]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
-  test("scale doubles coordinate offsets", () => {
-    // 4x1 image, red pixel at x=1
+  test("scale grows around the image center", () => {
+    // 4×1, red pixel at x=1 (left of center 1.5) — scale 2 pushes it left and doubles it
     const data = new Uint8ClampedArray(16);
     data.set([255, 0, 0, 255], 4);
     const result = applyAffineTransform(data, { width: 4, height: 1 }, {
       name: "scale",
       params: { scaleX: 2, scaleY: 1 },
     });
-    expect([...result.slice(8, 12)]).toEqual([255, 0, 0, 255]);
+    expect([...result]).toEqual([255, 0, 0, 255, 255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
-  test("current behavior: forward mapping leaves holes when scaling up", () => {
+  test("scale 2 on a 3×3 grid: the center pixel spreads, no holes", () => {
+    const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
+      name: "scale",
+      params: { scaleX: 2, scaleY: 2 },
+    });
+    expect(occupied(result, 3)).toEqual([
+      "0,0=50", "1,0=50", "2,0=60", "0,1=50", "1,1=50", "2,1=60", "0,2=80", "1,2=80", "2,2=90",
+    ]);
+  });
+
+  test("backward mapping leaves no holes when scaling up", () => {
     const data = new Uint8ClampedArray(16).fill(255);
     const result = applyAffineTransform(data, { width: 4, height: 1 }, {
       name: "scale",
       params: { scaleX: 2, scaleY: 1 },
     });
-    expect([...result].filter((_, i) => i % 4 === 3)).toEqual([255, 0, 255, 0]);
+    expect([...result].filter((_, i) => i % 4 === 3)).toEqual([255, 255, 255, 255]);
   });
 
-  test("current behavior: rotate pivots around (0,0), so rotate(90) keeps only the left column", () => {
-    // [x, y, 1]·R → (y, −x): column x=0 lands on row 0, everything else leaves the frame
+  test("rotate(90) turns the whole image counter-clockwise around its center", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "rotate",
       params: { alpha: 90 },
     });
-    expect(occupied(result, 3)).toEqual(["0,0=10", "1,0=40", "2,0=70"]);
+    expect(occupied(result, 3)).toEqual([
+      "0,0=30", "1,0=60", "2,0=90", "0,1=20", "1,1=50", "2,1=80", "0,2=10", "1,2=40", "2,2=70",
+    ]);
+  });
+
+  test("rotate(15) leaves no holes inside the rotated image", () => {
+    const data = new Uint8ClampedArray(21 * 21 * 4).fill(255);
+    const result = applyAffineTransform(data, { width: 21, height: 21 }, {
+      name: "rotate",
+      params: { alpha: 15 },
+    });
+    // the inscribed circle is always covered by the rotated square
+    for (let y = 0; y < 21; y++) {
+      for (let x = 0; x < 21; x++) {
+        if ((x - 10) ** 2 + (y - 10) ** 2 <= 9 ** 2) expect(result[(y * 21 + x) * 4 + 3]).toBe(255);
+      }
+    }
   });
 
   test("rotate(360) is an identity", () => {
@@ -104,9 +129,7 @@ describe("applyAffineTransform", () => {
     expect([...result]).toEqual([...data]);
   });
 
-  // Баг №4: поворот вокруг (0,0) выносит кадр за границы. Ожидание — поворот
-  // вокруг центра: rotate(180) переворачивает сетку 3×3 целиком.
-  test.failing("rotate(180) pivots around the image center", () => {
+  test("rotate(180) pivots around the image center", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "rotate",
       params: { alpha: 180 },
@@ -116,20 +139,26 @@ describe("applyAffineTransform", () => {
     ]);
   });
 
-  test("current behavior: skew tx shears y by x (y' = y + tx·x)", () => {
+  test("skew tx shears y by x around the center column (y' = y + tx·(x − cx))", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "skew",
       params: { tx: 1, ty: 0 },
     });
-    expect(occupied(result, 3)).toEqual(["0,0=10", "0,1=40", "1,1=20", "0,2=70", "1,2=50", "2,2=30"]);
+    expect(occupied(result, 3)).toEqual(["0,0=40", "1,0=20", "0,1=70", "1,1=50", "2,1=30", "1,2=80", "2,2=60"]);
   });
 
-  test("current behavior: skew ty shears x by y (x' = x + ty·y)", () => {
+  test("skew ty shears x by y around the center row (x' = x + ty·(y − cy))", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "skew",
       params: { tx: 0, ty: 1 },
     });
-    expect(occupied(result, 3)).toEqual(["0,0=10", "1,0=20", "2,0=30", "1,1=40", "2,1=50", "2,2=70"]);
+    expect(occupied(result, 3)).toEqual(["0,0=20", "1,0=30", "0,1=40", "1,1=50", "2,1=60", "1,2=70", "2,2=80"]);
+  });
+
+  test("scale 0 collapses the image and is rejected as singular", () => {
+    expect(() =>
+      applyAffineTransform(grid3(), { width: 3, height: 3 }, { name: "scale", params: { scaleX: 0, scaleY: 1 } }),
+    ).toThrow();
   });
 
   test("throws for non-affine transforms", () => {
