@@ -15,7 +15,7 @@ describe("Composition factory methods", () => {
     expect([...layer.imageData]).toEqual([1, 2, 3, 255, 1, 2, 3, 255]);
   });
 
-  test("duplicateLayer deep-copies the buffer and options, sharing no memory", () => {
+  test("duplicateLayer copies the buffer and top-level options; edits don't leak back", () => {
     const composition = new Composition(1, 1);
     const original = composition.createColorLayer(Color.fromRgb([9, 9, 9]));
     original.setOpacity(0.5);
@@ -23,8 +23,16 @@ describe("Composition factory methods", () => {
     const duplicate = composition.duplicateLayer(original);
     duplicate.fill(Color.fromRgb([0, 0, 0]));
 
+    duplicate.setOpacity(0.1);
+
     expect([...original.imageData]).toEqual([9, 9, 9, 255]);
-    expect(duplicate.options).toEqual({ opacity: 0.5 });
+    expect(original.options).toEqual({ opacity: 0.5 });
+  });
+
+  test("createLayerFromPixelData wraps the given buffer without copying", () => {
+    const composition = new Composition(1, 1);
+    const pixels = new Uint8ClampedArray([1, 2, 3, 4]);
+    expect(composition.createLayerFromPixelData(pixels).imageData).toBe(pixels);
   });
 });
 
@@ -48,9 +56,8 @@ describe("Composition.render", () => {
     const fg = composition.createColorLayer(Color.fromRgb([255, 255, 255]));
     fg.setOpacity(0.5);
 
-    const [r] = composition.render();
-    expect(r).toBeGreaterThan(100);
-    expect(r).toBeLessThan(155);
+    // alpha 255·0.5 = 127.5 → 128 in Uint8ClampedArray, then 255·128/255 = 128
+    expect([...composition.render()]).toEqual([128, 128, 128, 255]);
   });
 
   test("add blend mode sums layers additively", () => {
@@ -59,6 +66,28 @@ describe("Composition.render", () => {
     const fg = composition.createColorLayer(Color.fromRgb([100, 0, 0]));
     fg.setBlendMode("add");
     expect([...composition.render()]).toEqual([150, 0, 0, 255]);
+  });
+
+  test("lch-hue blend mode recolors the layers below", () => {
+    const composition = new Composition(1, 1);
+    composition.createColorLayer(Color.fromRgb([180, 120, 100]));
+    composition.createColorLayer(Color.fromRgb([60, 90, 200])).setBlendMode("lch-hue");
+    expect([...composition.render()]).toEqual([130, 130, 181, 255]);
+  });
+
+  test("opacity does not modify the layer's own buffer", () => {
+    const composition = new Composition(1, 1);
+    const layer = composition.createColorLayer(Color.fromRgb([1, 2, 3]));
+    layer.setOpacity(0.5);
+    composition.render();
+    expect([...layer.imageData]).toEqual([1, 2, 3, 255]);
+  });
+
+  test("layer order matters for normal blending (top layer wins)", () => {
+    const composition = new Composition(1, 1);
+    composition.createColorLayer(Color.fromRgb([0, 0, 255]));
+    composition.createColorLayer(Color.fromRgb([255, 255, 255]));
+    expect([...composition.render()]).toEqual([255, 255, 255, 255]);
   });
 
   test("an empty composition renders a fully transparent buffer", () => {

@@ -15,6 +15,15 @@ describe("mergeLayerData", () => {
     expect([...mergeLayerData(4, dimBg, dimFg, "add")]).toEqual([150, 0, 0, 255]);
   });
 
+  test("lch-hue blend mode delegates to lchHueCompose", () => {
+    const transparentFg = new Uint8ClampedArray([60, 90, 200, 0]);
+    const colorBg = new Uint8ClampedArray([180, 120, 100, 255]);
+    expect([...mergeLayerData(4, colorBg, transparentFg, "lch-hue")]).toEqual([180, 120, 100, 255]);
+    expect([...mergeLayerData(4, colorBg, new Uint8ClampedArray([60, 90, 200, 255]), "lch-hue")]).toEqual([
+      130, 130, 181, 255,
+    ]);
+  });
+
   test("throws when a buffer's length doesn't match dataLength", () => {
     expect(() => mergeLayerData(8, bg, fg, "normal")).toThrow();
   });

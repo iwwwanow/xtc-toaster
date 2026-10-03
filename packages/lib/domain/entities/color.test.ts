@@ -22,4 +22,13 @@ describe("Color", () => {
     const color = Color.fromRgb([0x33, 0x66, 0x99]);
     expect(color.hex).toBe("#336699");
   });
+
+  test("fromHex accepts 3-digit hex", () => {
+    expect(Color.fromHex("#f0a").hex).toBe("#ff00aa");
+  });
+
+  test("hex ignores alpha", () => {
+    const data = new Uint8ClampedArray([255, 0, 16, 7]);
+    expect(Color.fromUintArray(data, 0).hex).toBe("#ff0010");
+  });
 });
