@@ -1,6 +1,19 @@
 # Планирование
 
+## Спринт интерфейса (текущий фокус, с 2026-10-03)
+
+Интерфейс делаем на текущем TS-функционале из master, нативный бэк заморожен до конца спринта. Подробности — `docs/diary/2026-10-03_skia-status-and-interface-sprint.md`.
+
+- [ ] Фикс per-pixel аллокаций `Matrix` (пункт 4d ниже) — в начале спринта, влияет на отзывчивость превью
+- [ ] `packages/server` — WebSocket-сервер на `Bun.serve` с серверным рендером: клиент шлёт параметры тоста, сервер отвечает картинкой (сейчас там пустой незакоммиченный `package.json`)
+- [ ] Сервер говорит только с `Toast` (пункт 7 ниже) — граница, за которой TS-рендер потом подменяется нативным без изменений в UI
+- [ ] Превью в уменьшенном разрешении, полное — только на экспорт
+- [ ] `packages/web` — подключить к серверу вместо собственной hue-логики в `+page.svelte`
+- [ ] После обкатки — замер задержки рендера, переключение на бэк (пункт 4)
+
 ## DDD-lite → Zig+Skia перенос domain-части (`packages/lib`)
+
+**Заморожено на время спринта интерфейса.** Skia собрана 2026-09-27 (`vendor/skia/out/min` — CPU, `out/vk` — Vulkan+Graphite), сабмодуль — в ветке `feat/lib-native-skia`, кода поверх нет. **Открытое противоречие:** в ветке `feat/lib-native` лежит решение от 2026-09-06 (libvips, фаза 1, без C++-шима; Skia отменена из-за шима) — выбрать путь при возврате к бэку. Оценка Skia-пути — ≈16–29 ч до паритета на CPU, +8–16 ч на GPU; для GPU-пути см. `docs/backlog/2026-10-03_sksl-for-custom-pixel-math.md`.
 
 Полный контекст решений: `docs/diary/2026-08-28_ddd-lite-go-ffi-planning.md`, `docs/diary/2026-08-29_domain-spec-review.md`, `docs/diary/2026-08-29_domain-ts-implementation.md`, `docs/diary/2026-08-31_render-stack-architecture-decision.md`. Спека — `docs/specs/domain.spec.ts`. Финальная архитектура — `docs/backlog/2026-08-31_final-render-export-stack-architecture.md` (отменяет более ранний план на libvips, `docs/backlog/2026-08-30_sharp-libvips-integration.md`).
 
