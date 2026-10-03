@@ -43,3 +43,5 @@ packages/sandbox/public/*.webp
 # Zig build artifacts (packages/lib-native)
 .zig-cache/
 zig-out/
+# Skia submodule checkout — tracked only in feat/lib-native-skia until merged
+packages/lib-native/vendor/
