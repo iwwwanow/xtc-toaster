@@ -4,7 +4,9 @@
 
 Интерфейс делаем на текущем TS-функционале из master, нативный бэк заморожен до конца спринта. Подробности — `docs/diary/2026-10-03_skia-status-and-interface-sprint.md`.
 
-- [ ] Фикс per-pixel аллокаций `Matrix` (пункт 4d ниже) — в начале спринта, влияет на отзывчивость превью
+- [ ] Добить тесты `packages/lib` до покрытия всех фильтров + golden-тест кадра toast-1 — **до** любой оптимизации hot loops. Аудит и список дыр/багов — `docs/backlog/2026-10-03_lib-test-audit.md` (≈5–7 ч)
+- [ ] Решения по поведению найденных багов (`preserveAlpha` не работает, серые пиксели попадают в hue-маску 0°, `tolerance: 0` даёт пустую маску, `rotate` вокруг (0,0), `lch-hue` с серым FG перекрашивает фон) — решает пользователь, фиксы после тестов
+- [ ] Ускорение TS: убрать per-pixel аллокации во **всех** hot loops (не только `Matrix`) — `lchHueCompose` 3.2 с, `addHueNoise` 1.8 с на 2K-кадре; `Matrix`-трансформы всего 0.5–0.7 с (пункт 4d ниже, ≈2–3 ч на весь проход)
 - [ ] `packages/server` — WebSocket-сервер на `Bun.serve` с серверным рендером: клиент шлёт параметры тоста, сервер отвечает картинкой (сейчас там пустой незакоммиченный `package.json`)
 - [ ] Сервер говорит только с `Toast` (пункт 7 ниже) — граница, за которой TS-рендер потом подменяется нативным без изменений в UI
 - [ ] Превью в уменьшенном разрешении, полное — только на экспорт
@@ -13,7 +15,7 @@
 
 ## DDD-lite → Zig+Skia перенос domain-части (`packages/lib`)
 
-**Заморожено на время спринта интерфейса.** Skia собрана 2026-09-27 (`vendor/skia/out/min` — CPU, `out/vk` — Vulkan+Graphite), сабмодуль — в ветке `feat/lib-native-skia`, кода поверх нет. **Открытое противоречие:** в ветке `feat/lib-native` лежит решение от 2026-09-06 (libvips, фаза 1, без C++-шима; Skia отменена из-за шима) — выбрать путь при возврате к бэку. Оценка Skia-пути — ≈16–29 ч до паритета на CPU, +8–16 ч на GPU; для GPU-пути см. `docs/backlog/2026-10-03_sksl-for-custom-pixel-math.md`.
+**Заморожено на время спринта интерфейса.** Skia собрана 2026-09-27 (`vendor/skia/out/min` — CPU, `out/vk` — Vulkan+Graphite), сабмодуль — в ветке `feat/lib-native-skia`, кода поверх нет. **Путь — Skia** (решено 2026-10-03): решение от 2026-09-06 в ветке `feat/lib-native` (libvips, без C++-шима) отменено — вернулись к Skia ради GPU, в производительность рано или поздно упрёмся; C++-шим принимается как цена GPU-пути. Оценка Skia-пути — ≈16–29 ч до паритета на CPU, +8–16 ч на GPU; для GPU-пути см. `docs/backlog/2026-10-03_sksl-for-custom-pixel-math.md`.
 
 Полный контекст решений: `docs/diary/2026-08-28_ddd-lite-go-ffi-planning.md`, `docs/diary/2026-08-29_domain-spec-review.md`, `docs/diary/2026-08-29_domain-ts-implementation.md`, `docs/diary/2026-08-31_render-stack-architecture-decision.md`. Спека — `docs/specs/domain.spec.ts`. Финальная архитектура — `docs/backlog/2026-08-31_final-render-export-stack-architecture.md` (отменяет более ранний план на libvips, `docs/backlog/2026-08-30_sharp-libvips-integration.md`).
 
@@ -24,7 +26,7 @@
   - [ ] 4a. Спецификация нужных методов Skia + FFI-ручек Bun, с юз-кейсами (готовит пользователь руками)
   - [ ] 4b. Схемы границ Bun/Zig/Skia/ffmpeg
   - [ ] 4c. Рефакторинг текущей структуры `packages/lib/domain/services/` под новую архитектуру — делать **до** переноса, не одновременно
-  - [ ] 4d. Профилировать и убрать per-pixel аллокации `Matrix` в `transforms.ts` (`applyAffineTransform`/`applyHomographyTransform`) — вероятная причина ~8.3 сек/кадр на рендере от 2026-08-30; актуально до переноса, снимется архитектурно после (Zig не аллоцирует так в hot path)
+  - [ ] 4d. Профилировать и убрать per-pixel аллокации `Matrix` в `transforms.ts` (`applyAffineTransform`/`applyHomographyTransform`) — **гипотеза не подтвердилась** (замер 2026-10-03, 2048×1365: affine 0.74 с, perspective 0.51 с, при `lchHueCompose` 3.2 с и `addHueNoise` 1.8 с) — `Matrix` даёт ~10–15% кадра, основная цена — аллокации массивов на пиксель во всех сервисах (`readNormalizedPixel`, `rgbToLab`/`rgbToHsl` возвращают массивы), см. задачу ускорения в спринте; актуально до переноса, снимется архитектурно после (Zig не аллоцирует так в hot path)
 - [ ] 5. Биндинг-слой (`packages/lib/infrastructure/ffi/*.binding.ts`, handle-паттерн, contract-test на рассинхрон сигнатур) — граница Bun↔Zig; список экспортируемых функций — там же в диневнике
 - [ ] 6. Bun-инфра (dev-loop через `watchexec`, package setup для `lib-native` — Zig-пакет вне npm-воркспейса, собирается в `.so`/`.dylib`)
 - [ ] 7. TS-класс `Toast` в `packages/lib/application/` — единая точка управления: импорт/экспорт/анимация/рендер статики. Заменяет более ранний план "переписать тосты под `bake(layer, ...)`"
