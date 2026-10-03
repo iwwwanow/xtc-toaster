@@ -1,0 +1,5 @@
+[submodule "packages/lib-native/vendor/skia"]
+	path = packages/lib-native/vendor/skia
+	url = https://skia.googlesource.com/skia
+	branch = chrome/m155
+	shallow = true
