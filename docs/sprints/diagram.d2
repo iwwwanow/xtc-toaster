@@ -1,0 +1,46 @@
+direction: right
+
+contract: "@xtc-toaster/contract\nzod schemas + types" {
+  shape: page
+}
+
+client: browser {
+  graph: svelte flow (fixed graph) {
+    input: input {
+      upload-button
+    }
+    noize: noize {
+      deviationCoefficient
+    }
+    output: output {
+      preview
+      download-png-button
+    }
+    input -> noize -> output
+  }
+}
+
+server: server (bun) {
+  http: "POST /api/images"
+  ws: ws render
+  uploads: assets/uploads {
+    shape: cylinder
+  }
+  lib: "@xtc-toaster/lib"
+
+  http -> uploads: write
+  ws -> uploads: read by imageId
+  ws -> lib: run graph
+}
+
+client.graph.input.upload-button -> server.http: file
+server.http -> client.graph.input: "{ imageId }"
+client.graph -> server.ws: "render { requestId, graph, size }"
+server.ws -> client.graph.output: "rendered | render-error"
+
+contract -> client: imports {
+  style.stroke-dash: 3
+}
+contract -> server: imports {
+  style.stroke-dash: 3
+}
