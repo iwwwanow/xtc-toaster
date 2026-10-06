@@ -25,6 +25,11 @@ diagram — `sprint-1.diagram.d2`
   - download-png-button saves the png of the last `rendered` — no extra request, the file is exactly what output shows
   - errors shown on output: upload failed, `render-error`, ws disconnected
 
+### empty state
+
+- while input `imageId` is `null` (page just opened, graph from signac) the client sends no `render`
+- output shows an empty state "upload an image", download-png-button locked
+
 ### render lifecycle
 
 - every change of ui state that affects the graph (new `imageId`, param value) → new `render` with a new `requestId`
@@ -35,6 +40,13 @@ diagram — `sprint-1.diagram.d2`
 
 - while an upload or a render is in progress, the whole ui is locked: upload-button, node params, download-png-button
 - exception — stretch 2: the slider stays live during render (each move restarts the render, see render lifecycle); download stays locked until the last render arrives
+
+### ws reconnect
+
+- the client reconnects by itself with a growing pause: 1 → 2 → 4 → … capped at 10 s
+- while there is no connection: output shows "ws disconnected", the whole ui is locked
+- after reconnect: if `imageId` is set, the client re-sends the current graph as a new `render`
+- a response that was in flight when the connection dropped is lost — nothing to recover, server is stateless
 
 ### stretch (if time is left, strictly in order)
 
@@ -81,6 +93,10 @@ contract does not change for stretch — only the moment the client sends `rende
   - same schema validates ws messages on server and imported toast files on client
 - svelte flow nodes stay on the client; before sending, `toGraph(nodes, edges)` strips ui fields (`position`, `selected`, `measured`, …) — server does not depend on xyflow
 - graph executor — `packages/server/src/run-graph.ts` on top of `lib` (`Layer` + noize effect)
+- image codec on the server — `canvas` used directly, declared in `server` deps (not only transitively through lib)
+  - upload: `loadImage` from the buffer → format check by decoding + megapixel limit
+  - render: pixels via `imageFileToRawData` from lib, png via `canvas.toBuffer("image/png")` (lib only has `rawDataToImageFile`, which writes to a file)
+  - temporary: moves into lib in a later iteration — `docs/backlog/2026-10-06_image-codec-into-lib.md`
 - server is stateless: client sends the whole graph on every `render`, no sync, reconnect is free
 - upload over plain HTTP, ws only for render
 - one render = one picture: server renders at the stored image size, browser scales it down with css, download saves the same bytes
@@ -99,6 +115,12 @@ contract does not change for stretch — only the moment the client sends `rende
   - phone photos (~12 MP) are rejected for now — raise together with binary frames / downscale on upload
 - max file size 10 MB → `400 too-large`
 - anonymous uploads after public link (sprint 3) → need TTL / cleanup of `assets/uploads`
+
+### definition of done — tests
+
+- `contract`: unit tests on parsing — valid graph, missing `edges`, foreign `version`, non-uuid `imageId`, `deviationCoefficient` outside 0–1
+- `toasts`: the schema accepts `toast-2_signac`
+- `server`: one integration test — upload `poppies.jpg` → `render` over ws → `rendered` with the right size
 
 ---
 
@@ -200,6 +222,8 @@ client rules:
 
 ### scenario check
 
+0. open page → graph from signac, `imageId: null` → no `render`, output empty, download locked
 1. pick file → `POST` → `imageId` into input → graph changed → `render#1` → ui locked → `rendered#1` → output, ui unlocked
 2. (stretch 2) drag slider → `render#2`, `render#3`, `render#4` → server is busy with `#2`, `#4` replaces pending `#3` → `#2` arrives → dropped → `#4` arrives → output
 3. download → saves the png of `#4` from memory, no request
+4. ws drops → ui locked, "ws disconnected" → reconnect after 1 s → current graph re-sent as `render#5` → output

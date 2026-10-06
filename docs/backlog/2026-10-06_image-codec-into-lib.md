@@ -1,0 +1,5 @@
+# Кодек изображений сервера — перенести в lib
+
+В спринте 1 сервер работает с `canvas` напрямую (`docs/sprints/sprint-1.spec.md`, раздел «decisions»). `loadImage` из буфера нужен при загрузке: проверить формат декодированием и посчитать мегапиксели. `toBuffer("image/png")` нужен, чтобы отдать результат рендера. Причина: `lib` в этом спринте не трогаем, а в `lib/infrastructure` есть только файловые `imageFileToRawData` и `rawDataToImageFile`, буферного API нет. Это временный обход: кодирование и декодирование изображений — инфраструктура lib, и сервер не должен знать про `canvas`.
+
+На следующей итерации добавить в `lib/infrastructure` буферные функции. Например, `imageBufferToRawData(buffer)` возвращает `{ data, width, height }` и бросает исключение на неподдерживаемом формате, а `rawDataToPngBuffer(data, dims)` возвращает `Buffer`. После этого убрать `canvas` из зависимостей `server`. Это же место потом подменится на Skia (`SkCodec` и энкодеры) при переносе на нативный бэк — `docs/backlog/2026-10-06_native-backend-zig-skia-migration.md`. Тогда закроются и webp, и поворот по EXIF.
