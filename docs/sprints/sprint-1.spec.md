@@ -4,7 +4,7 @@
    - datatypes
    - draft ui
 
-diagram — `diagram.d2`
+diagram — `sprint-1.diagram.d2`
 
 ---
 
