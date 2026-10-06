@@ -30,7 +30,7 @@ const getLinearMatrix = (transform: Transform): Matrix => {
 
 // rotate/scale/skew pivot around the image center: T(−c) · M · T(c).
 // Pivot is fixed to the center for now; an optional `pivot: {x, y}` param on
-// Transform (defaulting to the center) is a low-priority idea in docs/planning.md.
+// Transform (defaulting to the center) is a low-priority idea in docs/backlog/2026-10-06_lib-tech-debt.md.
 const getAffineMatrix = (transform: Transform, { width, height }: LayerDimensions): Matrix => {
   const linear = getLinearMatrix(transform);
   if (transform.name === "translate") return linear;

@@ -36,7 +36,7 @@ Layers are created, processed, then reduced into a final image on canvas:
 - Blend modes are selected via `BlendMod` enum on each layer
 - Demo compositions live in `/compositions/composition-N/index.ts` and are linked from `index.html`
 
-### In-Progress / Known Issues (from planning.md)
+### In-Progress / Known Issues
 
 - Layer ordering affects the final result but shouldn't — there's a known bug in the compositing math to revisit
 - `transformed-layers` mapper is incomplete

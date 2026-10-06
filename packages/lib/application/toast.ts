@@ -10,6 +10,6 @@
 // - экспорт: сборка gif/video через infrastructure/assemble-gif.ts, loop до нужной длины
 // - рендер статики: одиночный кадр без анимации
 //
-// Не реализован — см. docs/planning.md пункт 7,
+// Не реализован — см. docs/backlog/2026-10-06_render-boundary.md,
 // docs/backlog/2026-08-31_final-render-export-stack-architecture.md
 export {};
