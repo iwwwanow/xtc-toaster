@@ -4,40 +4,51 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+Bun only — no npm / pnpm.
+
 ```bash
-npm run dev        # Start Vite dev server
-npm run typecheck  # TypeScript type checking (no emit)
-npm run build      # Type check + production build
-npm run preview    # Preview production build
+bun install          # install workspace deps
+bun run typecheck    # tsc for lib + toasts (no emit)
+bun run toast-1      # bake toast-1 (degas) → baked-toasts/*.mp4
+bun run web:dev      # web dev server (packages/web — being rebuilt in sprint 1)
 ```
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. Known bugs are pinned as `test.failing`. No linting tools are configured.
 
-## Architecture
+## Repo structure
 
-A canvas-based image composition playground for pixel-level image processing experiments. Zero production dependencies — uses only native browser Canvas and ImageData APIs.
+Bun workspace, packages in `packages/*`:
 
-### Rendering Pipeline
+- `lib` (`@xtc-toaster/lib`) — pixel processing, DDD-lite: `domain/` (entities, services, utils), `infrastructure/` (image I/O via `canvas`, ffmpeg video assembly), `application/` (`Toast` — stub). Not compiled: `main.ts` exports `.ts` source directly
+- `toasts` (`@xtc-toaster/toasts`) — toasts. `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages)
+- `server` (`@xtc-toaster/server`) — empty manifest, built in sprint 1
 
-Layers are created, processed, then reduced into a final image on canvas:
+Sprint 1 adds `contract` (shared zod schemas / types), `server`, `web` (Svelte + Vite SPA) and `toast-2_signac` (first toast in graph form). Target structure, dependency rules and the ws/http contract — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
 
-1. **Source image** → loaded into canvas → read as `ImageData` (`Uint8ClampedArray`, 4 bytes/pixel RGBA)
-2. **Cutters** (`/lib/cutters/`) → extract subsets of pixel data by channel or color property (hue, saturation, value)
-3. **Layer** (`/lib/classes/layer.class.ts`) → wraps pixel data with blend mode, opacity, effects, and transform
-4. **Effects** → applied via `Layer.addEffect()` (e.g., `LayerEffect.Noize` for hue noise)
-5. **Reducer** (`/lib/reducers/merged-layer.reducer.ts`) → merges layers pairwise using a composer
-6. **Composers** (`/lib/composers/`) → implement blend modes: `alpha` (normal compositing) and `add` (additive)
-7. **Composition** (`/lib/classes/composition.class.ts`) → orchestrates the whole pipeline, owns the canvas
+`legacy/` — the old browser playground, kept for reference, not part of the workspace.
 
-### Key Conventions
+## lib architecture
 
-- Colors are normalized to `0–1` range internally, `0–255` in `Uint8ClampedArray` storage
-- Color space utilities live in `/lib/utils/`: RGB↔HSL↔HSV↔hex conversions
-- Blend modes are selected via `BlendMod` enum on each layer
-- Demo compositions live in `/compositions/composition-N/index.ts` and are linked from `index.html`
+Zero-DOM: everything works on raw `Uint8ClampedArray` RGBA (`ImageRawDataArray`), the browser/canvas is only touched in `infrastructure/`.
 
-### In-Progress / Known Issues
+1. `imageFileToRawData(path, scale)` → pixels + dimensions
+2. `Composition(width, height)` creates layers: `createLayerFromPixelData`, `createBlankLayer`, `createColorLayer`, `duplicateLayer`
+3. `Layer` — pixel data + options: `mask` (hue / saturation / value with falloff), `isolateChannel`, `fill`, `tint`, `applyEffect` (`noize`, `blur`), `setTransform` (translate / rotate / scale / skew / homography / perspective), `setBlendMode`, `setOpacity`
+4. `Composition.render()` reduces layers in creation order through composers: `normal` (alpha), `add`, `lch-hue`
+5. `rawDataToImageFile` / `assembleVideo` / `loopVideoTo` — export
 
-- Layer ordering affects the final result but shouldn't — there's a known bug in the compositing math to revisit
-- `transformed-layers` mapper is incomplete
-- Naming: cutters should be called `cut` not `level`
+Public surface is `domain/entities` + `domain/types`; services and utils are internal (called only from Layer / Composition). Full spec — `docs/specs/domain.spec.ts`.
+
+### Conventions
+
+- colors normalized to `0–1` internally, `0–255` in storage
+- HSL is `0–1` for all components; HSV is H in degrees (0–360), S/V in percent (0–100) — inherited from legacy, kept for 1:1 parity
+- `noize` uses `Math.random` — rendering a graph with it is not deterministic
+- `canvas` can't decode webp and ignores EXIF orientation
+
+## Docs
+
+- `docs/sprints/` — current sprint spec + d2 diagram (`d2 --watch docs/sprints/sprint-1.diagram.d2 docs/sprints/sprint-1.diagram.svg`)
+- `docs/backlog/` — open ideas, frozen plans, tech debt (native Zig + Skia backend, hot-loop allocations, lib tech debt, …)
+- `docs/diary/` — session logs
+- `docs/specs/` — lib specs
