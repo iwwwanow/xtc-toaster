@@ -32,19 +32,21 @@ const inputPath =
   values.input ?? resolve(import.meta.dirname, "assets/degas-076.jpg");
 
 const now = new Date();
-const datePart = now.getFullYear().toString()
-  + String(now.getMonth() + 1).padStart(2, "0")
-  + String(now.getDate()).padStart(2, "0");
-const timePart = String(now.getHours()).padStart(2, "0")
-  + String(now.getMinutes()).padStart(2, "0")
-  + String(now.getSeconds()).padStart(2, "0");
+const datePart =
+  now.getFullYear().toString() +
+  String(now.getMonth() + 1).padStart(2, "0") +
+  String(now.getDate()).padStart(2, "0");
+const timePart =
+  String(now.getHours()).padStart(2, "0") +
+  String(now.getMinutes()).padStart(2, "0") +
+  String(now.getSeconds()).padStart(2, "0");
 const inputStem = basename(inputPath, extname(inputPath));
 const slug = `degas_${datePart}-${timePart}_${inputStem}`;
 
 const seqDir = await mkdtemp(resolve(tmpdir(), `${slug}_frames_`));
 const rawVideoPath = resolve(tmpdir(), `${slug}.mp4`);
 
-const outDir  = resolve(process.cwd(), "baked-toasts");
+const outDir = resolve(process.cwd(), "baked");
 const outPath = resolve(outDir, `${slug}.mp4`);
 
 await mkdir(outDir, { recursive: true });
@@ -76,9 +78,9 @@ const getTransformParams = ({ tx, ty }: { tx: number; ty: number }) => ({
   ty: Math.round(ty * height * 0.01),
 });
 
-const darkGrayColor  = Color.fromHex("#a4a4a4");
+const darkGrayColor = Color.fromHex("#a4a4a4");
 const lightGrayColor = Color.fromHex("#ebebeb");
-const blueColor      = Color.fromHex("#00ffdd");
+const blueColor = Color.fromHex("#00ffdd");
 
 const buildFrame = (frame: number): ImageRawDataArray => {
   const comp = new Composition(width, height);
@@ -87,7 +89,10 @@ const buildFrame = (frame: number): ImageRawDataArray => {
   bg.fill(darkGrayColor);
 
   const blurred = comp.createLayerFromPixelData(data);
-  blurred.applyEffect({ name: "blur", options: { radius: getBlurRadius(0.48) } });
+  blurred.applyEffect({
+    name: "blur",
+    options: { radius: getBlurRadius(0.48) },
+  });
   blurred.setOpacity(0.8);
 
   const lightGray = comp.createBlankLayer();
@@ -102,24 +107,45 @@ const buildFrame = (frame: number): ImageRawDataArray => {
   const purple = comp.createLayerFromPixelData(data);
   purple.mask({ name: "value", value: 16, tolerance: 0.32 });
   purple.tint(Color.fromHex("#FF00FF"));
-  purple.applyEffect({ name: "blur", options: { radius: getBlurRadius(0.24) } });
+  purple.applyEffect({
+    name: "blur",
+    options: { radius: getBlurRadius(0.24) },
+  });
   purple.setOpacity(0.6);
-  purple.setTransform({ name: "perspective", params: { corners: getTransformCorners(-0.2 * frame) } });
-  purple.setTransform({ name: "translate", params: getTransformParams({ tx: 2 * frame, ty: -2 * frame }) });
+  purple.setTransform({
+    name: "perspective",
+    params: { corners: getTransformCorners(-0.2 * frame) },
+  });
+  purple.setTransform({
+    name: "translate",
+    params: getTransformParams({ tx: 2 * frame, ty: -2 * frame }),
+  });
 
   const red = comp.createLayerFromPixelData(data);
   red.mask({ name: "value", value: 12, tolerance: 0.24 });
   red.tint(Color.fromHex("#FF0000"));
   red.applyEffect({ name: "blur", options: { radius: getBlurRadius(0.1) } });
   red.setOpacity(0.8);
-  red.setTransform({ name: "perspective", params: { corners: getTransformCorners(-0.1 * frame) } });
-  red.setTransform({ name: "translate", params: getTransformParams({ tx: 1 * frame, ty: -1 * frame }) });
+  red.setTransform({
+    name: "perspective",
+    params: { corners: getTransformCorners(-0.1 * frame) },
+  });
+  red.setTransform({
+    name: "translate",
+    params: getTransformParams({ tx: 1 * frame, ty: -1 * frame }),
+  });
 
   const white = comp.createLayerFromPixelData(data);
   white.mask({ name: "value", value: 92, tolerance: 0.16 });
   white.tint(Color.fromHex("#FFFFFF"));
-  white.setTransform({ name: "perspective", params: { corners: getTransformCorners(-0.05 * frame) } });
-  white.setTransform({ name: "translate", params: getTransformParams({ tx: 1 * frame, ty: -1 * frame }) });
+  white.setTransform({
+    name: "perspective",
+    params: { corners: getTransformCorners(-0.05 * frame) },
+  });
+  white.setTransform({
+    name: "translate",
+    params: getTransformParams({ tx: 1 * frame, ty: -1 * frame }),
+  });
 
   return comp.render();
 };
@@ -140,7 +166,9 @@ for (let i = 0; i < FRAMES; i++) {
 console.log(`[toast-1/degas] assembling mp4 → ${rawVideoPath}`);
 await assembleVideo(renderedFrames, width, height, FPS, rawVideoPath);
 
-console.log(`[toast-1/degas] looping ${cycles} cycles (${exactDuration.toFixed(2)}s) → ${outPath}`);
+console.log(
+  `[toast-1/degas] looping ${cycles} cycles (${exactDuration.toFixed(2)}s) → ${outPath}`,
+);
 await loopVideoTo(rawVideoPath, exactDuration, outPath);
 
 console.log("[toast-1/degas] done →", outPath);

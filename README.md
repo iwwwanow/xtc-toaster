@@ -7,7 +7,12 @@
 Layer-based pixel processing on raw RGBA arrays. Bun workspace; the working part today is `@xtc-toaster/lib`.
 
 ```ts
-import { Composition, Color, imageFileToRawData, rawDataToImageFile } from "@xtc-toaster/lib";
+import {
+  Composition,
+  Color,
+  imageFileToRawData,
+  rawDataToImageFile,
+} from "@xtc-toaster/lib";
 
 const { data, width, height } = await imageFileToRawData("in.jpg");
 const comp = new Composition(width, height);
@@ -33,6 +38,6 @@ Requires Bun and ffmpeg.
 
 ```bash
 bun install
-bun run toast-1              # example toast → baked-toasts/*.mp4
+bun run toast-1              # example toast → baked/*.mp4
 cd packages/lib && bun test
 ```
