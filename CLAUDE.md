@@ -8,7 +8,7 @@ Bun only — no npm / pnpm.
 
 ```bash
 bun install          # install workspace deps
-bun run typecheck    # tsc for lib + toasts (no emit)
+bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
 bun run toast-1      # bake toast-1 (degas) → baked-toasts/*.mp4
 bun run web:dev      # web dev server (packages/web — being rebuilt in sprint 1)
 ```

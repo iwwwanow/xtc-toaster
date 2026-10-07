@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { parseToastGraph, TOAST_GRAPH_VERSION } from "./graph";
+import { TOAST_GRAPH_VERSION } from "./constants";
+import { parseToastGraph } from "./graph";
 
 const IMAGE_ID = "3f6c1a52-8e0b-4c1d-9a7e-2b5f4d6e8a90";
 

@@ -11,7 +11,7 @@
     "esbuild"
   ],
   "scripts": {
-    "typecheck": "tsc -p packages/contract/tsconfig.json && tsc -p packages/lib/tsconfig.json && tsc -p packages/toasts/tsconfig.json",
+    "typecheck": "bun run --filter '*' typecheck",
     "web:dev": "bun --filter @xtc-toaster/web dev",
     "toast-1": "bun packages/toasts/src/toasts/toast-1_degas/index.ts"
   },

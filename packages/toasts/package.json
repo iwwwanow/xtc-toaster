@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "toast-1": "bun src/toasts/toast-1_degas/index.ts"
+    "toast-1": "bun src/toasts/toast-1_degas/index.ts",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@xtc-toaster/lib": "workspace:*"

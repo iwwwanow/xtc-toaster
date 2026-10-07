@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-export const TOAST_GRAPH_VERSION = 1 as const;
+import { TOAST_GRAPH_VERSION } from "./constants";
 
 export const NodeIdSchema = z.string().min(1);
 export type NodeId = z.infer<typeof NodeIdSchema>;

@@ -129,7 +129,8 @@ contract does not change for stretch — only the moment the client sends `rende
 ```
 packages/
   contract/   @xtc-toaster/contract — shared interfaces, depends only on zod
-    src/graph.ts      ToastGraph, GraphNode, GraphEdge, TOAST_GRAPH_VERSION, parseToastGraph
+    src/constants.ts  TOAST_GRAPH_VERSION, upload limits
+    src/graph.ts      ToastGraph, GraphNode, GraphEdge, parseToastGraph
     src/messages.ts   ClientMessage, ServerMessage, parseClientMessage
     src/upload.ts     upload response / error types
     src/index.ts

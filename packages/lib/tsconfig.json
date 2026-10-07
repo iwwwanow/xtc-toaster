@@ -1,14 +1,10 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
+  "extends": "../../tsconfig.json",
   "include": [
     "main.ts",
     "domain/**/*.ts",
     "application/**/*.ts",
     "infrastructure/**/*.ts",
     "tests/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  ]
 }

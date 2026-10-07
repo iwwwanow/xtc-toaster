@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TOAST_GRAPH_VERSION } from "./graph";
+import { TOAST_GRAPH_VERSION } from "./constants";
 import { parseClientMessage, ServerMessageSchema } from "./messages";
 
 const graph = {
