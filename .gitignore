@@ -11,11 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
 
 # Generated output
 packages/lib/tests/output/
 batch-out/
-baked-toasts/
+baked/
 
 # Downloaded assets (воспроизводятся скриптом scripts/download-pexels.sh)
 assets/downloaded/

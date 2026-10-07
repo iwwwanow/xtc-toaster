@@ -9,23 +9,22 @@ Bun only — no npm / pnpm.
 ```bash
 bun install          # install workspace deps
 bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
-bun run toast-1      # bake toast-1 (degas) → baked-toasts/*.mp4
+bun run toast-1      # bake toast-1 (degas) → baked/*.mp4
 bun run web:dev      # web dev server (packages/web — being rebuilt in sprint 1)
 ```
 
-Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. Known bugs are pinned as `test.failing`. No linting tools are configured.
+Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. No linting tools are configured.
 
 ## Repo structure
 
 Bun workspace, packages in `packages/*`:
 
 - `lib` (`@xtc-toaster/lib`) — pixel processing, DDD-lite: `domain/` (entities, services, utils), `infrastructure/` (image I/O via `canvas`, ffmpeg video assembly), `application/` (`Toast` — stub). Not compiled: `main.ts` exports `.ts` source directly
+- `contract` (`@xtc-toaster/contract`) — shared zod schemas / types: toast graph, ws messages, upload (unit tests next to the code)
 - `toasts` (`@xtc-toaster/toasts`) — toasts. `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages)
 - `server` (`@xtc-toaster/server`) — empty manifest, built in sprint 1
 
-Sprint 1 adds `contract` (shared zod schemas / types), `server`, `web` (Svelte + Vite SPA) and `toast-2_signac` (first toast in graph form). Target structure, dependency rules and the ws/http contract — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
-
-`legacy/` — the old browser playground, kept for reference, not part of the workspace.
+Sprint 1 also builds `server`, `web` (Svelte + Vite SPA) and `toast-2_signac` (first toast in graph form). Target structure, dependency rules and the ws/http contract — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
 
 ## lib architecture
 
