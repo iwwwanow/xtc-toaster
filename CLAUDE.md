@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Bun only — no npm / pnpm.
 
+Dependencies: always the latest released version, pinned exactly (`"zod": "4.6.5"`, never `^` / `~`). Check the latest with `bun pm view <pkg> version` before adding. `bunfig.toml` sets `install.exact = true`, so `bun add` pins on its own.
+
 ```bash
 bun install          # install workspace deps
 bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
