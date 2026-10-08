@@ -2,5 +2,16 @@
   "name": "@xtc-toaster/server",
   "private": true,
   "version": "0.0.0",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@xtc-toaster/contract": "workspace:*",
+    "@xtc-toaster/lib": "workspace:*",
+    "canvas": "^3.2.3"
+  }
 }

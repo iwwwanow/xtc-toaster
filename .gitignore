@@ -14,7 +14,8 @@ dist-ssr
 .env
 
 # Generated output
-packages/lib/tests/output/
+packages/*/tests/output/
+assets/uploads/
 batch-out/
 baked/
 

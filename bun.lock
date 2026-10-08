@@ -26,6 +26,11 @@
     "packages/server": {
       "name": "@xtc-toaster/server",
       "version": "0.0.0",
+      "dependencies": {
+        "@xtc-toaster/contract": "workspace:*",
+        "@xtc-toaster/lib": "workspace:*",
+        "canvas": "^3.2.3",
+      },
     },
     "packages/toasts": {
       "name": "@xtc-toaster/toasts",

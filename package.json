@@ -13,6 +13,7 @@
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "web:dev": "bun --filter @xtc-toaster/web dev",
+    "server:dev": "bun --filter @xtc-toaster/server dev",
     "toast-1": "bun packages/toasts/src/toasts/toast-1_degas/index.ts"
   },
   "devDependencies": {
