@@ -41,6 +41,8 @@ const timePart =
   String(now.getMinutes()).padStart(2, "0") +
   String(now.getSeconds()).padStart(2, "0");
 const inputStem = basename(inputPath, extname(inputPath));
+// TODO: project naming is `<toast>_<YYYYMMDD-HHmmss>.<ext>` (CLAUDE.md) — rename to toast-1_degas_…,
+// decide whether to keep the input stem as a suffix — docs/backlog/2026-10-09_degas-output-naming.md
 const slug = `degas_${datePart}-${timePart}_${inputStem}`;
 
 const seqDir = await mkdtemp(resolve(tmpdir(), `${slug}_frames_`));
