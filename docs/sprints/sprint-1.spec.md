@@ -137,9 +137,10 @@ packages/
   lib/        @xtc-toaster/lib — pixels, not changed in this sprint
   toasts/     @xtc-toaster/toasts — toasts
     src/toasts/toast-1_degas/    cli script on top of lib (old form, stays as is)
+    src/index.ts                 barrel: re-exports graph toasts only (no degas)
     src/toasts/toast-2_signac/   graph toast: input → noize (0.5) → output
       toast.json                   the toast itself, same format as an exported toast file (sprint 2)
-      index.ts                     export const signac: ToastGraph = parseToastGraph(json)
+      index.ts                     export const toast2signac: ToastGraph = parseToastGraph(json)
   server/     @xtc-toaster/server — Bun.serve
     src/index.ts      POST /api/images, /ws
     src/run-graph.ts  graph executor on top of lib
@@ -150,9 +151,8 @@ dependencies (`workspace:*`):
 
 - `contract` ← `toasts`, `server`, `web`
 - `lib` ← `toasts` (degas only), `server`
-- `toasts` ← `web` — only through subpath `@xtc-toaster/toasts/toast-2_signac`
-  - never through the package root: degas runs on import (top-level script) and pulls `lib` → `canvas` into the browser
-  - toasts `package.json` gets `exports` per toast
+- `toasts` ← `web` — through the package root `@xtc-toaster/toasts` (barrel `src/index.ts`, `exports: { ".": … }`)
+  - the barrel never re-exports degas: it runs on import (top-level script) and pulls `lib` → `canvas` into the browser
 - `web` never imports `lib`
 
 toast forms:
