@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "nz", "type": "noize", "data": { "deviationCoefficient": 0.5 } },
+    { "id": "out", "type": "output", "data": {} }
+  ],
+  "edges": [
+    { "id": "in-nz", "source": "in", "target": "nz" },
+    { "id": "nz-out", "source": "nz", "target": "out" }
+  ]
+}

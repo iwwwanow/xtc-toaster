@@ -2,11 +2,16 @@
   "name": "@xtc-toaster/toasts",
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "toast-1": "bun src/toasts/toast-1_degas/index.ts",
+    "test": "bun test",
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@xtc-toaster/contract": "workspace:*",
     "@xtc-toaster/lib": "workspace:*"
   }
 }

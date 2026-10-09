@@ -36,6 +36,7 @@
       "name": "@xtc-toaster/toasts",
       "version": "0.0.0",
       "dependencies": {
+        "@xtc-toaster/contract": "workspace:*",
         "@xtc-toaster/lib": "workspace:*",
       },
     },
