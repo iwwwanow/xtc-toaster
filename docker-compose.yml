@@ -1,0 +1,57 @@
+# dev stack: sources are mounted, server restarts on change (bun --watch), web is the vite dev server.
+# Only web is published; vite proxies /api and /ws to the server inside the compose network.
+name: xtc-toaster
+
+x-bun: &bun
+  image: oven/bun:1.4.2
+  working_dir: /app
+  # node_modules live in volumes: installed for linux inside the container (canvas is native),
+  # never mixed with the host ones. A new package in packages/* needs its own volume here.
+  volumes:
+    - .:/app
+    - nm_root:/app/node_modules
+    - nm_contract:/app/packages/contract/node_modules
+    - nm_lib:/app/packages/lib/node_modules
+    - nm_server:/app/packages/server/node_modules
+    - nm_toasts:/app/packages/toasts/node_modules
+    - nm_web:/app/packages/web/node_modules
+    # server uploads — kept out of the repo (container runs as root)
+    - uploads:/data/uploads
+
+services:
+  install:
+    <<: *bun
+    command: bun install --frozen-lockfile
+
+  server:
+    <<: *bun
+    command: bun --watch packages/server/src/index.ts
+    environment:
+      PORT: 3000
+      UPLOADS_DIR: /data/uploads
+    depends_on:
+      install:
+        condition: service_completed_successfully
+
+  web:
+    <<: *bun
+    working_dir: /app/packages/web
+    command: bun run dev --host 0.0.0.0 --port 5173 --strictPort
+    environment:
+      SERVER_HOST: server:3000
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      install:
+        condition: service_completed_successfully
+      server:
+        condition: service_started
+
+volumes:
+  nm_root:
+  nm_contract:
+  nm_lib:
+  nm_server:
+  nm_toasts:
+  nm_web:
+  uploads:

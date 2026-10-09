@@ -12,9 +12,14 @@ Dependencies: always the latest released version, pinned exactly (`"zod": "4.6.5
 bun install          # install workspace deps
 bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
 bun run toast-1      # bake toast-1 (degas) → baked/*.mp4
-bun run web:dev      # web dev server (packages/web — being rebuilt in sprint 1)
+bun run web:dev      # vite dev server, proxies /api + /ws to SERVER_HOST (default localhost:3000)
 bun run server:dev   # bun server with --watch: POST /api/images, /ws (PORT=3000, UPLOADS_DIR=assets/uploads)
+bun run --filter @xtc-toaster/web typecheck   # svelte-check — web pins typescript 6 (svelte-check can't run on TS 7)
+
+cp .env.example .env && docker compose up -d   # dev stack: install → server + web, ui on http://localhost:$WEB_PORT
 ```
+
+Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. A new package in `packages/*` needs its own node_modules volume there.
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. `packages/server`: unit tests next to the code, integration in `tests/server.test.ts` (real `Bun.serve` on a random port, uploads into `tests/output/uploads`). No linting tools are configured.
 
