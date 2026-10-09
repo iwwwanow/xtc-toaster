@@ -15,6 +15,8 @@ diagram — `sprint-1.diagram.d2`
 ### must
 
 - svelte flow connection, fixed graph of 3 nodes — loaded from toast `toast-2_signac` on page open
+- draft ui = stock `@xyflow/svelte` look + bare html, no styling, no design system
+- graph interaction is fully off: no drag, pan, zoom, select, connect, delete — graph ui comes in later iterations
 - input node
   - upload-button → `POST /api/images` → `imageId` written into input node data
 - noize node
@@ -23,7 +25,10 @@ diagram — `sprint-1.diagram.d2`
 - output node
   - shows the last `rendered` png (only the response to the last sent `requestId`)
   - download-png-button saves the png of the last `rendered` — no extra request, the file is exactly what output shows
-  - errors shown on output: upload failed, `render-error`, ws disconnected
+    - file name `toast-2_signac_<YYYYMMDD-HHmmss>.png` (project-wide output naming, see CLAUDE.md)
+  - `render-error` for the last `requestId` → output drops the picture, download locked (the file must match the current graph)
+- errors (upload failed, `render-error`, ws disconnected) → `console.error` with the payload only, no ui and no side logic (no node highlight)
+  - TODO: how to notify the user (notification toast or something else) — to be designed later
 
 ### empty state
 
@@ -219,7 +224,7 @@ server rules for this slice:
 client rules:
 
 - remember the last sent `requestId`, drop `rendered` / `render-error` with a different one
-- `render-error` with `requestId: null` → shown on output as is
+- `render-error` with `requestId: null` → `console.error` as is
 
 ### scenario check
 
@@ -227,4 +232,4 @@ client rules:
 1. pick file → `POST` → `imageId` into input → graph changed → `render#1` → ui locked → `rendered#1` → output, ui unlocked
 2. (stretch 2) drag slider → `render#2`, `render#3`, `render#4` → server is busy with `#2`, `#4` replaces pending `#3` → `#2` arrives → dropped → `#4` arrives → output
 3. download → saves the png of `#4` from memory, no request
-4. ws drops → ui locked, "ws disconnected" → reconnect after 1 s → current graph re-sent as `render#5` → output
+4. ws drops → ui locked, "ws disconnected" in console → reconnect after 1 s → current graph re-sent as `render#5` → output

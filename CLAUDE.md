@@ -24,10 +24,15 @@ Bun workspace, packages in `packages/*`:
 
 - `lib` (`@xtc-toaster/lib`) — pixel processing, DDD-lite: `domain/` (entities, services, utils), `infrastructure/` (image I/O via `canvas`, ffmpeg video assembly), `application/` (`Toast` — stub). Not compiled: `main.ts` exports `.ts` source directly
 - `contract` (`@xtc-toaster/contract`) — shared zod schemas / types: toast graph, ws messages, upload (unit tests next to the code)
-- `toasts` (`@xtc-toaster/toasts`) — toasts. `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages)
+- `toasts` (`@xtc-toaster/toasts`) — toasts. Graph toasts are exported from the root barrel (`toast2signac`). `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages, never put it into the barrel)
 - `server` (`@xtc-toaster/server`) — `Bun.serve`: `POST /api/images` (upload into `assets/uploads/<imageId>`), `/ws` (render a `ToastGraph`, per-connection latest-wins queue). `run-graph.ts` executes the chain on top of lib; `codec.ts` is the only place touching `canvas` directly (temporary, moves into lib)
 
 Sprint 1 also builds `web` (Svelte + Vite SPA) and `toast-2_signac` (first toast in graph form). Target structure, dependency rules and the ws/http contract — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
+
+## Project-wide conventions
+
+- **Barrel exports.** A package exposes one entry — `"exports": { ".": "<barrel>" }` (`src/index.ts`, lib: `main.ts`) — and other packages import only from the package root, never subpaths or deep paths. Inside a package, a folder with a public surface gets its own `index.ts` barrel. A barrel never re-exports a module with side effects on import (e.g. `toast-1_degas`).
+- **Output file naming.** Every file the project produces for the user (render downloads, baked videos, exports) is named `<toast>_<YYYYMMDD-HHmmss>.<ext>` — `<toast>` is the toast directory name, timestamp in local time. Example: `toast-2_signac_20261009-153012.png`.
 
 ## lib architecture
 
