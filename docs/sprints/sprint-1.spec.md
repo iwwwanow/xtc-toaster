@@ -6,6 +6,13 @@
 
 diagram — `sprint-1.diagram.d2`
 
+### status (2026-10-09)
+
+- must + definition of done — done: contract, `toast-2_signac`, server, web; all tests and typecheck green
+  - checked end to end through the vite proxy (upload → ws `render` → `rendered`) by script; the web ui itself was not clicked through in a browser yet — scenario check 0–4 below is the manual test
+- stretch 1–2 (slider) — open, maybe 10.10
+- added on top of the plan: docker compose dev stack (`docker compose up`, see CLAUDE.md), project-wide conventions in CLAUDE.md (barrel exports, output file naming)
+
 ---
 
 ## slice: one-node toast
@@ -87,7 +94,7 @@ contract does not change for stretch — only the moment the client sends `rende
 - `lib` is not changed in sprint 1, used as is
 - web — svelte + vite SPA with `@xyflow/svelte` (no sveltekit: backend is the bun server, no ssr needed)
 - one origin for web and server, relative `/api` and `/ws` everywhere, no build env, no cors
-  - dev: vite `server.proxy` → bun (`/api`, `/ws` with `ws: true`)
+  - dev: vite `server.proxy` → bun (`/api`, `/ws` with `ws: true`), target `SERVER_HOST` (default `localhost:3000`, docker compose: `server:3000`)
   - prod: reverse proxy in front (nginx / caddy / traefik): `/` → web `dist`, `/api` + `/ws` → bun
   - ws url built from `location` (`ws:` / `wss:` + `location.host` + `/ws`)
   - details — `docs/backlog/2026-10-06_deploy-reverse-proxy-single-origin.md`
@@ -150,6 +157,13 @@ packages/
     src/index.ts      POST /api/images, /ws
     src/run-graph.ts  graph executor on top of lib
   web/        @xtc-toaster/web — svelte + vite SPA
+    src/graph.ts           toFlow (positions by chain order) / toGraph (strips ui fields)
+    src/session.svelte.ts  app state: upload, render requestId, ui lock, last rendered png
+    src/socket.ts          ws with reconnect 1 → 2 → 4 … 10 s
+    src/upload.ts          POST /api/images
+    src/files.ts           output file name, base64 → blob, save
+    src/nodes/             one svelte component per contract node type + barrel (nodeTypes)
+    typecheck — svelte-check on typescript 6 pinned in web (svelte-check can't run on TS 7)
 ```
 
 dependencies (`workspace:*`):
