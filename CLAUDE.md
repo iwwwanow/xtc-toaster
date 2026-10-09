@@ -12,7 +12,7 @@ Dependencies: always the latest released version, pinned exactly (`"zod": "4.6.5
 bun install          # install workspace deps
 bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
 bun run toast-1      # bake toast-1 (degas) → baked/*.mp4
-bun run web:dev      # vite dev server, proxies /api + /ws to SERVER_HOST (default localhost:3000)
+bun run web:dev      # web: vite dev server, proxies /api + /ws to SERVER_HOST (default localhost:3000)
 bun run server:dev   # bun server with --watch: POST /api/images, /ws (PORT=3000, UPLOADS_DIR=assets/uploads)
 bun run --filter @xtc-toaster/web typecheck   # svelte-check — web pins typescript 6 (svelte-check can't run on TS 7)
 
@@ -32,7 +32,9 @@ Bun workspace, packages in `packages/*`:
 - `toasts` (`@xtc-toaster/toasts`) — toasts. Graph toasts are exported from the root barrel (`toast2signac`). `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages, never put it into the barrel)
 - `server` (`@xtc-toaster/server`) — `Bun.serve`: `POST /api/images` (upload into `assets/uploads/<imageId>`), `/ws` (render a `ToastGraph`, per-connection latest-wins queue). `run-graph.ts` executes the chain on top of lib; `codec.ts` is the only place touching `canvas` directly (temporary, moves into lib)
 
-Sprint 1 also builds `web` (Svelte + Vite SPA) and `toast-2_signac` (first toast in graph form). Target structure, dependency rules and the ws/http contract — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
+- `web` (`@xtc-toaster/web`) — Svelte + Vite SPA on `@xyflow/svelte`: fixed graph from `toast2signac`, upload, ws render, png download. Logic in plain `.ts` (`graph`, `session.svelte`, `socket`, `upload`, `files`), one component per node type in `src/nodes/`. Never imports `lib`
+
+Target structure, dependency rules, the ws/http contract and sprint status — `docs/sprints/sprint-1.spec.md` (the spec wins over this file).
 
 ## Project-wide conventions
 
