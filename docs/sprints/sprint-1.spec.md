@@ -56,7 +56,7 @@ diagram — `sprint-1.diagram.d2`
 ### ws reconnect
 
 - the client reconnects by itself with a growing pause: 1 → 2 → 4 → … capped at 10 s
-- while there is no connection: output shows "ws disconnected", the whole ui is locked
+- while there is no connection: "ws disconnected" goes to `console.error` only (no ui, see errors), the whole ui is locked
 - after reconnect: if `imageId` is set, the client re-sends the current graph as a new `render`
 - a response that was in flight when the connection dropped is lost — nothing to recover, server is stateless
 
