@@ -6,10 +6,11 @@
 
 diagram — `sprint-1.diagram.d2`
 
-### status (2026-10-09)
+### status (2026-10-10)
 
 - must + definition of done — done: contract, `toast-2_signac`, server, web; all tests and typecheck green
-  - checked end to end through the vite proxy (upload → ws `render` → `rendered`) by script; the web ui itself was not clicked through in a browser yet — scenario check 0–4 below is the manual test
+  - checked end to end through the vite proxy (upload → ws `render` → `rendered`) by script
+  - web ui checked by hand in the browser: scenario check 0, 1, 3, 4 below (2 needs the slider), upload errors (`unsupported-format`, `too-large`), graph interaction off
 - stretch 1–2 (slider) — open, maybe 10.10
 - added on top of the plan: docker compose dev stack (`docker compose up`, see CLAUDE.md), project-wide conventions in CLAUDE.md (barrel exports, output file naming)
 
