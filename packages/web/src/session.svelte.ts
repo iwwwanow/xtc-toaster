@@ -55,6 +55,11 @@ class Session {
     }
   }
 
+  // a param change is a graph change → App sends a new render
+  setNodeData(id: string, data: FlowNode["data"]) {
+    this.nodes = this.nodes.map((node) => (node.id === id ? ({ ...node, data } as FlowNode) : node));
+  }
+
   render() {
     this.requestId += 1;
     this.rendering = true;
