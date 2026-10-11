@@ -41,8 +41,8 @@
    - websocket-contract
    - datatypes
    - draft ui
-   - done 11.10: + noize slider (render on release); live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
-2. [ ] 12.10-18.10. ui & one-node toast
+   - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
+2. [ ] 12.10-18.10. ui & one-node toast — next, starts 12.10; spec `docs/sprints/sprint-2.spec.md` (stub, write first)
    - 1 week
    - export toast
    - export picture (png)
@@ -86,7 +86,7 @@
    - live preview animated picture
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
-   - server: fix latest-wins for bursts first — render in a worker thread (step 1) — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+   - server: done 11.10 — render in a worker thread, latest-wins holds for bursts — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
 
 ## tools:
 

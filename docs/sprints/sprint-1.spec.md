@@ -14,7 +14,7 @@ diagram — `sprint-1.diagram.d2`
 - stretch 1 (slider) — done: render on release, the whole ui (slider too) locked while the render runs
 - stretch 2 (live render while dragging) — dropped from sprint 1, moved to next-release-features (`docs/planning.md`); scenario check 2 not run
   - debounce was built and removed — too much for this stage
-  - server gap found by script: latest-wins doesn't hold for a burst — a render blocks the event loop, after it bun hands the queued messages over one by one and the oldest of them starts right away (one extra render per burst). a `Bun.sleep(0)` yield after each render doesn't fix it (and breaks `ws.test.ts`), a `setImmediate` yield looked better but was not proven. Fix together with stretch 2, with a test — plan: render in a worker thread, `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+  - server gap found by script: latest-wins doesn't hold for a burst — a render blocks the event loop, after it bun hands the queued messages over one by one and the oldest of them starts right away (one extra render per burst). a `Bun.sleep(0)` yield after each render doesn't fix it (and breaks `ws.test.ts`), a `setImmediate` yield looked better but was not proven. fixed 11.10 on top of the sprint: the whole render (`runGraph` + png encoding) runs in one worker thread (`render.ts`, `render-worker.ts`), burst test in `tests/server.test.ts` — `docs/backlog/2026-10-11_render-pipeline-evolution.md`. Stretch 2 now needs only the client side
 - added on top of the plan: docker compose dev stack (`docker compose up`, see CLAUDE.md), project-wide conventions in CLAUDE.md (barrel exports, output file naming), `DEBUG_IMAGE` — picture uploaded on page open in dev
 
 ---
@@ -160,6 +160,7 @@ packages/
   server/     @xtc-toaster/server — Bun.serve
     src/index.ts      POST /api/images, /ws
     src/run-graph.ts  graph executor on top of lib
+    src/render.ts     runs renders in one worker thread (render-worker.ts), one at a time — added 11.10
   web/        @xtc-toaster/web — svelte + vite SPA
     src/graph.ts           toFlow (positions by chain order) / toGraph (strips ui fields)
     src/session.svelte.ts  app state: upload, render requestId, ui lock, last rendered png
