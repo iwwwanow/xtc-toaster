@@ -86,7 +86,7 @@
    - live preview animated picture
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
-   - server: fix latest-wins for bursts first — `docs/sprints/sprint-1.spec.md` (status)
+   - server: fix latest-wins for bursts first — render in a worker thread (step 1) — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
 
 ## tools:
 
