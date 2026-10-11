@@ -5,10 +5,10 @@ import {
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
-import { encodePng } from "./codec";
-import { GraphError, runGraph } from "./run-graph";
+import { render } from "./render";
+import { GraphError } from "./run-graph";
 
-// Renders are sync js loops and can't be aborted → per connection one render
+// Renders run in a worker and can't be aborted → per connection one render
 // runs, at most one waits; a newer message replaces the waiting one.
 export type WsData = {
   busy: boolean;
@@ -54,8 +54,7 @@ const handleMessage = async (text: string, uploadsDir: string): Promise<ServerMe
   }
 
   try {
-    const { data, width, height } = await runGraph(parsed.data.graph, uploadsDir);
-    const png = encodePng(data, { width, height }).toString("base64");
+    const { width, height, png } = await render({ graph: parsed.data.graph, uploadsDir });
     return { type: "rendered", requestId: parsed.data.requestId, width, height, png };
   } catch (e) {
     if (e instanceof GraphError) return error({ requestId, ...(e.nodeId && { nodeId: e.nodeId }), message: e.message });

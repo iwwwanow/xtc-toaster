@@ -122,3 +122,13 @@ describe("ws render", () => {
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 5 });
   });
 });
+
+describe("ws latest-wins", () => {
+  // a render must not block the event loop: messages that come in during it reach the queue,
+  // so after the running one only the newest renders
+  test("a burst → the first and the latest are rendered, the ones between are dropped", async () => {
+    for (const requestId of [6, 7, 8]) send({ type: "render", requestId, graph: graph(imageId) });
+    expect((await nextMessage()).requestId).toBe(6);
+    expect((await nextMessage()).requestId).toBe(8);
+  });
+});
