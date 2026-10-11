@@ -1,0 +1,97 @@
+# xtc-toaster-1.0
+
+## release - 28.11
+
+## readiness criteria
+
+- [ ] public link available
+- [ ] project works with all current backend filters
+  - effects:
+  1. noize (addHueNoise): случайно сдвигает hue каждого пикселя, сила сдвига задаётся deviationCoefficient (0–1).
+  2. blur (boxBlur): box blur с радиусом radius.
+  - masks:
+  3. hue (hueMask): выделяет пиксели по оттенку (0–360°).
+  4. saturation (saturationMask): выделяет пиксели по насыщенности (0–100).
+  5. value (valueMask): выделяет пиксели по яркости (0–100).
+  - channels:
+  6. isolateChannel: оставляет один канал (R/G/B/A). Цвет пикселя становится чистым цветом канала, а значение канала уходит в alpha.
+  - blend-modes:
+  7. normal (alphaCompose): обычное альфа-смешивание.
+  8. add (addCompose): складывает цвета, результат обрезается по 1.
+  9. lch-hue (lchHueCompose): берёт оттенок из верхнего слоя, яркость и насыщенность из нижнего.
+  - transforms:
+  10. translate: сдвиг.
+  11. rotate: поворот.
+  12. scale: масштаб.
+  13. skew: скос.
+  14. homography: перспективное искажение по готовой матрице 3×3.
+  15. perspective: перспективное искажение по 4 углам.
+  16. dont-working-applyYRotationPerspective: перспективный поворот вокруг оси Y. Функция есть, но к Layer не подключена.
+- [ ] project renders animation
+- [ ] 3 toasts available for usage (ready, portfolio works too)
+
+## sprints:
+
+0. [x] 3.10. audit current state of backend
+   - 6 hrs max
+   - every filter working state
+   - skia working state
+1. [x] 5.10-11.10. architecture & draft ui
+   - 1 week
+   - websocket-contract
+   - datatypes
+   - draft ui
+   - done 11.10: + noize slider (render on release); live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
+2. [ ] 12.10-18.10. ui & one-node toast
+   - 1 week
+   - export toast
+   - export picture (png)
+   - cut if behind:
+     - (#2) drop skew
+     - (#3) masks: value only
+3. [ ] 19.10-25.10. hosting - public access
+   - 1 week
+   - user test
+4. [ ] 26.10-01.11. two-layers toast
+   - 1 week
+   - layer composing on output node
+   - export picture (png)
+   - cut if behind:
+     - (#4) blend-modes: normal + add only
+5. [ ] 02.11-15.11. animation node with export (timeline node)
+   - 2 weeks
+   - extend contract
+   - without live-preview
+   - render current frame view
+   - export animated pucture (mp4/gif)
+   - cut if behind:
+     - (#1) export gif only, no mp4
+     - (#6) last resort: animation → 1.1, release static toasts
+6. [ ] 16.11-22.11. result testing
+   - 1 week
+   - 3 toasts
+   - new user test
+   - final fixes
+   - cut if behind:
+     - (#5) 2 toasts instead of 3
+7. [ ] 23.11-29.11. free buffer
+
+## cut-list
+
+разнесён по спринтам (`cut if behind`), `#N` — приоритет: режем с меньшего номера.
+
+## next-release-features:
+
+1. animation node with live-preview (timeline node)
+   - live preview animated picture
+2. live render while dragging a param slider (sprint 1 stretch 2)
+   - client: `oninput` + debounce, slider stays live during render
+   - server: fix latest-wins for bursts first — render in a worker thread (step 1) — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+
+## tools:
+
+### websocket - client-server protocol
+
+### skia - gpu rendering. dont spent more than 3 hrs time, if current state is note ready
+
+### svelte-flow - nodes rendering on client

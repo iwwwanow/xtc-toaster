@@ -6,13 +6,16 @@
 
 diagram — `sprint-1.diagram.d2`
 
-### status (2026-10-10)
+### status (2026-10-11) — sprint closed
 
 - must + definition of done — done: contract, `toast-2_signac`, server, web; all tests and typecheck green
   - checked end to end through the vite proxy (upload → ws `render` → `rendered`) by script
-  - web ui checked by hand in the browser: scenario check 0, 1, 3, 4 below (2 needs the slider), upload errors (`unsupported-format`, `too-large`), graph interaction off
-- stretch 1–2 (slider) — open, maybe 10.10
-- added on top of the plan: docker compose dev stack (`docker compose up`, see CLAUDE.md), project-wide conventions in CLAUDE.md (barrel exports, output file naming)
+  - web ui checked by hand in the browser: scenario check 0, 1, 3, 4 below, upload errors (`unsupported-format`, `too-large`), graph interaction off
+- stretch 1 (slider) — done: render on release, the whole ui (slider too) locked while the render runs
+- stretch 2 (live render while dragging) — dropped from sprint 1, moved to next-release-features (`docs/planning.md`); scenario check 2 not run
+  - debounce was built and removed — too much for this stage
+  - server gap found by script: latest-wins doesn't hold for a burst — a render blocks the event loop, after it bun hands the queued messages over one by one and the oldest of them starts right away (one extra render per burst). a `Bun.sleep(0)` yield after each render doesn't fix it (and breaks `ws.test.ts`), a `setImmediate` yield looked better but was not proven. Fix together with stretch 2, with a test — plan: render in a worker thread, `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+- added on top of the plan: docker compose dev stack (`docker compose up`, see CLAUDE.md), project-wide conventions in CLAUDE.md (barrel exports, output file naming), `DEBUG_IMAGE` — picture uploaded on page open in dev
 
 ---
 
@@ -63,10 +66,10 @@ diagram — `sprint-1.diagram.d2`
 
 ### stretch (if time is left, strictly in order)
 
-1. [ ] noize `deviationCoefficient` slider
+1. [x] noize `deviationCoefficient` slider
    - render on slider release (`onchange`)
    - without it: fixed default value
-2. [ ] live render while dragging the slider (depends on 1) — the killer feature, contract is built for it from day one
+2. [ ] (dropped → next release) live render while dragging the slider (depends on 1) — the killer feature, contract is built for it from day one
    - `oninput` + debounce ~150ms, slider not locked during render, stale responses dropped by `requestId`
    - without it: render on release from 1
 
