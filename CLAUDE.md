@@ -19,7 +19,7 @@ bun run --filter @xtc-toaster/web typecheck   # svelte-check — web pins typesc
 cp .env.example .env && docker compose up -d   # dev stack: install → server + web, ui on http://localhost:$WEB_PORT
 ```
 
-Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. A new package in `packages/*` needs its own node_modules volume there.
+Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. `DEBUG_IMAGE` (path from the repo root, compose default `poppies.jpg`, empty — off) — the page uploads that picture on open; vite dev server only (`vite.config.ts`). A new package in `packages/*` needs its own node_modules volume there.
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. `packages/server`: unit tests next to the code, integration in `tests/server.test.ts` (real `Bun.serve` on a random port, uploads into `tests/output/uploads`). No linting tools are configured.
 

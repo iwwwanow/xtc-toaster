@@ -39,6 +39,8 @@ services:
     command: bun run dev --host 0.0.0.0 --port 5173 --strictPort
     environment:
       SERVER_HOST: server:3000
+      # debug: picture uploaded on page open; on by default here, DEBUG_IMAGE= (empty) in .env turns it off
+      DEBUG_IMAGE: ${DEBUG_IMAGE-packages/lib/tests/fixtures/poppies.jpg}
     ports:
       - "${WEB_PORT:-5173}:5173"
     depends_on:
