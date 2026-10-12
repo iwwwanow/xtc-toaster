@@ -1,5 +1,11 @@
 # xtc-toaster-1.0
 
+## signac-toast
+
+- hue mask. value change on animation frame
+- layer y-rotation with perspective
+- trail-effect
+
 ## release - 28.11
 
 ## readiness criteria
@@ -42,13 +48,25 @@
    - datatypes
    - draft ui
    - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
-2. [ ] 12.10-18.10. ui & one-node toast — next, starts 12.10; spec `docs/sprints/sprint-2.spec.md` (stub, write first)
+2. [ ] 12.10-18.10. ui & one-layer toast — next, starts 12.10; spec `docs/sprints/sprint-2.spec.md` (stub, write first)
    - 1 week
    - export toast
    - export picture (png)
    - cut if behind:
      - (#2) drop skew
      - (#3) masks: value only
+   - extend tasks:
+     - если one-layer, то я должен включать сюда работу с нодами - добавление, удаление, связывание
+     - также добавление фильтр-нод
+     - для начала - возможность реализации этого. если что - перепланироваться
+     - за основу ui & ux беру blender, geometry nodes
+     - по клику правой кнопке мыши - все ноды. просто добавляются. меню покачто не делится на категории. должны быть библиотеки для такого функционала
+     - если можно реализовать это средствами svelte-flow - делай так. без добавления дополнительных библиотек. такой подход приоритетнее
+     - итого, мне нужна возможность добавить ноду, связать её с другой нодой, отвязать её от другой ноды и удалить ноду
+     - input-node & output node должны также добавляться в пайплайн
+     - логику работы со слоями сейчас я не делаю. просто ноды и их последовательность. также обработка нужных фильтров на server
+     - https://svelteflow.dev/examples/interaction/drag-and-drop - выглядит как самый простой вариант
+     - https://svelteflow.dev/examples/interaction/validation - валидация. не все ноды могут коннектиться друг с другом. если на этом спринте это может еще не понадобиться, то на 4м скорее всего да. нужно хотябы зафиксировать это в бэклог
 3. [ ] 19.10-25.10. hosting - public access
    - 1 week
    - user test
