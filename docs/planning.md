@@ -50,11 +50,17 @@
    - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
 2. [ ] 12.10-18.10. ui & one-layer toast — next, starts 12.10; spec `docs/sprints/sprint-2.spec.md` (stub, write first)
    - 1 week
+   - add node (hue mask, y-rotation)
+   - delete node
+   - link node
+   - unlink node
    - export toast
    - export picture (png)
    - cut if behind:
      - (#2) drop skew
      - (#3) masks: value only
+     - можно либо включиться в ui и его полирнуть либо добавить еще нод
+     - насколько понимаю, лучше будет немного времени уделить ui. и также добавлять его в каждую итерацию, в каждый спринт и по кусочкам его докидывать
    - extend tasks:
      - если one-layer, то я должен включать сюда работу с нодами - добавление, удаление, связывание
      - также добавление фильтр-нод
