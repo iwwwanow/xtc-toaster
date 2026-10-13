@@ -48,31 +48,23 @@
    - datatypes
    - draft ui
    - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
-2. [ ] 12.10-18.10. ui & one-layer toast — next, starts 12.10; spec `docs/sprints/sprint-2.spec.md` (stub, write first)
+2. [ ] 12.10-18.10. ui & one-layer toast — in progress; replanned 12.10–13.10, spec `docs/sprints/sprint-2.spec.md`
    - 1 week
-   - add node (hue mask, y-rotation)
-   - delete node
-   - link node
-   - unlink node
-   - export toast
-   - export picture (png)
+   - node editor (blender geometry nodes as reference, svelte-flow only, no extra libs):
+     - add node — drag & drop from the left menu
+     - delete node — right click / `Delete`
+     - link / unlink node
+     - input & output — one each, not deletable
+   - canvas: `Controls`, `Background`, pan & zoom
+   - right panel: download png, export toast, import toast
+   - server: render the path input → output, ignore unlinked nodes
+   - nodes: hue mask, y-rotation
+   - export / import toast (graph only, `imageId: null`) — picture in the export: `docs/backlog/2026-10-13_toast-export-with-image.md`
+   - stretch: the rest of the single-layer nodes (blur, saturation / value mask, isolateChannel, translate / rotate / scale)
+   - ui polish — a little in every sprint, starting after the user test in sprint 3
    - cut if behind:
-     - (#2) drop skew
-     - (#3) masks: value only
-     - можно либо включиться в ui и его полирнуть либо добавить еще нод
-     - насколько понимаю, лучше будет немного времени уделить ui. и также добавлять его в каждую итерацию, в каждый спринт и по кусочкам его докидывать
-   - extend tasks:
-     - если one-layer, то я должен включать сюда работу с нодами - добавление, удаление, связывание
-     - также добавление фильтр-нод
-     - для начала - возможность реализации этого. если что - перепланироваться
-     - за основу ui & ux беру blender, geometry nodes
-     - по клику правой кнопке мыши - все ноды. просто добавляются. меню покачто не делится на категории. должны быть библиотеки для такого функционала
-     - если можно реализовать это средствами svelte-flow - делай так. без добавления дополнительных библиотек. такой подход приоритетнее
-     - итого, мне нужна возможность добавить ноду, связать её с другой нодой, отвязать её от другой ноды и удалить ноду
-     - input-node & output node должны также добавляться в пайплайн
-     - логику работы со слоями сейчас я не делаю. просто ноды и их последовательность. также обработка нужных фильтров на server
-     - https://svelteflow.dev/examples/interaction/drag-and-drop - выглядит как самый простой вариант
-     - https://svelteflow.dev/examples/interaction/validation - валидация. не все ноды могут коннектиться друг с другом. если на этом спринте это может еще не понадобиться, то на 4м скорее всего да. нужно хотябы зафиксировать это в бэклог
+     - (#2) export / import toast → sprint 3
+     - (#3) y-rotation → sprint 4
 3. [ ] 19.10-25.10. hosting - public access
    - 1 week
    - user test
@@ -80,6 +72,7 @@
    - 1 week
    - layer composing on output node
    - export picture (png)
+   - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`
    - cut if behind:
      - (#4) blend-modes: normal + add only
 5. [ ] 02.11-15.11. animation node with export (timeline node)
