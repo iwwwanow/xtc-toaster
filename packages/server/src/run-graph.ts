@@ -12,36 +12,37 @@ export class GraphError extends Error {
   }
 }
 
-const NOT_A_CHAIN = "graph must be a chain input → … → output";
+const NO_PATH = "connect the input to the output";
 
-// Orders the nodes along the only path input → … → output. Anything that is
-// not one linear chain covering every node is rejected.
-export const toChain = ({ nodes, edges }: ToastGraph): GraphNode[] => {
+// The path input → … → output, walked back from the output like blender: every
+// node pulls its one image from the node linked into it. Nodes off the path
+// (unlinked, dead-end forks) are ignored. A node on the path with several
+// incoming links would need layers to merge them — sprint 4.
+export const toPath = ({ nodes, edges }: ToastGraph): GraphNode[] => {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   if (byId.size !== nodes.length) throw new GraphError("duplicate node id");
 
+  // one of each for now — several inputs / outputs may come later
   const inputs = nodes.filter((node) => node.type === "input");
   const outputs = nodes.filter((node) => node.type === "output");
   if (inputs.length !== 1 || outputs.length !== 1) throw new GraphError("graph needs exactly one input and one output");
 
-  const next = new Map<NodeId, NodeId>();
-  const hasIncoming = new Set<NodeId>();
+  const sources = new Map<NodeId, NodeId[]>();
   for (const { source, target } of edges) {
     if (!byId.has(source) || !byId.has(target)) throw new GraphError("edge points to a missing node");
-    if (next.has(source) || hasIncoming.has(target)) throw new GraphError(NOT_A_CHAIN);
-    next.set(source, target);
-    hasIncoming.add(target);
+    sources.set(target, [...(sources.get(target) ?? []), source]);
   }
 
-  const chain: GraphNode[] = [inputs[0]!];
-  let current = next.get(chain[0]!.id);
-  while (current !== undefined && chain.length <= nodes.length) {
-    chain.push(byId.get(current)!);
-    current = next.get(current);
+  const path: GraphNode[] = [outputs[0]!];
+  while (path[0]!.type !== "input") {
+    const { id } = path[0]!;
+    const [source, ...rest] = sources.get(id) ?? [];
+    if (source === undefined) throw new GraphError(NO_PATH, id);
+    if (rest.length > 0) throw new GraphError("a node takes one link in — merging comes with layers", id);
+    if (path.some((node) => node.id === source)) throw new GraphError("the path loops", id);
+    path.unshift(byId.get(source)!);
   }
-
-  if (chain.length !== nodes.length || chain.at(-1)!.type !== "output") throw new GraphError(NOT_A_CHAIN);
-  return chain;
+  return path;
 };
 
 const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: string) => {
@@ -56,7 +57,7 @@ export const runGraph = async (
   graph: ToastGraph,
   uploadsDir: string,
 ): Promise<{ data: ImageRawDataArray } & LayerDimensions> => {
-  const [input, ...rest] = toChain(graph) as [InputNode, ...GraphNode[]];
+  const [input, ...rest] = toPath(graph) as [InputNode, ...GraphNode[]];
   const { data, width, height } = await loadInput(input, uploadsDir);
 
   const composition = new Composition(width, height);
@@ -70,8 +71,8 @@ export const runGraph = async (
       case "output":
         return { data: composition.render(), width, height };
       case "input":
-        throw new GraphError(NOT_A_CHAIN, node.id); // unreachable: toChain allows one input
+        throw new GraphError(NO_PATH, node.id); // unreachable: the path starts at the only input
     }
   }
-  throw new GraphError(NOT_A_CHAIN); // unreachable: toChain ends with output
+  throw new GraphError(NO_PATH); // unreachable: the path ends with the output
 };

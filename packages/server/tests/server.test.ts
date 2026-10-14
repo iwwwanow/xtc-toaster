@@ -116,10 +116,16 @@ describe("ws render", () => {
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 4, nodeId: "in" });
   });
 
-  test("not a chain → render-error", async () => {
-    const broken = { ...graph(imageId), edges: [{ id: "in-out", source: "in", target: "out" }] };
+  test("a node off the path is ignored", async () => {
+    const bypass = { ...graph(imageId), edges: [{ id: "in-out", source: "in", target: "out" }] };
+    send({ type: "render", requestId: 5, graph: bypass });
+    expect(await nextMessage()).toMatchObject({ type: "rendered", requestId: 5 });
+  });
+
+  test("no path → render-error on the node that misses its link", async () => {
+    const broken = { ...graph(imageId), edges: [{ id: "in-nz", source: "in", target: "nz" }] };
     send({ type: "render", requestId: 5, graph: broken });
-    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 5 });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 5, nodeId: "out" });
   });
 });
 

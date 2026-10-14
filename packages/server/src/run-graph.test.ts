@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
-import { GraphError, toChain } from "./run-graph";
+import { GraphError, toPath } from "./run-graph";
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: null } };
 const noize: GraphNode = { id: "nz", type: "noize", data: { deviationCoefficient: 0.5 } };
@@ -10,26 +10,41 @@ const edge = (source: string, target: string): GraphEdge => ({ id: `${source}-${
 const graph = (nodes: GraphNode[], edges: GraphEdge[]) => ({ version: TOAST_GRAPH_VERSION, nodes, edges });
 const ids = (nodes: GraphNode[]) => nodes.map((node) => node.id);
 
-describe("toChain", () => {
+const nz2: GraphNode = { ...noize, id: "nz2" };
+
+describe("toPath", () => {
   test("orders nodes along the edges, not by array order", () => {
-    const chain = toChain(graph([output, noize, input], [edge("nz", "out"), edge("in", "nz")]));
-    expect(ids(chain)).toEqual(["in", "nz", "out"]);
+    const path = toPath(graph([output, noize, input], [edge("nz", "out"), edge("in", "nz")]));
+    expect(ids(path)).toEqual(["in", "nz", "out"]);
   });
 
   test("accepts input → output without effects", () => {
-    expect(ids(toChain(graph([input, output], [edge("in", "out")])))).toEqual(["in", "out"]);
+    expect(ids(toPath(graph([input, output], [edge("in", "out")])))).toEqual(["in", "out"]);
+  });
+
+  test.each([
+    ["an unlinked node", graph([input, noize, output], [edge("in", "out")])],
+    ["a dead-end fork", graph([input, noize, output], [edge("in", "out"), edge("in", "nz")])],
+    ["a cycle off the path", graph([input, noize, nz2, output], [edge("in", "out"), edge("nz", "nz2"), edge("nz2", "nz")])],
+  ])("ignores %s", (_, g) => {
+    expect(ids(toPath(g))).toEqual(["in", "out"]);
+  });
+
+  test.each([
+    ["output not linked", graph([input, noize, output], [edge("in", "nz")]), "out"],
+    ["path not reaching the input", graph([input, noize, output], [edge("nz", "out")]), "nz"],
+    ["two links into one node", graph([input, noize, output], [edge("in", "nz"), edge("nz", "out"), edge("in", "out")]), "out"],
+    ["a loop on the path", graph([input, noize, nz2, output], [edge("nz", "nz2"), edge("nz2", "nz"), edge("nz2", "out")]), "nz"],
+  ])("rejects %s, pointing at the node", (_, g, nodeId) => {
+    expect(() => toPath(g)).toThrow(expect.objectContaining({ nodeId }));
   });
 
   test.each([
     ["two inputs", graph([input, { ...input, id: "in2" }, output], [edge("in", "out")])],
     ["no output", graph([input, noize], [edge("in", "nz")])],
-    ["branching", graph([input, noize, output], [edge("in", "nz"), edge("in", "out")])],
-    ["dangling node", graph([input, noize, output], [edge("in", "out")])],
-    ["cycle off the path", graph([input, noize, { ...noize, id: "nz2" }, output], [edge("in", "out"), edge("nz", "nz2"), edge("nz2", "nz")])],
     ["edge to a missing node", graph([input, output], [edge("in", "ghost")])],
     ["duplicate ids", graph([input, { ...noize, id: "in" }, output], [edge("in", "out")])],
-    ["no edges", graph([input, output], [])],
   ])("rejects %s", (_, g) => {
-    expect(() => toChain(g)).toThrow(GraphError);
+    expect(() => toPath(g)).toThrow(GraphError);
   });
 });
