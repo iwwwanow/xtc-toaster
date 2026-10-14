@@ -9,12 +9,14 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<div>noize</div>
-<Slider
-  label="deviationCoefficient"
-  bounds={PARAMS.noize.deviationCoefficient}
-  step={0.01}
-  value={data.deviationCoefficient}
-  onchange={(deviationCoefficient) => session.setNodeData(id, { deviationCoefficient })}
-/>
+<fieldset>
+  <legend>noize</legend>
+  <Slider
+    label="deviationCoefficient"
+    bounds={PARAMS.noize.deviationCoefficient}
+    step={0.01}
+    value={data.deviationCoefficient}
+    onchange={(deviationCoefficient) => session.setNodeData(id, { deviationCoefficient })}
+  />
+</fieldset>
 <Handle type="source" position={Position.Right} />

@@ -13,9 +13,11 @@
   };
 </script>
 
-<div>input</div>
-<input class="nodrag" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
-{#if session.uploadError}
-  <div style="color: crimson">{session.uploadError}</div>
-{/if}
+<fieldset>
+  <legend>input</legend>
+  <input class="nodrag" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
+  {#if session.uploadError}
+    <div style="color: crimson">{session.uploadError}</div>
+  {/if}
+</fieldset>
 <Handle type="source" position={Position.Right} />

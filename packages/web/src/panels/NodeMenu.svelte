@@ -9,7 +9,10 @@
 </script>
 
 <Panel position="top-left">
-  {#each MENU_NODE_TYPES as type (type)}
-    <div draggable="true" role="listitem" ondragstart={(event) => ondragstart(event, type)}>{type}</div>
-  {/each}
+  <fieldset>
+    <legend>nodes</legend>
+    {#each MENU_NODE_TYPES as type (type)}
+      <div draggable="true" role="listitem" ondragstart={(event) => ondragstart(event, type)}>{type}</div>
+    {/each}
+  </fieldset>
 </Panel>

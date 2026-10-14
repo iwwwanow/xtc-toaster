@@ -19,7 +19,7 @@ export const MENU_NODE_TYPES = Object.keys(PARAMS) as MenuNodeType[];
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
-const NODE_GAP_X = 300;
+const NODE_GAP_X = 400;
 const ROW_GAP_Y = 400;
 
 // exactly one input and one output, never deleted — several of each may come later

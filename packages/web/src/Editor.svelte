@@ -48,6 +48,7 @@
     {nodeTypes}
     {edgeTypes}
     fitView
+    fitViewOptions={{ maxZoom: 1 }}
     deleteKey={["Delete", "Backspace"]}
     {onnodecontextmenu}
     {onedgecontextmenu}

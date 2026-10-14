@@ -1,6 +1,7 @@
 <script lang="ts">
   import { SvelteFlowProvider } from "@xyflow/svelte";
-  import "@xyflow/svelte/dist/style.css";
+  // base styles only — the look is plain html (fieldset per node), no theme
+  import "@xyflow/svelte/dist/base.css";
   import { untrack } from "svelte";
   import Editor from "./Editor.svelte";
   import { session } from "./session.svelte";

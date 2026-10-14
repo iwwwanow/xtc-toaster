@@ -11,14 +11,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<div>output</div>
-{#if session.imageId === null}
-  <div>upload an image</div>
-{:else if session.renderError}
-  <div style="color: crimson; max-width: 240px">
-    {#if errorNode}{errorNode}: {/if}{session.renderError.message}
-  </div>
-{:else if session.rendered}
-  <!-- rendered at the stored image size, scaled down by css -->
-  <img src={session.rendered.url} alt="render" style="display: block; max-width: 100%" />
-{/if}
+<fieldset>
+  <legend>output</legend>
+  {#if session.imageId === null}
+    <div>upload an image</div>
+  {:else if session.renderError}
+    <div style="color: crimson; max-width: 240px">
+      {#if errorNode}{errorNode}: {/if}{session.renderError.message}
+    </div>
+  {:else if session.rendered}
+    <!-- rendered at the stored image size, shown scaled down -->
+    <img src={session.rendered.url} alt="render" width="240" />
+  {/if}
+</fieldset>
