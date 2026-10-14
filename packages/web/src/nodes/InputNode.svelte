@@ -6,12 +6,16 @@
   // node data is not used here — state lives in session
   let {}: NodeProps<FlowNodeOf<"input">> = $props();
 
-  const onchange = ({ currentTarget }: Event & { currentTarget: HTMLInputElement }) => {
+  const onchange = async ({ currentTarget }: Event & { currentTarget: HTMLInputElement }) => {
     const file = currentTarget.files?.[0];
-    if (file) session.upload(file);
+    // a rejected file must not stay shown as chosen
+    if (file && !(await session.upload(file))) currentTarget.value = "";
   };
 </script>
 
 <div>input</div>
 <input class="nodrag" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
+{#if session.uploadError}
+  <div style="color: crimson">{session.uploadError}</div>
+{/if}
 <Handle type="source" position={Position.Right} />

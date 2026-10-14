@@ -1,14 +1,24 @@
-import type { Edge } from "@xyflow/svelte";
-import type { ServerMessage } from "@xtc-toaster/contract";
+import type { Edge, XYPosition } from "@xyflow/svelte";
+import {
+  UPLOAD_MAX_BYTES,
+  UPLOAD_MAX_MEGAPIXELS,
+  type RenderErrorMessage,
+  type ServerMessage,
+} from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
-import { toFlow, toGraph, type FlowNode, type FlowNodeOf } from "./graph";
+import { createNode, toFlow, toGraph, type FlowNode, type FlowNodeOf, type MenuNodeType } from "./graph";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
 // toast directory name — prefix of downloaded files
 const TOAST = "toast-2_signac";
 const initial = toFlow(toast2signac);
+
+const UPLOAD_ERRORS: Record<string, string> = {
+  "too-large": `too large: max ${UPLOAD_MAX_MEGAPIXELS} MP, ${UPLOAD_MAX_BYTES / 1024 / 1024} MB`,
+  "unsupported-format": "png or jpeg only",
+};
 
 class Session {
   nodes = $state.raw<FlowNode[]>(initial.nodes);
@@ -19,6 +29,10 @@ class Session {
   rendering = $state(false);
   // png of the last sent requestId — output shows it, download saves the same bytes
   rendered = $state.raw<{ blob: Blob; url: string } | null>(null);
+  // render-error of the last sent requestId — the only error shown in the ui, the rest is console.error
+  renderError = $state.raw<Pick<RenderErrorMessage, "message" | "nodeId"> | null>(null);
+  // shown in the input node — a rejected upload otherwise looks like the picture just did not change
+  uploadError = $state<string | null>(null);
 
   locked = $derived(!this.connected || this.uploading || this.rendering);
   imageId = $derived(
@@ -43,16 +57,26 @@ class Session {
     });
   }
 
-  async upload(file: File) {
+  // true — the picture is in the input node now
+  async upload(file: File): Promise<boolean> {
     this.uploading = true;
     try {
       const { imageId } = await uploadImage(file);
       this.nodes = this.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId } } : node));
+      this.uploadError = null;
+      return true;
     } catch (error) {
       console.error("upload failed", error);
+      this.uploadError = (error instanceof Error && UPLOAD_ERRORS[error.message]) || "upload failed";
+      return false;
     } finally {
       this.uploading = false;
     }
+  }
+
+  // a node from the left menu, dropped at a flow position — unlinked until the user links it
+  addNode(type: MenuNodeType, position: XYPosition) {
+    this.nodes = [...this.nodes, createNode(type, position)];
   }
 
   // a param change is a graph change → App sends a new render
@@ -75,10 +99,14 @@ class Session {
     if (message.requestId !== this.requestId) return; // stale — a newer request was sent
 
     this.rendering = false;
-    if (message.type === "rendered") return this.setRendered(base64ToBlob(message.png, "image/png"));
+    if (message.type === "rendered") {
+      this.renderError = null;
+      return this.setRendered(base64ToBlob(message.png, "image/png"));
+    }
 
     // TODO: notify the user (notification toast or something else) — to be designed
     console.error("render-error", message);
+    this.renderError = { message: message.message, ...(message.nodeId && { nodeId: message.nodeId }) };
     // the old picture no longer matches the graph
     this.setRendered(null);
   }
