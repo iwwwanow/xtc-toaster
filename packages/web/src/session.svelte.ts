@@ -1,6 +1,7 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
   UPLOAD_MAX_BYTES,
+  UPLOAD_MAX_MEGAPIXELS,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
@@ -15,7 +16,7 @@ const TOAST = "toast-2_signac";
 const initial = toFlow(toast2signac);
 
 const UPLOAD_ERRORS: Record<string, string> = {
-  "too-large": `too large: max ${UPLOAD_MAX_BYTES / 1024 / 1024} MB`,
+  "too-large": `too large: max ${UPLOAD_MAX_MEGAPIXELS} MP, ${UPLOAD_MAX_BYTES / 1024 / 1024} MB`,
   "unsupported-format": "png or jpeg only",
 };
 
