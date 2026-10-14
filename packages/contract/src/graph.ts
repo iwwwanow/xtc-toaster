@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { TOAST_GRAPH_VERSION } from "./constants";
+import { PARAMS, type ParamBounds } from "./params";
+
+const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
 
 export const NodeIdSchema = z.string().min(1);
 export type NodeId = z.infer<typeof NodeIdSchema>;
@@ -17,7 +20,7 @@ export const InputNodeSchema = z.object({
 export const NoizeNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("noize"),
-  data: z.object({ deviationCoefficient: z.number().min(0).max(1) }),
+  data: z.object({ deviationCoefficient: ranged(PARAMS.noize.deviationCoefficient) }),
 });
 
 export const OutputNodeSchema = z.object({
