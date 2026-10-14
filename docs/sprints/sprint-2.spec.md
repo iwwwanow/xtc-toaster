@@ -4,6 +4,13 @@
    - nodes: hue mask, y-rotation
    - export / import toast
 
+### status (2026-10-14) — steps 1–2 done, minimum needs hue mask
+
+- done 14.10: server renders the path (`toPath`), node editor + canvas, right panel with download png, render / upload errors visible in the ui, plain html look (`base.css` + a `fieldset` per node) — `docs/diary/2026-10-14_sprint-2-path-render-node-editor.md`
+- checked in the browser by the user: add from the menu, link, unlink, delete
+- minimum (must after "cut if behind") = steps 1–3 → only hue mask is left; then y-rotation, export / import
+- decided: an upload over the limits is rejected with a visible error, never scaled down
+
 ### status (2026-10-13) — spec written, work starts
 
 - replanned 12.10–13.10: the old plan (export png, one-node toast) was mostly closed in sprint 1 — `docs/planning.md`
@@ -77,16 +84,16 @@ each node works from the menu to the picture: lib → contract (zod schema, para
 
 ### definition of done
 
-- [ ] a node can be dragged from the left menu onto the canvas and appears where it was dropped
-- [ ] two nodes can be linked by dragging from one's output to the other's input
-- [ ] an edge can be removed: select + `Delete`, or drag its end into empty space
-- [ ] a node can be deleted by right click or `Delete`, its edges are removed with it
-- [ ] input and output are always one each: can't be deleted, not in the menu; code comment about several inputs / outputs later
-- [ ] `Controls` and `Background` are on; canvas pans and zooms
-- [ ] right panel, vertical buttons: download png, export toast, import toast
-- [ ] server renders the path `input → … → output` and ignores unlinked nodes
-- [ ] no path / branching path → a clear error visible in the ui
-- [ ] every graph change re-renders
+- [x] a node can be dragged from the left menu onto the canvas and appears where it was dropped
+- [x] two nodes can be linked by dragging from one's output to the other's input
+- [x] an edge can be removed: select + `Delete`, or drag its end into empty space
+- [x] a node can be deleted by right click or `Delete`, its edges are removed with it
+- [x] input and output are always one each: can't be deleted, not in the menu; code comment about several inputs / outputs later
+- [x] `Controls` and `Background` are on; canvas pans and zooms
+- [ ] right panel, vertical buttons: download png, export toast, import toast — download png done
+- [x] server renders the path `input → … → output` and ignores unlinked nodes
+- [x] no path / branching path → a clear error visible in the ui
+- [x] every graph change re-renders
 - [ ] hue mask and y-rotation work from the menu to the picture; tests on the schema (contract) and the render (server), y-rotation also on `Layer` (lib)
 - [ ] export toast saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` with `imageId: null`
 - [ ] import toast restores the graph and rebuilds the layout; an invalid file → error in the ui

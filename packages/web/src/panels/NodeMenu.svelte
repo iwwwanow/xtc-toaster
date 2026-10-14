@@ -12,7 +12,7 @@
   <fieldset>
     <legend>nodes</legend>
     {#each MENU_NODE_TYPES as type (type)}
-      <div draggable="true" role="listitem" ondragstart={(event) => ondragstart(event, type)}>{type}</div>
+      <div draggable="true" role="listitem" style="cursor: grab" ondragstart={(event) => ondragstart(event, type)}>{type}</div>
     {/each}
   </fieldset>
 </Panel>
