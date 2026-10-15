@@ -41,7 +41,13 @@
   };
 </script>
 
-<div style="position: fixed; inset: 0" role="application" {ondragover} {ondrop}>
+<!-- xyflow borders its built-in node types (input, output) by class name — ours share the names, the fieldset is the only frame -->
+<div
+  style="position: fixed; inset: 0; --xy-node-border: none; --xy-node-border-selected: none"
+  role="application"
+  {ondragover}
+  {ondrop}
+>
   <SvelteFlow
     bind:nodes={session.nodes}
     bind:edges={session.edges}

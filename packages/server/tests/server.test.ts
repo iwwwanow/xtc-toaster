@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import { loadImage } from "canvas";
+import { createCanvas, loadImage } from "canvas";
 import {
   ServerMessageSchema,
   TOAST_GRAPH_VERSION,
@@ -126,6 +126,43 @@ describe("ws render", () => {
     const broken = { ...graph(imageId), edges: [{ id: "in-nz", source: "in", target: "nz" }] };
     send({ type: "render", requestId: 5, graph: broken });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 5, nodeId: "out" });
+  });
+});
+
+describe("ws render: hue mask", () => {
+  const hueMask = (hue: number, tolerance: number) => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "hm", type: "hueMask", data: { hue, tolerance } },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [
+      { id: "in-hm", source: "in", target: "hm" },
+      { id: "hm-out", source: "hm", target: "out" },
+    ],
+  });
+
+  const alphaOf = async (message: ServerMessage) => {
+    if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
+    const png = await loadImage(Buffer.from(message.png, "base64"));
+    const context = createCanvas(png.width, png.height).getContext("2d");
+    context.drawImage(png, 0, 0);
+    const { data } = context.getImageData(0, 0, png.width, png.height);
+    return data.filter((_, i) => i % 4 === 3);
+  };
+
+  // poppies: red flowers on green — red is partly kept, the rest goes transparent
+  test("red keeps the poppies, the rest goes transparent", async () => {
+    send({ type: "render", requestId: 9, graph: hueMask(0, 30) });
+    const alpha = await alphaOf(await nextMessage());
+    expect(alpha.some((a) => a === 0)).toBe(true);
+    expect(alpha.some((a) => a > 128)).toBe(true);
+  });
+
+  test("tolerance out of range → render-error on that node", async () => {
+    send({ type: "render", requestId: 10, graph: hueMask(0, 200) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 10, nodeId: "hm" });
   });
 });
 

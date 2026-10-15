@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Handle, Position, type NodeProps } from "@xyflow/svelte";
   import { PARAMS } from "@xtc-toaster/contract";
-  import type { FlowNodeOf } from "../graph";
+  import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { session } from "../session.svelte";
   import Slider from "./Slider.svelte";
 
@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset>
-  <legend>noize</legend>
+  <legend>{NODE_LABELS.noize}</legend>
   <Slider
     label="deviationCoefficient"
     bounds={PARAMS.noize.deviationCoefficient}

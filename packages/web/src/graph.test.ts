@@ -32,6 +32,11 @@ describe("createNode", () => {
     expect(node.position).toEqual({ x: 10, y: 20 });
     expect(node.data).toEqual({ deviationCoefficient: PARAMS.noize.deviationCoefficient.initial });
   });
+
+  test("a hue mask starts with every param at its initial", () => {
+    const { data } = createNode("hueMask", { x: 0, y: 0 });
+    expect(data).toEqual({ hue: PARAMS.hueMask.hue.initial, tolerance: PARAMS.hueMask.tolerance.initial });
+  });
 });
 
 describe("toGraph", () => {
