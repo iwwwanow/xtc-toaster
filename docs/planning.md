@@ -32,7 +32,7 @@
   13. skew: скос.
   14. homography: перспективное искажение по готовой матрице 3×3.
   15. perspective: перспективное искажение по 4 углам.
-  16. dont-working-applyYRotationPerspective: перспективный поворот вокруг оси Y. Функция есть, но к Layer не подключена.
+  16. yRotation: перспективный поворот вокруг оси Y (angle в градусах, focalLength в px) — подключён к Layer 15.10, нода y-rotation в ui.
 - [ ] project renders animation
 - [ ] 3 toasts available for usage (ready, portfolio works too)
 

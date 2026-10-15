@@ -33,7 +33,8 @@ export type Transform =
   | { name: "scale"; params: { scaleX: number; scaleY: number } }
   | { name: "skew"; params: { tx: number; ty: number } }
   | { name: "homography"; params: { matrix: number[] } }    // 9 elements, row-major 3×3
-  | { name: "perspective"; params: { corners: Quad } };     // TL TR BR BL in output space
+  | { name: "perspective"; params: { corners: Quad } }      // TL TR BR BL in output space
+  | { name: "yRotation"; params: { angle: number; focalLength: number } }; // angle in degrees, focalLength in px
 
 // isolateChannel сюда не входит — не маска, другая операция
 export type MaskParams =

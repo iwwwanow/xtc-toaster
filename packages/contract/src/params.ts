@@ -11,4 +11,10 @@ export const PARAMS = {
     hue: { min: 0, max: 360, initial: 0 },
     tolerance: { min: 0, max: 180, initial: 30 },
   },
+  // angle in degrees, ±90 is edge-on (the plane vanishes) — stop short of it;
+  // focalLength in px of the source image: smaller = stronger perspective
+  yRotation: {
+    angle: { min: -85, max: 85, initial: 30 },
+    focalLength: { min: 50, max: 4000, initial: 800 },
+  },
 } as const satisfies Record<string, Record<string, ParamBounds>>;

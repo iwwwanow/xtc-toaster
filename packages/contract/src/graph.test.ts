@@ -84,6 +84,26 @@ describe("parseToastGraph", () => {
     expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", param]);
   });
 
+  test.each([
+    [-85, 50],
+    [85, 4000],
+  ])("accepts a y-rotation at its bounds: angle %p, focalLength %p", (angle, focalLength) => {
+    const graph = validGraph();
+    graph.nodes[1] = { id: "yr", type: "yRotation", data: { angle, focalLength } } as never;
+    expect(() => parseToastGraph(graph)).not.toThrow();
+  });
+
+  test.each([
+    ["angle", -86],
+    ["angle", 86],
+    ["focalLength", 49],
+    ["focalLength", 4001],
+  ])("rejects y-rotation %s %p", (param, value) => {
+    const graph = validGraph();
+    graph.nodes[1] = { id: "yr", type: "yRotation", data: { angle: 30, focalLength: 800, [param]: value } } as never;
+    expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", param]);
+  });
+
   test("rejects an unknown node type", () => {
     const graph = validGraph();
     Object.assign(graph.nodes[1]!, { type: "blur" });

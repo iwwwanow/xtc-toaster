@@ -93,6 +93,20 @@ describe("Layer", () => {
     expect([...layer.imageData.slice(0, 8)]).toEqual([0, 0, 0, 0, 255, 0, 0, 255]);
   });
 
+  test("setTransform(yRotation) turns the plane around the Y axis (angle in degrees)", () => {
+    const opaque = new Array(9 * 4).fill(255);
+    const still = makeLayer(opaque, 9);
+    still.setTransform({ name: "yRotation", params: { angle: 0, focalLength: 600 } });
+    expect([...still.imageData]).toEqual(opaque);
+
+    const turned = makeLayer(opaque, 9);
+    turned.setTransform({ name: "yRotation", params: { angle: 60, focalLength: 10 } });
+    const alphas = [...turned.imageData].filter((_, i) => i % 4 === 3);
+    expect(alphas[4]).toBe(255); // center column keeps its pixel
+    expect(alphas.some((a) => a === 0)).toBe(true); // the narrowed plane leaves transparent edges
+    expect(turned.options.transform).toEqual({ name: "yRotation", params: { angle: 60, focalLength: 10 } });
+  });
+
   test("consecutive transforms stack; options keep only the last one", () => {
     const layer = makeLayer([255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0], 3);
     layer.setTransform({ name: "translate", params: { tx: 1, ty: 0 } });

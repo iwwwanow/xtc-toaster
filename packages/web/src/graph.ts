@@ -18,7 +18,11 @@ export const MENU_NODE_TYPES = Object.keys(PARAMS) as MenuNodeType[];
 // drag & drop from the menu onto the canvas carries the node type under this mime
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
 // ui name of a node type — the menu item and the node's legend; the type itself stays the contract key
-export const NODE_LABELS = { noize: "hue noise", hueMask: "hue mask" } as const satisfies Record<MenuNodeType, string>;
+export const NODE_LABELS = {
+  noize: "hue noise",
+  hueMask: "hue mask",
+  yRotation: "y-rotation",
+} as const satisfies Record<MenuNodeType, string>;
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
 const NODE_GAP_X = 400;

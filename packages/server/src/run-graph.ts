@@ -72,6 +72,9 @@ export const runGraph = async (
         // lib takes the tolerance normalized to the wheel
         layer.mask({ name: "hue", value: node.data.hue, tolerance: node.data.tolerance / 360 });
         break;
+      case "yRotation":
+        layer.setTransform({ name: "yRotation", params: node.data });
+        break;
       case "output":
         return { data: composition.render(), width, height };
       case "input":
