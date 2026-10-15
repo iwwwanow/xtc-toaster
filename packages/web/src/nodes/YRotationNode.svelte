@@ -19,9 +19,9 @@
     onchange={(angle) => session.setNodeData(id, { ...data, angle })}
   />
   <Slider
-    label="focal length"
+    label="focal length (mm)"
     bounds={PARAMS.yRotation.focalLength}
-    step={10}
+    step={1}
     value={data.focalLength}
     onchange={(focalLength) => session.setNodeData(id, { ...data, focalLength })}
   />

@@ -12,9 +12,10 @@ export const PARAMS = {
     tolerance: { min: 0, max: 180, initial: 30 },
   },
   // angle in degrees, ±90 is edge-on (the plane vanishes) — stop short of it;
-  // focalLength in px of the source image: smaller = stronger perspective
+  // focalLength in mm, 35 mm equivalent (36 mm across the image width, like a blender camera):
+  // smaller = stronger perspective
   yRotation: {
     angle: { min: -85, max: 85, initial: 30 },
-    focalLength: { min: 50, max: 4000, initial: 800 },
+    focalLength: { min: 10, max: 300, initial: 50 },
   },
 } as const satisfies Record<string, Record<string, ParamBounds>>;

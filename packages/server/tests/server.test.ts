@@ -180,9 +180,9 @@ describe("ws render: y-rotation", () => {
     ],
   });
 
-  // poppies is opaque: the turned plane keeps the middle, the edges sample outside → transparent
-  test("turned plane keeps the middle, the edges go transparent", async () => {
-    send({ type: "render", requestId: 11, graph: yRotation(30, 800) });
+  // middle row alpha at x = 0, the middle and the right edge
+  const renderRowAlpha = async (requestId: number, angle: number, focalLength: number) => {
+    send({ type: "render", requestId, graph: yRotation(angle, focalLength) });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
     const png = await loadImage(Buffer.from(message.png, "base64"));
@@ -190,14 +190,28 @@ describe("ws render: y-rotation", () => {
     context.drawImage(png, 0, 0);
     const row = Math.floor(png.height / 2);
     const alphaAt = (x: number) => context.getImageData(x, row, 1, 1).data[3];
-    expect(alphaAt(Math.floor(png.width / 2))).toBe(255);
-    expect(alphaAt(0)).toBe(0);
-    expect(alphaAt(png.width - 1)).toBe(0);
+    return [alphaAt(0), alphaAt(Math.floor(png.width / 2)), alphaAt(png.width - 1)];
+  };
+
+  // poppies is opaque, 250 px wide: an edge sampling outside the source goes transparent.
+  // focalLength is mm on a 36 mm frame — as px (no conversion) 300 would keep the near edge
+  test("long lens (300 mm) → near-flat: the plane narrows, both edges go transparent", async () => {
+    expect(await renderRowAlpha(11, 30, 300)).toEqual([0, 255, 0]);
+  });
+
+  test("normal lens (50 mm) → the near edge fills the frame, the far edge goes transparent", async () => {
+    expect(await renderRowAlpha(14, 30, 50)).toEqual([255, 255, 0]);
   });
 
   test("angle out of range → render-error on that node", async () => {
-    send({ type: "render", requestId: 12, graph: yRotation(90, 800) });
+    send({ type: "render", requestId: 12, graph: yRotation(90, 50) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 12, nodeId: "yr" });
+  });
+
+  // mm, not px: 800 was a valid px focal length, as mm it's past the 300 mm bound
+  test("focalLength out of range → render-error on that node", async () => {
+    send({ type: "render", requestId: 13, graph: yRotation(30, 800) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 13, nodeId: "yr" });
   });
 });
 

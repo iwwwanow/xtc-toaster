@@ -73,7 +73,11 @@ export const runGraph = async (
         layer.mask({ name: "hue", value: node.data.hue, tolerance: node.data.tolerance / 360 });
         break;
       case "yRotation":
-        layer.setTransform({ name: "yRotation", params: node.data });
+        // contract has mm on a 36 mm wide frame, lib takes px of the image
+        layer.setTransform({
+          name: "yRotation",
+          params: { angle: node.data.angle, focalLength: (node.data.focalLength / 36) * width },
+        });
         break;
       case "output":
         return { data: composition.render(), width, height };
