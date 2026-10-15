@@ -29,9 +29,4 @@
 
 ## Остаток спринта 2
 
-До конца спринта (18.10) три дня, минимум закрыт.
-
-- Шаг 4 — y-rotation: lib — transform `yRotation` (angle, focalLength) + ветка в `Layer.setTransform` + тест на `Layer`; затем contract / server / web по образцу hue mask. Первый кандидат на вырезание (→ спринт 4).
-- Шаг 5 — export / import toast: кнопки в `ActionsPanel`, файл `toast-2_signac_<YYYYMMDD-HHmmss>.json` с `imageId: null`, импорт через `parseToastGraph`, ошибка в ui.
-- Сценарий DoD в docker compose целиком — в конце.
-- Отложено: `noize → hueNoise` (бэклог, сделать до экспорта или смириться с миграцией).
+Y-rotation сделан в тот же день, остаток — в `docs/diary/2026-10-15_y-rotation-node.md`.
