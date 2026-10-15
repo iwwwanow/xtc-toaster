@@ -1,0 +1,37 @@
+# 2026-10-15 — спринт 2: нода hue mask, подписи нод, одна рамка
+
+Шаг 3 из «order» спринта 2 — hue mask — сделан, этим закрыт план-минимум спринта (шаги 1–3). Работа шла в ветке `feat/hue-mask-node`, смержена в `master` (`1ccbb83`) и запушена; пользователь проверил в браузере — работает.
+
+## Hue mask — от контракта до картинки
+
+Тот же путь, что у noize: contract → server → web, lib не трогали — `Layer.mask({ name: "hue", value, tolerance })` уже был.
+
+- **contract**: тип ноды `hueMask`, `PARAMS.hueMask` — `hue` 0–360 (старт 0, красный) и `tolerance` 0–180 (старт 30). Обе в градусах, чтобы слайдеры были в одних единицах; `tolerance` — полуширина полосы вокруг `hue`, 180 = весь круг.
+- **server**: ветка `hueMask` в `run-graph.ts`. lib ждёт `tolerance` долей круга (0–1), поэтому сервер делит на 360. Результат — png, где alpha = вес совпадения (серые пиксели не попадают в маску: вес умножается на насыщенность).
+- **web**: `nodes/HueMaskNode.svelte` с двумя слайдерами; в меню нода появилась сама — меню строится из ключей `PARAMS`.
+- **тесты**: contract — границы обоих параметров; server — рендер `input → hue mask → output` на `poppies.jpg` (есть и прозрачные, и непрозрачные пиксели) и `render-error` на ноде при `tolerance` вне диапазона; web — `createNode("hueMask")` со стартовыми значениями.
+
+Подводный камень: `session.setNodeData` **заменяет** `data` целиком. У ноды с одним параметром это незаметно, а с двумя слайдер `hue`, передав `{ hue }`, стёр бы `tolerance`. Нода передаёт `{ ...data, hue }`. Если нод с несколькими параметрами станет больше — стоит сделать `setNodeData` мержащим.
+
+## Подписи нод: hue noise, hue mask
+
+Пользователь заметил, что нода называется `noize`, хотя это шум оттенка (`addHueNoise`), и что меню показывает ключ типа `hueMask`, а заголовок ноды — `hue mask`. В lib эффект тоже называется `noize` — имя перенесено из legacy 1:1.
+
+Сделано сразу: в `web/src/graph.ts` словарь `NODE_LABELS` (`noize → "hue noise"`, `hueMask → "hue mask"`), из него берут и меню, и `legend` нод. Тип `Record<MenuNodeType, string>` — без подписи новая нода не скомпилируется.
+
+Переименование самого типа `noize → hueNoise` по всему стеку отложено — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`. Главное ограничение: пока нет экспорта тостов, это можно сделать без `TOAST_GRAPH_VERSION` и миграции; после экспорта — уже нет.
+
+## Одна рамка у input / output
+
+14.10 двойную рамку у input/output оставили («понравилось»), сегодня пользователь попросил оставить только `fieldset`. Причина та же: типы `input`/`output` совпадают со встроенными типами xyflow, и `base.css` рисует им рамку по классу `.svelte-flow__node-input` / `-output`. Решено без своих стилей — css-переменными xyflow на обёртке в `Editor.svelte`: `--xy-node-border: none; --xy-node-border-selected: none`. Вместе с рамкой ушла и подсветка выделенной input/output — теперь они выглядят при выделении как остальные ноды (у тех её не было и раньше).
+
+Проверено headless Chrome + CDP на работающем docker compose: computed border у всех нод `none 0px`, подписи в меню и в `legend` новые.
+
+## Остаток спринта 2
+
+До конца спринта (18.10) три дня, минимум закрыт.
+
+- Шаг 4 — y-rotation: lib — transform `yRotation` (angle, focalLength) + ветка в `Layer.setTransform` + тест на `Layer`; затем contract / server / web по образцу hue mask. Первый кандидат на вырезание (→ спринт 4).
+- Шаг 5 — export / import toast: кнопки в `ActionsPanel`, файл `toast-2_signac_<YYYYMMDD-HHmmss>.json` с `imageId: null`, импорт через `parseToastGraph`, ошибка в ui.
+- Сценарий DoD в docker compose целиком — в конце.
+- Отложено: `noize → hueNoise` (бэклог, сделать до экспорта или смириться с миграцией).
