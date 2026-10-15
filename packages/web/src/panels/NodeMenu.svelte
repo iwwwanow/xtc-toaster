@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Panel } from "@xyflow/svelte";
-  import { MENU_NODE_TYPES, NODE_TYPE_MIME } from "../graph";
+  import { MENU_NODE_TYPES, NODE_LABELS, NODE_TYPE_MIME } from "../graph";
 
   const ondragstart = (event: DragEvent, type: string) => {
     event.dataTransfer?.setData(NODE_TYPE_MIME, type);
@@ -12,7 +12,7 @@
   <fieldset>
     <legend>nodes</legend>
     {#each MENU_NODE_TYPES as type (type)}
-      <div draggable="true" role="listitem" style="cursor: grab" ondragstart={(event) => ondragstart(event, type)}>{type}</div>
+      <div draggable="true" role="listitem" style="cursor: grab" ondragstart={(event) => ondragstart(event, type)}>{NODE_LABELS[type]}</div>
     {/each}
   </fieldset>
 </Panel>
