@@ -3,10 +3,14 @@
   "nodes": [
     { "id": "in", "type": "input", "data": { "imageId": null } },
     { "id": "nz", "type": "noize", "data": { "deviationCoefficient": 0.5 } },
+    { "id": "hm", "type": "hueMask", "data": { "hue": 0, "tolerance": 30 } },
+    { "id": "yr", "type": "yRotation", "data": { "angle": 30, "focalLength": 50 } },
     { "id": "out", "type": "output", "data": {} }
   ],
   "edges": [
     { "id": "in-nz", "source": "in", "target": "nz" },
-    { "id": "nz-out", "source": "nz", "target": "out" }
+    { "id": "nz-hm", "source": "nz", "target": "hm" },
+    { "id": "hm-yr", "source": "hm", "target": "yr" },
+    { "id": "yr-out", "source": "yr", "target": "out" }
   ]
 }

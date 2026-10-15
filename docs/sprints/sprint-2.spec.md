@@ -8,6 +8,7 @@
 
 - done 15.10: y-rotation from the menu to the picture — lib `yRotation` transform (`angle` in degrees, `focalLength` in px) wired into `Layer.setTransform`; contract `angle` −85…85 (start 30), `focalLength` 50…4000 (start 800); server render + `render-error` on out-of-range; web `YRotationNode` — checked headless: input → y-rotation → output renders, edges go transparent
 - done 15.10: y-rotation `focalLength` → mm, 35 mm equivalent (blender camera): server converts `px = mm / 36 * width`, lib stays in px; bounds 10–300 mm, start 50; slider `focal length (mm)`. px of the source image made a toast look different on every picture size — fix before export ships, like the rename. Integration test: 30° at 300 mm narrows the plane (both edges transparent), at 50 mm the near edge fills the frame
+- done 15.10: toast-2 preset is `input → noize (0.5) → hue mask (0, 30) → y-rotation (30°, 50 mm) → output` — noise then the mask leaves red dots, pointillism
 - left: `noize → hueNoise` rename, export / import toast (step 5), the docker compose DoD scenario
 
 ### status (2026-10-15) — minimum closed: hue mask done

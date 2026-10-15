@@ -13,12 +13,18 @@ describe("toast-2_signac", () => {
     expect(input?.data).toEqual({ imageId: null });
   });
 
-  test("is the chain input → noize (0.5) → output", () => {
-    expect(toast2signac.nodes.map(({ type }) => type)).toEqual(["input", "noize", "output"]);
-    expect(toast2signac.nodes[1]?.data).toEqual({ deviationCoefficient: 0.5 });
+  test("is the chain input → noize → hue mask → y-rotation → output", () => {
+    expect(toast2signac.nodes.map(({ type }) => type)).toEqual(["input", "noize", "hueMask", "yRotation", "output"]);
+    expect(toast2signac.nodes.map(({ data }) => data).slice(1, -1)).toEqual([
+      { deviationCoefficient: 0.5 },
+      { hue: 0, tolerance: 30 },
+      { angle: 30, focalLength: 50 },
+    ]);
     expect(toast2signac.edges.map(({ source, target }) => [source, target])).toEqual([
       ["in", "nz"],
-      ["nz", "out"],
+      ["nz", "hm"],
+      ["hm", "yr"],
+      ["yr", "out"],
     ]);
   });
 });
