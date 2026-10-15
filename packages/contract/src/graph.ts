@@ -23,6 +23,12 @@ export const NoizeNodeSchema = z.object({
   data: z.object({ deviationCoefficient: ranged(PARAMS.noize.deviationCoefficient) }),
 });
 
+export const HueMaskNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("hueMask"),
+  data: z.object({ hue: ranged(PARAMS.hueMask.hue), tolerance: ranged(PARAMS.hueMask.tolerance) }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -32,11 +38,13 @@ export const OutputNodeSchema = z.object({
 export const GraphNodeSchema = z.discriminatedUnion("type", [
   InputNodeSchema,
   NoizeNodeSchema,
+  HueMaskNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
 export type InputNode = z.infer<typeof InputNodeSchema>;
 export type NoizeNode = z.infer<typeof NoizeNodeSchema>;
+export type HueMaskNode = z.infer<typeof HueMaskNodeSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({

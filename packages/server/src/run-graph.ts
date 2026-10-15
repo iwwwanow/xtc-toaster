@@ -68,6 +68,10 @@ export const runGraph = async (
       case "noize":
         layer.applyEffect({ name: "noize", options: { deviationCoefficient: node.data.deviationCoefficient } });
         break;
+      case "hueMask":
+        // lib takes the tolerance normalized to the wheel
+        layer.mask({ name: "hue", value: node.data.hue, tolerance: node.data.tolerance / 360 });
+        break;
       case "output":
         return { data: composition.render(), width, height };
       case "input":

@@ -67,6 +67,23 @@ describe("parseToastGraph", () => {
     expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", "deviationCoefficient"]);
   });
 
+  test("accepts a hue mask at its bounds", () => {
+    const graph = validGraph();
+    graph.nodes[1] = { id: "hm", type: "hueMask", data: { hue: 360, tolerance: 0 } } as never;
+    expect(() => parseToastGraph(graph)).not.toThrow();
+  });
+
+  test.each([
+    ["hue", -1],
+    ["hue", 361],
+    ["tolerance", -1],
+    ["tolerance", 181],
+  ])("rejects hue mask %s %p", (param, value) => {
+    const graph = validGraph();
+    graph.nodes[1] = { id: "hm", type: "hueMask", data: { hue: 0, tolerance: 30, [param]: value } } as never;
+    expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", param]);
+  });
+
   test("rejects an unknown node type", () => {
     const graph = validGraph();
     Object.assign(graph.nodes[1]!, { type: "blur" });
