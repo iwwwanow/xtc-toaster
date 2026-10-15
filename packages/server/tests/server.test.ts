@@ -166,6 +166,41 @@ describe("ws render: hue mask", () => {
   });
 });
 
+describe("ws render: y-rotation", () => {
+  const yRotation = (angle: number, focalLength: number) => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "yr", type: "yRotation", data: { angle, focalLength } },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [
+      { id: "in-yr", source: "in", target: "yr" },
+      { id: "yr-out", source: "yr", target: "out" },
+    ],
+  });
+
+  // poppies is opaque: the turned plane keeps the middle, the edges sample outside → transparent
+  test("turned plane keeps the middle, the edges go transparent", async () => {
+    send({ type: "render", requestId: 11, graph: yRotation(30, 800) });
+    const message = await nextMessage();
+    if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
+    const png = await loadImage(Buffer.from(message.png, "base64"));
+    const context = createCanvas(png.width, png.height).getContext("2d");
+    context.drawImage(png, 0, 0);
+    const row = Math.floor(png.height / 2);
+    const alphaAt = (x: number) => context.getImageData(x, row, 1, 1).data[3];
+    expect(alphaAt(Math.floor(png.width / 2))).toBe(255);
+    expect(alphaAt(0)).toBe(0);
+    expect(alphaAt(png.width - 1)).toBe(0);
+  });
+
+  test("angle out of range → render-error on that node", async () => {
+    send({ type: "render", requestId: 12, graph: yRotation(90, 800) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 12, nodeId: "yr" });
+  });
+});
+
 describe("ws latest-wins", () => {
   // a render must not block the event loop: messages that come in during it reach the queue,
   // so after the running one only the newest renders

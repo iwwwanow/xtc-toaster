@@ -37,6 +37,14 @@ describe("createNode", () => {
     const { data } = createNode("hueMask", { x: 0, y: 0 });
     expect(data).toEqual({ hue: PARAMS.hueMask.hue.initial, tolerance: PARAMS.hueMask.tolerance.initial });
   });
+
+  test("a y-rotation starts with every param at its initial", () => {
+    const { data } = createNode("yRotation", { x: 0, y: 0 });
+    expect(data).toEqual({
+      angle: PARAMS.yRotation.angle.initial,
+      focalLength: PARAMS.yRotation.focalLength.initial,
+    });
+  });
 });
 
 describe("toGraph", () => {

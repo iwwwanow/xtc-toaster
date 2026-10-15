@@ -5,7 +5,12 @@ import {
   valueMask,
   isolateChannel as isolateChannelService,
 } from "../services/maskers";
-import { applyAffineTransform, applyHomographyTransform, homographyFromQuad } from "../services/transforms";
+import {
+  applyAffineTransform,
+  applyHomographyTransform,
+  applyYRotationPerspective,
+  homographyFromQuad,
+} from "../services/transforms";
 import { Matrix } from "../utils/matrix";
 import type { Color } from "./color";
 import type {
@@ -59,6 +64,10 @@ export class Layer {
     } else if (transform.name === "perspective") {
       const matrix = homographyFromQuad(this.dimensions, transform.params.corners);
       this._imageData = applyHomographyTransform(this._imageData, this.dimensions, matrix);
+    } else if (transform.name === "yRotation") {
+      const { angle, focalLength } = transform.params;
+      const radians = (Math.PI / 180) * angle;
+      this._imageData = applyYRotationPerspective(this._imageData, this.dimensions, radians, focalLength);
     } else {
       this._imageData = applyAffineTransform(this._imageData, this.dimensions, transform);
     }
