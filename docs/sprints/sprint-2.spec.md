@@ -4,6 +4,13 @@
    - nodes: hue mask, y-rotation
    - export / import toast
 
+### status (2026-10-15) — minimum closed: hue mask done
+
+- done 15.10: hue mask from the menu to the picture (`hue` 0–360, `tolerance` 0–180 — both degrees, server normalizes for lib), tests on contract bounds and the server render; ui labels from `NODE_LABELS` («hue noise», «hue mask»); input / output keep only the fieldset frame — `docs/diary/2026-10-15_hue-mask-node.md`
+- checked in the browser by the user
+- left: y-rotation (step 4), export / import toast (step 5), the docker compose DoD scenario
+- `noize → hueNoise` type rename — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`; cheap only before export / import ships (no saved toast files yet), so do it before step 5 or accept a migration
+
 ### status (2026-10-14) — steps 1–2 done, minimum needs hue mask
 
 - done 14.10: server renders the path (`toPath`), node editor + canvas, right panel with download png, render / upload errors visible in the ui, plain html look (`base.css` + a `fieldset` per node) — `docs/diary/2026-10-14_sprint-2-path-render-node-editor.md`
@@ -94,7 +101,7 @@ each node works from the menu to the picture: lib → contract (zod schema, para
 - [x] server renders the path `input → … → output` and ignores unlinked nodes
 - [x] no path / branching path → a clear error visible in the ui
 - [x] every graph change re-renders
-- [ ] hue mask and y-rotation work from the menu to the picture; tests on the schema (contract) and the render (server), y-rotation also on `Layer` (lib)
+- [ ] hue mask and y-rotation work from the menu to the picture; tests on the schema (contract) and the render (server), y-rotation also on `Layer` (lib) — hue mask done 15.10
 - [ ] export toast saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` with `imageId: null`
 - [ ] import toast restores the graph and rebuilds the layout; an invalid file → error in the ui
 - [ ] `bun run typecheck` and `bun test` are green

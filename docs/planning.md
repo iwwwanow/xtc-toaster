@@ -13,10 +13,10 @@
 - [ ] public link available
 - [ ] project works with all current backend filters
   - effects:
-  1. noize (addHueNoise): случайно сдвигает hue каждого пикселя, сила сдвига задаётся deviationCoefficient (0–1).
+  1. noize (addHueNoise): случайно сдвигает hue каждого пикселя, сила сдвига задаётся deviationCoefficient (0–1). В ui — нода «hue noise»; переименование типа в `hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`.
   2. blur (boxBlur): box blur с радиусом radius.
   - masks:
-  3. hue (hueMask): выделяет пиксели по оттенку (0–360°).
+  3. hue (hueMask): выделяет пиксели по оттенку (0–360°). В редакторе — нода «hue mask» (15.10).
   4. saturation (saturationMask): выделяет пиксели по насыщенности (0–100).
   5. value (valueMask): выделяет пиксели по яркости (0–100).
   - channels:
@@ -50,6 +50,7 @@
    - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
 2. [ ] 12.10-18.10. ui & one-layer toast — in progress; replanned 12.10–13.10, spec `docs/sprints/sprint-2.spec.md`
    - 14.10: done — server renders the path input → output, node editor (menu drag & drop, link / unlink, delete), canvas, right panel (download png), errors visible in the ui, plain html look; left — hue mask (closes the minimum), y-rotation, export / import toast — `docs/diary/2026-10-14_sprint-2-path-render-node-editor.md`
+   - 15.10: done — hue mask node (minimum closed), ui labels «hue noise» / «hue mask», one frame on input / output; left — y-rotation, export / import toast; rename `noize → hueNoise` before export ships (otherwise toast files need a migration) — `docs/diary/2026-10-15_hue-mask-node.md`
    - 1 week
    - node editor (blender geometry nodes as reference, svelte-flow only, no extra libs):
      - add node — drag & drop from the left menu
