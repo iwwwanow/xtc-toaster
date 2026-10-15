@@ -51,6 +51,10 @@
 2. [ ] 12.10-18.10. ui & one-layer toast — in progress; replanned 12.10–13.10, spec `docs/sprints/sprint-2.spec.md`
    - 14.10: done — server renders the path input → output, node editor (menu drag & drop, link / unlink, delete), canvas, right panel (download png), errors visible in the ui, plain html look; left — hue mask (closes the minimum), y-rotation, export / import toast — `docs/diary/2026-10-14_sprint-2-path-render-node-editor.md`
    - 15.10: done — hue mask node (minimum closed), ui labels «hue noise» / «hue mask», one frame on input / output; left — y-rotation, export / import toast; rename `noize → hueNoise` before export ships (otherwise toast files need a migration) — `docs/diary/2026-10-15_hue-mask-node.md`
+   - 15.10 evening: done — y-rotation node (lib transform → contract → server → web); left — before export ships (both change the toast file format):
+     - [ ] y-rotation `focalLength` in mm, 35 mm equivalent (like the blender camera): server converts `px = mm / 36 * width`, lib stays in px; bounds 10–300 mm, start 50; slider `focal length (mm)`. Now it's px of the source image — the same toast gives a different perspective on a different picture size
+     - [ ] rename `noize → hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`
+     - then export / import toast, the docker compose DoD scenario
    - 1 week
    - node editor (blender geometry nodes as reference, svelte-flow only, no extra libs):
      - add node — drag & drop from the left menu
