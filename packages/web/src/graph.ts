@@ -19,7 +19,7 @@ export const MENU_NODE_TYPES = Object.keys(PARAMS) as MenuNodeType[];
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
 // ui name of a node type — the menu item and the node's legend; the type itself stays the contract key
 export const NODE_LABELS = {
-  noize: "hue noise",
+  hueNoise: "hue noise",
   hueMask: "hue mask",
   yRotation: "y-rotation",
 } as const satisfies Record<MenuNodeType, string>;

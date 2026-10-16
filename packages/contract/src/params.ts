@@ -3,7 +3,7 @@
 export type ParamBounds = { readonly min: number; readonly max: number; readonly initial: number };
 
 export const PARAMS = {
-  noize: {
+  hueNoise: {
     deviationCoefficient: { min: 0, max: 1, initial: 0.5 },
   },
   // both in degrees; tolerance is the half-width of the band around hue (180 = the whole wheel)

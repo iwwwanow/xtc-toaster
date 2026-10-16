@@ -9,7 +9,7 @@ const validGraph = () => ({
   version: TOAST_GRAPH_VERSION,
   nodes: [
     { id: "in", type: "input", data: { imageId: IMAGE_ID } },
-    { id: "nz", type: "noize", data: { deviationCoefficient: 0.5 } },
+    { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
     { id: "out", type: "output", data: {} },
   ],
   edges: [

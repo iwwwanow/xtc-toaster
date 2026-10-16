@@ -76,7 +76,7 @@ export class Layer {
   // eager: применяется сразу к imageData, ничего не копится
   applyEffect(effect: EffectParams): void {
     switch (effect.name) {
-      case "noize":
+      case "hueNoise":
         this._imageData = addHueNoise(this._imageData, effect.options);
         break;
       case "blur":

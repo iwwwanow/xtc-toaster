@@ -134,11 +134,11 @@ describe("effects", () => {
   test("hue noise 0.05 / 0.3 (random — differs between runs)", async () => {
     const subtle = await run(
       "33_hue-noise_0.05",
-      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.05 } })),
+      withLayer((l) => l.applyEffect({ name: "hueNoise", options: { deviationCoefficient: 0.05 } })),
     );
     const loud = await run(
       "34_hue-noise_0.3",
-      withLayer((l) => l.applyEffect({ name: "noize", options: { deviationCoefficient: 0.3 } })),
+      withLayer((l) => l.applyEffect({ name: "hueNoise", options: { deviationCoefficient: 0.3 } })),
     );
     expect(changedRatio(subtle, source)).toBeGreaterThan(0);
     expect(changedRatio(loud, source)).toBeGreaterThan(0);

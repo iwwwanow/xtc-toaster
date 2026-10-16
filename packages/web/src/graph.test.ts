@@ -27,10 +27,10 @@ describe("toFlow", () => {
 
 describe("createNode", () => {
   test("a uuid, the drop position and the initial params", () => {
-    const node = createNode("noize", { x: 10, y: 20 });
+    const node = createNode("hueNoise", { x: 10, y: 20 });
     expect(node.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(node.position).toEqual({ x: 10, y: 20 });
-    expect(node.data).toEqual({ deviationCoefficient: PARAMS.noize.deviationCoefficient.initial });
+    expect(node.data).toEqual({ deviationCoefficient: PARAMS.hueNoise.deviationCoefficient.initial });
   });
 
   test("a hue mask starts with every param at its initial", () => {

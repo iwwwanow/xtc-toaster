@@ -2,7 +2,7 @@
   "version": 1,
   "nodes": [
     { "id": "in", "type": "input", "data": { "imageId": null } },
-    { "id": "nz", "type": "noize", "data": { "deviationCoefficient": 0.5 } },
+    { "id": "nz", "type": "hueNoise", "data": { "deviationCoefficient": 0.5 } },
     { "id": "hm", "type": "hueMask", "data": { "hue": 0, "tolerance": 30 } },
     { "id": "yr", "type": "yRotation", "data": { "angle": 30, "focalLength": 50 } },
     { "id": "out", "type": "output", "data": {} }

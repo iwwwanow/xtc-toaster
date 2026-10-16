@@ -38,7 +38,7 @@ const graph = (imageId: string | null, deviationCoefficient = 0.5) => ({
   version: TOAST_GRAPH_VERSION,
   nodes: [
     { id: "in", type: "input", data: { imageId } },
-    { id: "nz", type: "noize", data: { deviationCoefficient } },
+    { id: "nz", type: "hueNoise", data: { deviationCoefficient } },
     { id: "out", type: "output", data: {} },
   ],
   edges: [

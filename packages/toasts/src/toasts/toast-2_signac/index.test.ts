@@ -13,8 +13,8 @@ describe("toast-2_signac", () => {
     expect(input?.data).toEqual({ imageId: null });
   });
 
-  test("is the chain input → noize → hue mask → y-rotation → output", () => {
-    expect(toast2signac.nodes.map(({ type }) => type)).toEqual(["input", "noize", "hueMask", "yRotation", "output"]);
+  test("is the chain input → hue noise → hue mask → y-rotation → output", () => {
+    expect(toast2signac.nodes.map(({ type }) => type)).toEqual(["input", "hueNoise", "hueMask", "yRotation", "output"]);
     expect(toast2signac.nodes.map(({ data }) => data).slice(1, -1)).toEqual([
       { deviationCoefficient: 0.5 },
       { hue: 0, tolerance: 30 },

@@ -70,8 +70,8 @@ export const runGraph = async (
 
   for (const node of rest) {
     switch (node.type) {
-      case "noize":
-        layer.applyEffect({ name: "noize", options: { deviationCoefficient: node.data.deviationCoefficient } });
+      case "hueNoise":
+        layer.applyEffect({ name: "hueNoise", options: { deviationCoefficient: node.data.deviationCoefficient } });
         break;
       case "hueMask":
         // lib takes the tolerance normalized to the wheel
