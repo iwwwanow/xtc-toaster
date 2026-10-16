@@ -4,12 +4,17 @@
    - nodes: hue mask, y-rotation
    - export / import toast
 
+### status (2026-10-16) — sprint closed
+
+- DoD scenario checked by the user by hand in the browser (QA list in `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`) — every DoD item done, two days early
+- stretch (the rest of the single-layer nodes) not started — stays open for the "all current backend filters" readiness criterion
+- next — sprint 3: hosting, public access, user test
+
 ### status (2026-10-16) — y-rotation sensor fit like blender
 
 - done 16.10: `focalLength` uses blender's sensor fit Auto — 36 mm across the larger side of the picture (`px = mm / 36 * max(width, height)`), not always the width. Before, a portrait picture got a stronger perspective than the same lens in blender. Server `focalLengthPx` + unit test (landscape / portrait / square); integration on poppies (250 × 359, portrait): 50 mm at 30° now narrows the plane (499 px, near edge transparent), the "near edge fills the frame" case moved to 35 mm
 - done 16.10: `noize → hueNoise` type rename across the stack (lib `EffectParams`, contract `HueNoiseNodeSchema` / `PARAMS.hueNoise`, server, web `HueNoiseNode`, toast-2 preset, specs); `TOAST_GRAPH_VERSION` stays 1 — no toast files exist yet — `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
 - done 16.10: export / import toast (step 5) — right panel buttons; export saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` (`imageId: null`, pretty json); import validates with `parseToastGraph` plus exactly one input / output and unique node ids, keeps the uploaded picture in the input, rebuilds the layout (`toFlow`) and fits the view; an invalid file → error under the import button. Web tests on the round trip and the rejections; checked headless in docker compose: export → import of `input → hue mask → y-rotation → output` → render → re-import of the exported file
-- left: the user runs the DoD scenario by hand in the browser
 
 ### status (2026-10-15, evening) — y-rotation done
 
@@ -119,7 +124,7 @@ each node works from the menu to the picture: lib → contract (zod schema, para
 - [x] export toast saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` with `imageId: null`
 - [x] import toast restores the graph and rebuilds the layout; an invalid file → error in the ui
 - [x] `bun run typecheck` and `bun test` are green
-- [ ] scenario in docker compose: upload a picture → build `input → hue mask → y-rotation → output` → download png → export toast → import it back
+- [x] scenario in docker compose: upload a picture → build `input → hue mask → y-rotation → output` → download png → export toast → import it back
 
 ### order
 

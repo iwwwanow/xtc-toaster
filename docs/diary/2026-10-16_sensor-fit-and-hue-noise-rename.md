@@ -43,6 +43,8 @@
 
 `bun run typecheck` зелёный; lib 181, contract 27, server 37, toasts 3, web 22 — зелёные.
 
-## Остаток спринта 2
+## Закрытие спринта 2
 
-Все пункты DoD, кроме ручного сценария в docker compose, закрыты. До 18.10 — ручная проверка пользователем и stretch (ноды blur, saturation / value mask, isolateChannel, translate / rotate / scale).
+Пользователь прошёл сценарий DoD руками в браузере по короткому QA-списку и подтвердил: «ок». Список: загрузка картинки; удаление нод, при этом input / output не удаляются; drag & drop из меню; связь `input → hue mask → y-rotation → output`; слайдеры; unlink двумя способами; несвязанная нода не влияет на рендер; ошибка при двух связях в одну ноду; `Controls` / `Background`; download png; export toast; импорт после перезагрузки страницы; ошибка импорта на не-json. Все пункты DoD закрыты 16.10, на два дня раньше срока. Stretch (blur, saturation / value mask, isolateChannel, translate / rotate / scale) не начинали — он остаётся под критерий готовности «все текущие фильтры бэкенда».
+
+Дальше — спринт 3 (19.10–25.10): хостинг, публичный доступ, пользовательский тест.

@@ -48,7 +48,7 @@
    - datatypes
    - draft ui
    - done 11.10: + noize slider (render on release), server render in a worker thread; live render while dragging → next release — `docs/sprints/sprint-1.spec.md`
-2. [ ] 12.10-18.10. ui & one-layer toast — in progress; replanned 12.10–13.10, spec `docs/sprints/sprint-2.spec.md`
+2. [x] 12.10-18.10. ui & one-layer toast — closed 16.10; replanned 12.10–13.10, spec `docs/sprints/sprint-2.spec.md`
    - 14.10: done — server renders the path input → output, node editor (menu drag & drop, link / unlink, delete), canvas, right panel (download png), errors visible in the ui, plain html look; left — hue mask (closes the minimum), y-rotation, export / import toast — `docs/diary/2026-10-14_sprint-2-path-render-node-editor.md`
    - 15.10: done — hue mask node (minimum closed), ui labels «hue noise» / «hue mask», one frame on input / output; left — y-rotation, export / import toast; rename `noize → hueNoise` before export ships (otherwise toast files need a migration) — `docs/diary/2026-10-15_hue-mask-node.md`
    - 15.10 evening: done — y-rotation node (lib transform → contract → server → web); left — before export ships (both change the toast file format):
@@ -56,7 +56,7 @@
      - [x] `focalLength` sensor fit like blender's Auto: the 36 mm span the larger side (`px = mm / 36 * max(width, height)`), not always the width — a portrait picture had a stronger perspective than the same lens in blender. Done 16.10
      - [x] rename `noize → hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`. Done 16.10 — `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
      - [x] export / import toast — done 16.10, `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
-     - [ ] the docker compose DoD scenario by hand in the browser
+     - [x] the docker compose DoD scenario by hand in the browser — checked by the user 16.10, sprint closed; stretch nodes not started
    - 1 week
    - node editor (blender geometry nodes as reference, svelte-flow only, no extra libs):
      - add node — drag & drop from the left menu
