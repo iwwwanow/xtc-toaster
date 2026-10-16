@@ -8,7 +8,8 @@
 
 - done 16.10: `focalLength` uses blender's sensor fit Auto — 36 mm across the larger side of the picture (`px = mm / 36 * max(width, height)`), not always the width. Before, a portrait picture got a stronger perspective than the same lens in blender. Server `focalLengthPx` + unit test (landscape / portrait / square); integration on poppies (250 × 359, portrait): 50 mm at 30° now narrows the plane (499 px, near edge transparent), the "near edge fills the frame" case moved to 35 mm
 - done 16.10: `noize → hueNoise` type rename across the stack (lib `EffectParams`, contract `HueNoiseNodeSchema` / `PARAMS.hueNoise`, server, web `HueNoiseNode`, toast-2 preset, specs); `TOAST_GRAPH_VERSION` stays 1 — no toast files exist yet — `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
-- left: export / import toast (step 5), the docker compose DoD scenario
+- done 16.10: export / import toast (step 5) — right panel buttons; export saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` (`imageId: null`, pretty json); import validates with `parseToastGraph` plus exactly one input / output and unique node ids, keeps the uploaded picture in the input, rebuilds the layout (`toFlow`) and fits the view; an invalid file → error under the import button. Web tests on the round trip and the rejections; checked headless in docker compose: export → import of `input → hue mask → y-rotation → output` → render → re-import of the exported file
+- left: the user runs the DoD scenario by hand in the browser
 
 ### status (2026-10-15, evening) — y-rotation done
 
@@ -110,14 +111,14 @@ each node works from the menu to the picture: lib → contract (zod schema, para
 - [x] a node can be deleted by right click or `Delete`, its edges are removed with it
 - [x] input and output are always one each: can't be deleted, not in the menu; code comment about several inputs / outputs later
 - [x] `Controls` and `Background` are on; canvas pans and zooms
-- [ ] right panel, vertical buttons: download png, export toast, import toast — download png done
+- [x] right panel, vertical buttons: download png, export toast, import toast
 - [x] server renders the path `input → … → output` and ignores unlinked nodes
 - [x] no path / branching path → a clear error visible in the ui
 - [x] every graph change re-renders
 - [x] hue mask and y-rotation work from the menu to the picture; tests on the schema (contract) and the render (server), y-rotation also on `Layer` (lib) — both done 15.10
-- [ ] export toast saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` with `imageId: null`
-- [ ] import toast restores the graph and rebuilds the layout; an invalid file → error in the ui
-- [ ] `bun run typecheck` and `bun test` are green
+- [x] export toast saves `toast-2_signac_<YYYYMMDD-HHmmss>.json` with `imageId: null`
+- [x] import toast restores the graph and rebuilds the layout; an invalid file → error in the ui
+- [x] `bun run typecheck` and `bun test` are green
 - [ ] scenario in docker compose: upload a picture → build `input → hue mask → y-rotation → output` → download png → export toast → import it back
 
 ### order

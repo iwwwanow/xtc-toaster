@@ -68,3 +68,34 @@ export const toGraph = (nodes: FlowNode[], edges: Edge[]): ToastGraph =>
     nodes: nodes.map(({ id, type, data }) => ({ id, type, data })),
     edges: edges.map(({ id, source, target }) => ({ id, source, target })),
   });
+
+// toast file: the graph only, imageId: null — a toast is a preset, not a picture.
+// whether to save the picture too is open — docs/backlog/2026-10-13_toast-export-with-image.md
+export const toToastFile = (nodes: FlowNode[], edges: Edge[]): string => {
+  const graph = toGraph(nodes, edges);
+  const withoutImage = graph.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId: null } } : node));
+  return `${JSON.stringify({ ...graph, nodes: withoutImage }, null, 2)}\n`;
+};
+
+// shown in the ui; the details go to console.error
+export class ToastFileError extends Error {}
+
+// same schema as ws messages, plus what the editor relies on: one input, one output, unique ids.
+// the picture stays — the current imageId goes into the input
+export const fromToastFile = (text: string, imageId: string | null): { nodes: FlowNode[]; edges: Edge[] } => {
+  let graph: ToastGraph;
+  try {
+    graph = parseToastGraph(JSON.parse(text));
+  } catch (error) {
+    console.error("toast import failed", error);
+    throw new ToastFileError(error instanceof SyntaxError ? "not a json file" : "not a toast file");
+  }
+  const count = (type: GraphNode["type"]) => graph.nodes.filter((node) => node.type === type).length;
+  if (count("input") !== 1 || count("output") !== 1) {
+    throw new ToastFileError("a toast needs exactly one input and one output");
+  }
+  if (new Set(graph.nodes.map(({ id }) => id)).size !== graph.nodes.length) throw new ToastFileError("duplicate node id");
+
+  const nodes = graph.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId } } : node));
+  return toFlow({ ...graph, nodes });
+};

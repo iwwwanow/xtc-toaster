@@ -7,7 +7,17 @@ import {
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
-import { createNode, toFlow, toGraph, type FlowNode, type FlowNodeOf, type MenuNodeType } from "./graph";
+import {
+  createNode,
+  fromToastFile,
+  toFlow,
+  toGraph,
+  toToastFile,
+  ToastFileError,
+  type FlowNode,
+  type FlowNodeOf,
+  type MenuNodeType,
+} from "./graph";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
@@ -33,6 +43,8 @@ class Session {
   renderError = $state.raw<Pick<RenderErrorMessage, "message" | "nodeId"> | null>(null);
   // shown in the input node — a rejected upload otherwise looks like the picture just did not change
   uploadError = $state<string | null>(null);
+  // shown in the right panel under the import button
+  importError = $state<string | null>(null);
 
   locked = $derived(!this.connected || this.uploading || this.rendering);
   imageId = $derived(
@@ -92,6 +104,25 @@ class Session {
 
   download() {
     if (this.rendered) saveBlob(this.rendered.blob, outputFileName(TOAST, "png"));
+  }
+
+  exportToast() {
+    saveBlob(new Blob([toToastFile(this.nodes, this.edges)], { type: "application/json" }), outputFileName(TOAST, "json"));
+  }
+
+  // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
+  async importToast(file: File): Promise<boolean> {
+    try {
+      const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
+      this.nodes = nodes;
+      this.edges = edges;
+      this.importError = null;
+      return true;
+    } catch (error) {
+      if (!(error instanceof ToastFileError)) console.error("toast import failed", error);
+      this.importError = error instanceof ToastFileError ? error.message : "import failed";
+      return false;
+    }
   }
 
   private receive(message: ServerMessage) {

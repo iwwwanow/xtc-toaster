@@ -1,4 +1,4 @@
-# 2026-10-16 — спринт 2: sensor fit как в blender, переименование noize → hueNoise
+# 2026-10-16 — спринт 2: sensor fit как в blender, noize → hueNoise, экспорт / импорт тоста
 
 Две правки, которые меняют смысл файла тоста, поэтому их нужно было сделать до экспорта / импорта (шаг 5). Обе смержены в `master` через `--no-ff`, не запушены.
 
@@ -22,6 +22,27 @@
 
 `bun run typecheck` зелёный; lib 181, contract 27, server 37, toasts 3, web 12 — зелёные. В браузере не проверял (compose не поднят) — web покрыт typecheck и тестами `toFlow` / `toGraph` от пресета.
 
+## Экспорт / импорт тоста (шаг 5)
+
+Ветка `feat/toast-export-import`, смержена `--no-ff`. Перед этим `master` запушен.
+
+Чистая логика в `web/src/graph.ts`, рядом с `toFlow` / `toGraph`:
+
+- `toToastFile(nodes, edges)` — `toGraph` (ui-поля xyflow отбрасываются), у input `imageId: null`, json с отступами, чтобы файл можно было читать и править руками. В коде комментарий со ссылкой на `docs/backlog/2026-10-13_toast-export-with-image.md` — сохранять ли картинку, пока открыто.
+- `fromToastFile(text, imageId)` — `JSON.parse` + `parseToastGraph`, плюс то, на что опирается редактор и чего схема не проверяет: ровно один input и один output, уникальные id узлов. Без этой проверки файл без input ломал бы ui: загрузка картинки ни к чему бы не применялась. В input подставляется текущая картинка — тост это пресет, его применяют к уже загруженной картинке. Раскладка заново через `toFlow`. Ошибки — `ToastFileError` с коротким текстом для ui («not a json file», «not a toast file», «a toast needs exactly one input and one output», «duplicate node id»), подробности zod — в `console.error`.
+
+`Session.exportToast()` сохраняет через `saveBlob` + `outputFileName(TOAST, "json")`. `Session.importToast(file)` подменяет `nodes` / `edges`, ошибка лежит в `importError`. В `ActionsPanel` две кнопки под download png. Import открывает скрытый `<input type="file" accept="application/json,.json">`. Значение input сбрасывается сразу, чтобы тот же файл можно было выбрать ещё раз (например, поправив его после ошибки). После удачного импорта — `fitView({ maxZoom: 1 })`: в `@xyflow/svelte` 1.7 он сам ждёт замера новых узлов (`fitViewQueued`). Кнопки export и import не блокируются при `locked`: экспорту не нужен сервер, а импорт во время рендера отработает через latest-wins.
+
+`TOAST_GRAPH_VERSION` проверяется схемой (`z.literal(1)`), поэтому файл версии 2 сейчас просто «not a toast file». Отдельное сообщение и миграции понадобятся, когда версия впервые поднимется.
+
+Тесты web (+10): экспорт без картинки и без ui-полей равен пресету; круг экспорт → импорт сохраняет граф, а картинка остаётся в input; импорт раскладывает узлы так же, как `toFlow`; семь отказов с текстом для ui.
+
+Проверено headless Chrome (CDP) в docker compose. Картинка загружается через `DEBUG_IMAGE`. Экспорт скачивает `toast-2_signac_20261016-185626.json` с `imageId: null`. Импорт `input → hue mask → y-rotation → output` пересобирает граф, рендер приходит. Импорт `{"version":1,"nodes":[],"edges":[]}` показывает «a toast needs exactly one input and one output». Повторный импорт выгруженного файла возвращает пресет и стирает ошибку. В консоли ошибок нет. Сценарий DoD руками (собрать граф мышкой, download png) не прогонял — это за пользователем.
+
+## Тесты
+
+`bun run typecheck` зелёный; lib 181, contract 27, server 37, toasts 3, web 22 — зелёные.
+
 ## Остаток спринта 2
 
-До 18.10 два дня: шаг 5 — export / import toast; сценарий DoD в docker compose. После `git switch` / merge при поднятом compose — `docker compose restart web`.
+Все пункты DoD, кроме ручного сценария в docker compose, закрыты. До 18.10 — ручная проверка пользователем и stretch (ноды blur, saturation / value mask, isolateChannel, translate / rotate / scale).
