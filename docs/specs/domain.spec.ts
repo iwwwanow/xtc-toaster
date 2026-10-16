@@ -65,7 +65,7 @@ type MaskParams =
   | { name: "value"; value: number };
 
 type EffectParams = {
-  name: "noize";
+  name: "hueNoise";
   options: { deviationCoefficient: number }; // alpha всегда сохраняется (preserveAlpha удалён 2026-10-03)
 };
 

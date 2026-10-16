@@ -17,10 +17,10 @@ export const InputNodeSchema = z.object({
   data: z.object({ imageId: ImageIdSchema.nullable() }),
 });
 
-export const NoizeNodeSchema = z.object({
+export const HueNoiseNodeSchema = z.object({
   id: NodeIdSchema,
-  type: z.literal("noize"),
-  data: z.object({ deviationCoefficient: ranged(PARAMS.noize.deviationCoefficient) }),
+  type: z.literal("hueNoise"),
+  data: z.object({ deviationCoefficient: ranged(PARAMS.hueNoise.deviationCoefficient) }),
 });
 
 export const HueMaskNodeSchema = z.object({
@@ -46,14 +46,14 @@ export const OutputNodeSchema = z.object({
 
 export const GraphNodeSchema = z.discriminatedUnion("type", [
   InputNodeSchema,
-  NoizeNodeSchema,
+  HueNoiseNodeSchema,
   HueMaskNodeSchema,
   YRotationNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
 export type InputNode = z.infer<typeof InputNodeSchema>;
-export type NoizeNode = z.infer<typeof NoizeNodeSchema>;
+export type HueNoiseNode = z.infer<typeof HueNoiseNodeSchema>;
 export type HueMaskNode = z.infer<typeof HueMaskNodeSchema>;
 export type YRotationNode = z.infer<typeof YRotationNodeSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;

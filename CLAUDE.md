@@ -47,7 +47,7 @@ Zero-DOM: everything works on raw `Uint8ClampedArray` RGBA (`ImageRawDataArray`)
 
 1. `imageFileToRawData(path, scale)` → pixels + dimensions
 2. `Composition(width, height)` creates layers: `createLayerFromPixelData`, `createBlankLayer`, `createColorLayer`, `duplicateLayer`
-3. `Layer` — pixel data + options: `mask` (hue / saturation / value with falloff), `isolateChannel`, `fill`, `tint`, `applyEffect` (`noize`, `blur`), `setTransform` (translate / rotate / scale / skew / homography / perspective), `setBlendMode`, `setOpacity`
+3. `Layer` — pixel data + options: `mask` (hue / saturation / value with falloff), `isolateChannel`, `fill`, `tint`, `applyEffect` (`hueNoise`, `blur`), `setTransform` (translate / rotate / scale / skew / homography / perspective), `setBlendMode`, `setOpacity`
 4. `Composition.render()` reduces layers in creation order through composers: `normal` (alpha), `add`, `lch-hue`
 5. `rawDataToImageFile` / `assembleVideo` / `loopVideoTo` — export
 
@@ -57,7 +57,7 @@ Public surface is `domain/entities` + `domain/types`; services and utils are int
 
 - colors normalized to `0–1` internally, `0–255` in storage
 - HSL is `0–1` for all components; HSV is H in degrees (0–360), S/V in percent (0–100) — inherited from legacy, kept for 1:1 parity
-- `noize` uses `Math.random` — rendering a graph with it is not deterministic
+- `hueNoise` uses `Math.random` — rendering a graph with it is not deterministic
 - `canvas` can't decode webp and ignores EXIF orientation
 
 ## Docs

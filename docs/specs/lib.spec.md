@@ -71,7 +71,7 @@ packages/
 
 **Оркестрация:**
 - `Composition`: `constructor`, `createLayerFromPixelData`, `createBlankLayer`, `createColorLayer`, `duplicateLayer`, `render` (dispatch по blend mode: normal/add → Skia, lch-hue → свой код)
-- `Layer`: `constructor`, `setBlendMode`, `setOpacity`, `setTransform` (dispatch affine/homography → Skia, сборка матрицы — своя), `applyEffect` (blur → Skia, noize → свой), `mask` (hue/saturation/value — свой), `isolateChannel`, `fill`, `tint` (тривиальные, свои)
+- `Layer`: `constructor`, `setBlendMode`, `setOpacity`, `setTransform` (dispatch affine/homography → Skia, сборка матрицы — своя), `applyEffect` (blur → Skia, hueNoise → свой), `mask` (hue/saturation/value — свой), `isolateChannel`, `fill`, `tint` (тривиальные, свои)
 
 **Своя математика:**
 - `hsvMask`/`hueMask`/`saturationMask`/`valueMask` (maskers.ts)
@@ -107,7 +107,7 @@ layer_set_transform_affine(handle, kind_enum, ...params)
 layer_set_transform_homography(handle, matrix_ptr /* f64[9] */)
 layer_set_transform_perspective(handle, corners_ptr /* f64[8] */)
 layer_apply_effect_blur(handle, radius)
-layer_apply_effect_noize(handle, deviation)
+layer_apply_effect_hue_noise(handle, deviation)
 layer_mask_hue(handle, value, tolerance)
 layer_mask_saturation(handle, value, tolerance)
 layer_mask_value(handle, value, tolerance)
