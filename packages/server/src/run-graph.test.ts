@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
-import { GraphError, toPath } from "./run-graph";
+import { GraphError, focalLengthPx, toPath } from "./run-graph";
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: null } };
 const noize: GraphNode = { id: "nz", type: "noize", data: { deviationCoefficient: 0.5 } };
@@ -46,5 +46,16 @@ describe("toPath", () => {
     ["duplicate ids", graph([input, { ...noize, id: "in" }, output], [edge("in", "out")])],
   ])("rejects %s", (_, g) => {
     expect(() => toPath(g)).toThrow(GraphError);
+  });
+});
+
+describe("focalLengthPx", () => {
+  test.each([
+    ["landscape — across the width", { width: 360, height: 240 }],
+    ["portrait — across the height", { width: 240, height: 360 }],
+    ["square", { width: 360, height: 360 }],
+  ])("36 mm spans the larger side: %s", (_, dimensions) => {
+    expect(focalLengthPx(36, dimensions)).toBe(360);
+    expect(focalLengthPx(50, dimensions)).toBe(500);
   });
 });
