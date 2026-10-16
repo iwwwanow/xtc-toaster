@@ -12,7 +12,7 @@ export const PARAMS = {
     tolerance: { min: 0, max: 180, initial: 30 },
   },
   // angle in degrees, ±90 is edge-on (the plane vanishes) — stop short of it;
-  // focalLength in mm, 35 mm equivalent (36 mm across the image width, like a blender camera):
+  // focalLength in mm, 35 mm equivalent (36 mm across the larger side, like a blender camera):
   // smaller = stronger perspective
   yRotation: {
     angle: { min: -85, max: 85, initial: 30 },

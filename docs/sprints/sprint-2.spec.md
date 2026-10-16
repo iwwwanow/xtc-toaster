@@ -4,6 +4,11 @@
    - nodes: hue mask, y-rotation
    - export / import toast
 
+### status (2026-10-16) — y-rotation sensor fit like blender
+
+- done 16.10: `focalLength` uses blender's sensor fit Auto — 36 mm across the larger side of the picture (`px = mm / 36 * max(width, height)`), not always the width. Before, a portrait picture got a stronger perspective than the same lens in blender. Server `focalLengthPx` + unit test (landscape / portrait / square); integration on poppies (250 × 359, portrait): 50 mm at 30° now narrows the plane (499 px, near edge transparent), the "near edge fills the frame" case moved to 35 mm
+- left: `noize → hueNoise` rename, export / import toast (step 5), the docker compose DoD scenario
+
 ### status (2026-10-15, evening) — y-rotation done
 
 - done 15.10: y-rotation from the menu to the picture — lib `yRotation` transform (`angle` in degrees, `focalLength` in px) wired into `Layer.setTransform`; contract `angle` −85…85 (start 30), `focalLength` 50…4000 (start 800); server render + `render-error` on out-of-range; web `YRotationNode` — checked headless: input → y-rotation → output renders, edges go transparent

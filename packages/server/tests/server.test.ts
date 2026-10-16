@@ -193,14 +193,19 @@ describe("ws render: y-rotation", () => {
     return [alphaAt(0), alphaAt(Math.floor(png.width / 2)), alphaAt(png.width - 1)];
   };
 
-  // poppies is opaque, 250 px wide: an edge sampling outside the source goes transparent.
-  // focalLength is mm on a 36 mm frame — as px (no conversion) 300 would keep the near edge
+  // poppies is opaque, 250 × 359 (portrait): an edge sampling outside the source goes transparent.
+  // focalLength is mm with 36 mm across the larger side (blender sensor fit Auto) — at 30° the
+  // near edge goes transparent past ~467 px: 50 mm is 499 px across the height, 347 across the width
   test("long lens (300 mm) → near-flat: the plane narrows, both edges go transparent", async () => {
     expect(await renderRowAlpha(11, 30, 300)).toEqual([0, 255, 0]);
   });
 
-  test("normal lens (50 mm) → the near edge fills the frame, the far edge goes transparent", async () => {
-    expect(await renderRowAlpha(14, 30, 50)).toEqual([255, 255, 0]);
+  test("portrait: 50 mm spans the height → the near edge goes transparent too", async () => {
+    expect(await renderRowAlpha(14, 30, 50)).toEqual([0, 255, 0]);
+  });
+
+  test("wide lens (35 mm) → the near edge fills the frame, the far edge goes transparent", async () => {
+    expect(await renderRowAlpha(15, 30, 35)).toEqual([255, 255, 0]);
   });
 
   test("angle out of range → render-error on that node", async () => {

@@ -53,6 +53,7 @@
    - 15.10: done — hue mask node (minimum closed), ui labels «hue noise» / «hue mask», one frame on input / output; left — y-rotation, export / import toast; rename `noize → hueNoise` before export ships (otherwise toast files need a migration) — `docs/diary/2026-10-15_hue-mask-node.md`
    - 15.10 evening: done — y-rotation node (lib transform → contract → server → web); left — before export ships (both change the toast file format):
      - [x] y-rotation `focalLength` in mm, 35 mm equivalent (like the blender camera): server converts `px = mm / 36 * width`, lib stays in px; bounds 10–300 mm, start 50; slider `focal length (mm)`. Now it's px of the source image — the same toast gives a different perspective on a different picture size. Done 15.10
+     - [x] `focalLength` sensor fit like blender's Auto: the 36 mm span the larger side (`px = mm / 36 * max(width, height)`), not always the width — a portrait picture had a stronger perspective than the same lens in blender. Done 16.10
      - [ ] rename `noize → hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`
      - then export / import toast, the docker compose DoD scenario
    - 1 week

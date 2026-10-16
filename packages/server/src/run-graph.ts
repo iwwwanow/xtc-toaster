@@ -45,6 +45,11 @@ export const toPath = ({ nodes, edges }: ToastGraph): GraphNode[] => {
   return path;
 };
 
+// 35 mm equivalent like a blender camera with sensor fit Auto: the 36 mm sensor
+// spans the larger side of the image, so a lens frames portrait and landscape alike
+export const focalLengthPx = (mm: number, { width, height }: LayerDimensions) =>
+  (mm / 36) * Math.max(width, height);
+
 const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: string) => {
   if (imageId === null) throw new GraphError("upload an image", id);
   // imageId is a uuid (contract) — safe to build a path from
@@ -73,10 +78,10 @@ export const runGraph = async (
         layer.mask({ name: "hue", value: node.data.hue, tolerance: node.data.tolerance / 360 });
         break;
       case "yRotation":
-        // contract has mm on a 36 mm wide frame, lib takes px of the image
+        // contract has mm, lib takes px of the image
         layer.setTransform({
           name: "yRotation",
-          params: { angle: node.data.angle, focalLength: (node.data.focalLength / 36) * width },
+          params: { angle: node.data.angle, focalLength: focalLengthPx(node.data.focalLength, { width, height }) },
         });
         break;
       case "output":
