@@ -55,7 +55,8 @@
      - [x] y-rotation `focalLength` in mm, 35 mm equivalent (like the blender camera): server converts `px = mm / 36 * width`, lib stays in px; bounds 10–300 mm, start 50; slider `focal length (mm)`. Now it's px of the source image — the same toast gives a different perspective on a different picture size. Done 15.10
      - [x] `focalLength` sensor fit like blender's Auto: the 36 mm span the larger side (`px = mm / 36 * max(width, height)`), not always the width — a portrait picture had a stronger perspective than the same lens in blender. Done 16.10
      - [x] rename `noize → hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`. Done 16.10 — `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
-     - then export / import toast, the docker compose DoD scenario
+     - [x] export / import toast — done 16.10, `docs/diary/2026-10-16_sensor-fit-and-hue-noise-rename.md`
+     - [ ] the docker compose DoD scenario by hand in the browser
    - 1 week
    - node editor (blender geometry nodes as reference, svelte-flow only, no extra libs):
      - add node — drag & drop from the left menu
