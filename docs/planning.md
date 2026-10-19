@@ -76,6 +76,7 @@
 3. [ ] 19.10-25.10. hosting - public access
    - 1 week
    - user test
+   - 19.10: spec written — `docs/sprints/sprint-3.spec.md`: one image (Bun serves `dist`), CI test → semantic-release → ghcr, Renovate + doco-cd on `ru-timeweb`, uploads TTL + quota (disk budget 1–2 GB), user test — the sister, 3 pictures; stretch — the rest of the single-layer nodes first
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week
    - layer composing on output node

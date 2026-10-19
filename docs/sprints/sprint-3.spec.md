@@ -1,3 +1,134 @@
-3. [ ] 19.10-25.10. hosting - public access
+3. 19.10-25.10. hosting — public access
    - 1 week
+   - public link
    - user test
+
+### status (2026-10-19) — spec written, work starts
+
+- every open question answered 19.10 — the list is at the end
+- the 1–2 GB limit from the brief is **disk**, not RAM (RAM on `ru-timeweb` is short too — 961 MiB)
+- measured 19.10 (desktop, `runGraph` + png encode, 2 MP picture `hueNoise → hueMask → yRotation`): peak RSS ~215 MB, ~1.1 s per render; `vite build` of `packages/web` works as is (313 kB js)
+
+---
+
+## slice: hosting
+
+https://xtc-toaster.iwwwanow.ru — the same app as the docker compose dev stack, built for prod, on `ru-timeweb` next to owo and vaultwarden. Delivery chain as in kanalveschaniya plus the infra plan (`iwwwanow_infrastructure/docs/planning.md`, «Автоматизация доставки»):
+
+```
+push master → CI: typecheck + test → semantic-release → image ghcr.io/iwwwanow/xtc-toaster:<version>
+  → Renovate PR in infra (automerge) → doco-cd deploys the stack
+```
+
+by hand only `git push`. no app changes beyond what deploy needs (healthcheck, static, uploads cleanup).
+
+### must
+
+#### app (this repo)
+
+- `Dockerfile`, multi-stage — one file for CI tests and prod:
+  - `test`: `oven/bun:1.4.2` + ffmpeg (`packages/lib/tests/infrastructure.test.ts` needs it), `bun install --frozen-lockfile`, `bun run typecheck`, `bun test` of every package. the apt layer is cached (gha cache) — ffmpeg isn't installed on every run; locally `docker build --target test .` reproduces CI
+  - build: `bun install --frozen-lockfile`, `vite build` of `packages/web`
+  - runtime: `oven/bun:1.4.2` (debian — `canvas` prebuilds are glibc, alpine needs musl / a build from source), sources of `server` / `lib` / `contract` (not compiled, like dev) + `dist`
+  - one image, one process: Bun serves `dist` + `/api/*` + `/ws` on one port (decided 19.10 — for now; later web, server and contract split — `docs/backlog/2026-10-19_split-web-server-contract.md`)
+  - no ffmpeg in the runtime — the server doesn't make video
+  - `linux/amd64` only — the only target is `ru-timeweb`; arm64 under qemu would build `canvas` for nothing
+- `.dockerignore` — `assets/` (1.3 GB), `node_modules`, `tests/output`, `packages/lib-native`, `.git`
+- server:
+  - `GET /healthz` → 200 (compose healthcheck, like kanalveschaniya)
+  - `HOST` env (default `0.0.0.0` for dev, `127.0.0.1` in prod) — `network_mode: host`, outside only through caddy, like vaultwarden's `ROCKET_ADDRESS`
+  - uploads cleanup — a public upload without it fills the disk (`ru-timeweb`: 14 GB, 71 % used on 14.10):
+    - TTL: files in `UPLOADS_DIR` older than `UPLOADS_TTL_HOURS` (default 24) are removed on start and every hour
+    - quota: `UPLOADS_MAX_TOTAL_MB` (default 512) — before saving an upload the oldest files go until the new one fits. docker can't cap a bind mount's size, so the app does it
+    - an expired / evicted picture → the existing `image not found` render-error
+- dev `docker-compose.yml` keeps working unchanged
+
+#### CI (`.github/workflows/release.yml`, like kanalveschaniya)
+
+- triggers: push to any branch → `test`; push to `master` → `test` → `release` → `docker` (work goes through local branches merged into `master`, no PRs)
+- `test` job — `docker buildx build --target test` (the stage above); `release` needs it. golden hashes (`pipeline.golden.test.ts`) differ in CI → look at why, never skip silently
+- `release` job — semantic-release, `.releaserc.json` as in kanalveschaniya (commit-analyzer, release-notes, github, git → `CHANGELOG.md` + `package.json`)
+- `docker` job — build & push `ghcr.io/iwwwanow/xtc-toaster:<version>` and `:latest`, gha cache
+- versions stay `0.x` until the 1.0 release on 28.11: tag `v0.1.0` by hand before the first CI run (semantic-release would cut `1.0.0` otherwise) → `feat` bumps minor, `fix` patch
+- the ghcr package is public — doco-cd and Renovate pull it without a token
+
+#### infra (`iwwwanow_infrastructure`)
+
+- DNS: `terraform/dns.tf` — `"iwwwanow.ru/xtc-toaster"` A → `local.ru_timeweb`; `terraform/tofu.sh apply` — by the user (token and state passphrase from pass)
+- caddy: `xtc-toaster.iwwwanow.ru { reverse_proxy 127.0.0.1:8097 }` (8080/8081 owo, 8090 doco-cd, 8095 headscale, 8096 vaultwarden); caddy proxies the ws upgrade by itself
+- stack `stacks/ru-timeweb/xtc-toaster/compose.yml` + entry in `stacks/.doco-cd.ru-timeweb.yml`:
+  - image with a version tag, never `:latest` (Renovate bumps it, rollback goes back to it)
+  - `network_mode: host`, `restart: unless-stopped`, `cap_drop: [ALL]`, `no-new-privileges`, `read_only: true` + `tmpfs: [/tmp]`
+  - `mem_limit: 512m` — peak ~215 MB per render, renders queue in one worker (users don't add up)
+  - `cpu_shares: 256` (default 1024) — a render takes the single vCPU for seconds; under contention headscale (the whole tailnet), caddy and vaultwarden win, idle — the render gets the whole core
+  - uploads — `/srv/xtc-toaster/uploads` (`create_host_path: true`), **not** in backups: temporary data with a TTL
+  - healthcheck on `/healthz`
+- disk budget 1–2 GB for the whole service: uploads ≤ 512 MB (quota) + the image + logs (already capped by the `docker` role: `max-size 10m`, `max-file 3`). every release leaves the old image on the host — find out whether doco-cd prunes them, otherwise a periodic `docker image prune`
+- Renovate on infra — the item «Обновление образов — Renovate» of the infra planning; the hosted GitHub App runs on Mend's cloud (Mend — the company behind Renovate), checks registries every few hours — fine for this sprint:
+  - GitHub App, `renovate.json`: `docker-compose` manager, `ghcr.io/iwwwanow/*` — automerge (`automergeType: "pr"`), foreign images — PR only
+  - owo evix stays on `1.7.0` (rule from the infra planning), otherwise the first Renovate run bumps it
+  - the Dependency Dashboard checkbox — the manual "check now" when the Mend schedule is too slow
+
+#### user test
+
+- one tester — the user's sister, an artist: on the public link she makes toasts from 3 different pictures of her own
+- free form — what feedback she brings is part of the result; the link is open, no auth (decided 19.10)
+- result: notes in `docs/diary/`, a ui polish list for sprints 4+ (`docs/planning.md`: "ui polish — after the user test in sprint 3")
+
+### definition of done
+
+- [ ] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
+- [ ] a `feat` / `fix` push to `master` reaches prod with no manual step: CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
+- [ ] red tests or typecheck in CI → no release, no image
+- [ ] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
+- [ ] `docker ps` shows the container `healthy`
+- [ ] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota)
+- [ ] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
+- [ ] rollback checked once: revert of the Renovate PR → the previous version on prod
+- [ ] user test done: the tester made toasts from 3 pictures on the public link, her feedback is in `docs/diary/`
+- [ ] `bun run typecheck` and `bun test` green; dev docker compose works as before
+
+### order
+
+1. app: healthz, `HOST`, uploads cleanup, `Dockerfile`, `.dockerignore` — checked locally (`docker build` + `docker run`, the DoD scenario on localhost)
+2. CI: test → release → docker; first `0.x` image in ghcr
+3. infra: DNS, caddy, stack with a pinned version — the link is live
+4. Renovate on infra, then one `fix` pushed through the whole chain + rollback
+5. the user's own test on prod: render time and memory on the host (`docker stats`), how the 1 vCPU copes. too slow → lower `UPLOAD_MAX_MEGAPIXELS` (contract) or similar — decided then, on numbers
+6. user test (the sister)
+7. stretch
+
+### stretch (if time is left, in order)
+
+1. **the rest of the single-layer nodes** (sprint 2 stretch) — no sprint covers the readiness criterion "all current backend filters" (`docs/planning.md`), so it goes first; lib already has every one, the pattern is the hue mask one (contract schema + bounds → server `run-graph.ts` → web node + menu, tests on schema and render):
+   - blur
+   - saturation mask, value mask
+   - isolateChannel
+   - translate, rotate, scale
+   - before the user test if they're done by then — more to play with
+2. **manual review + refactoring** of the vibe-coded code — by the user, Claude helps:
+   - order: `server` (goes public first) → `contract` → `web` → `lib`
+   - rules: no behaviour change, tests green before and after, one package = one branch; findings that don't fit → `docs/backlog/`
+   - commits `refactor:` — semantic-release doesn't release them, nothing reaches prod until the next `feat` / `fix`
+   - already written down: `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
+3. Renovate on this repo — deps, the bun image, actions; PR only (automerge — after a few weeks without breakage). fits the "latest exact version" rule from `CLAUDE.md`
+4. the ui says "server unavailable" when the ws drops (a deploy restarts the container — users see a dead page otherwise)
+
+### cut if behind (in order)
+
+1. rollback check → sprint 4
+2. Renovate → the tag in infra is bumped by hand (doco-cd still deploys from git)
+3. user test → sprint 4 (the link still has to be live)
+
+### not in this sprint
+
+- auth, rate limits, several render workers, render cache, CDN
+- monitoring / alerts (infra planning: notifications on timer failures — shared, later)
+- static served by the front proxy (`docs/backlog/2026-10-06_deploy-reverse-proxy-single-origin.md`) and the web / server / contract split — `docs/backlog/2026-10-19_split-web-server-contract.md`
+- LFS / history cleanup, the Pexels key — `docs/backlog/2026-10-07_*`
+
+### decisions
+
+answered 19.10: Q1 (one image, Bun serves `dist` — for now), Q2 (disk 1–2 GB → uploads quota + image cleanup; RAM `mem_limit: 512m`, `cpu_shares: 256`; host performance — after the user's own test), Q3 (tag `v0.1.0` by hand), Q4 (Renovate: infra — must, this repo — stretch; hours of latency are fine), Q5 (one tester, 3 pictures, free form), Q6 (tests in a `test` stage of the `Dockerfile`, ffmpeg cached).
+
+- Q7 (19.10): the link is open, no auth — not published anywhere; uploads TTL + quota, one render queue and upload limits (10 MB / 2 MP) cover abuse. If it leaks — caddy `basic_auth` (the browser's login / password dialog, a bcrypt hash in the Caddyfile), one block.
