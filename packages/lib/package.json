@@ -9,6 +9,7 @@
     "canvas": "3.2.3"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc"
   }
 }
