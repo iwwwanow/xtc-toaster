@@ -77,6 +77,12 @@
    - 1 week
    - user test
    - 19.10: spec written — `docs/sprints/sprint-3.spec.md`: one image (Bun serves `dist`), CI test → semantic-release → ghcr, Renovate + doco-cd on `ru-timeweb`, uploads TTL + quota (disk budget 1–2 GB), user test — the sister, 3 pictures; stretch — the rest of the single-layer nodes first
+   - [x] 20.10: CI — test (`docker build --target test`) on every branch, `master` → semantic-release → ghcr; `v0.1.0` tagged by hand, first release `v0.1.1` (`ghcr.io/iwwwanow/xtc-toaster:0.1.1`, public)
+   - [ ] app: `/healthz`, `HOST`, `STATIC_DIR`, uploads TTL + quota, image healthcheck — done in `feat/server-prod` (CI green), **not merged**: 21.10 manual check of the dev docker compose first, then merge → `0.2.0`
+   - [ ] infra: DNS, caddy `127.0.0.1:8097`, stack with `0.2.0` (`iwwwanow_infrastructure`, own branch)
+   - [ ] Renovate on infra + one `fix` through the whole chain + rollback
+   - [ ] own test on prod, then the user test (the sister)
+   - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week
    - layer composing on output node

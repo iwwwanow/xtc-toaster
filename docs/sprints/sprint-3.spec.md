@@ -9,6 +9,14 @@
 - the 1–2 GB limit from the brief is **disk**, not RAM (RAM on `ru-timeweb` is short too — 961 MiB)
 - measured 19.10 (desktop, `runGraph` + png encode, 2 MP picture `hueNoise → hueMask → yRotation`): peak RSS ~215 MB, ~1.1 s per render; `vite build` of `packages/web` works as is (313 kB js)
 
+### status (2026-10-21)
+
+- CI done and on `master`: test on every branch → semantic-release → ghcr. `v0.1.0` tagged by hand, first release `v0.1.1` — the ghcr package is already public (anonymous pull works)
+- golden hashes match in CI. ffmpeg in the test image is 7.1 (debian trixie) — `speedUpVideo`'s `fps=source_fps` failed there, fixed (`fix(lib)`: the source rate is probed)
+- `.releaserc.json` — tags + GitHub Releases only (see the CI section)
+- app part (order 1) — branch `feat/server-prod`, CI green, not merged: waits for the manual check of the dev compose
+- open: the container runs as root (proposed: keep — `cap_drop: ALL`, `read_only`, `no-new-privileges` in the stack; `bun` user would need `/srv/xtc-toaster/uploads` owned by uid 1000 via Ansible)
+
 ---
 
 ## slice: hosting
