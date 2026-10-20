@@ -23,7 +23,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # the `test` stage of the Dockerfile — `docker build --target test .` reproduces it locally
+      # tests run inside `docker build`, not on the runner: the `test` stage of the Dockerfile
+      # (oven/bun + ffmpeg, the same base as prod) ends with `RUN bun run typecheck && bun run test`,
+      # a red test fails the build → this job → no release. Nothing is pushed, the stage is thrown away.
+      # Unchanged sources → that layer comes from the cache, tests aren't rerun (same input, same result).
+      # `docker build --target test .` reproduces it locally
       - name: Typecheck & test
         uses: docker/build-push-action@v7
         with:
