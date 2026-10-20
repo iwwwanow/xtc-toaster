@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
 import type { ImageRawDataArray } from "../domain/types";
 
 async function pipeFrames(
@@ -78,17 +79,32 @@ export async function loopVideoTo(
   });
 }
 
+// r_frame_rate as ffprobe prints it ("30000/1001") — the fps filter takes the fraction as is
+async function probeFrameRate(path: string): Promise<string> {
+  const { stdout } = await promisify(execFile)("ffprobe", [
+    "-v", "error",
+    "-select_streams", "v:0",
+    "-show_entries", "stream=r_frame_rate",
+    "-of", "csv=p=0",
+    path,
+  ]);
+  return stdout.trim();
+}
+
 export async function speedUpVideo(
   inputPath: string,
   speed: number,
   outputPath: string
 ): Promise<void> {
+  const fps = await probeFrameRate(inputPath);
   const args = [
     "-y",
     "-i", inputPath,
-    // fps=source_fps keeps the input frame rate by dropping frames; without it
-    // ffmpeg duplicates frames and the clip comes out longer than duration/speed
-    "-vf", `setpts=PTS/${speed},fps=source_fps`,
+    // fps=<source rate> keeps the input frame rate by dropping frames; without it
+    // ffmpeg duplicates frames and the clip comes out longer than duration/speed.
+    // The rate is probed, not `fps=source_fps`: ffmpeg 7.1 (debian trixie, the CI
+    // image) fails on it with "encoder timebase is not set"
+    "-vf", `setpts=PTS/${speed},fps=${fps}`,
     "-c:v", "libx264",
     "-pix_fmt", "yuv420p",
     outputPath,

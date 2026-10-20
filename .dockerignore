@@ -1,0 +1,12 @@
+**/node_modules
+**/tests/output
+**/dist
+assets
+baked
+batch-out
+tmp
+packages/lib-native
+.git
+.github
+.claude
+.env

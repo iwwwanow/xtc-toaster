@@ -47,7 +47,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 
 - triggers: push to any branch → `test`; push to `master` → `test` → `release` → `docker` (work goes through local branches merged into `master`, no PRs)
 - `test` job — `docker buildx build --target test` (the stage above); `release` needs it. golden hashes (`pipeline.golden.test.ts`) differ in CI → look at why, never skip silently
-- `release` job — semantic-release, `.releaserc.json` as in kanalveschaniya (commit-analyzer, release-notes, github, git → `CHANGELOG.md` + `package.json`)
+- `release` job — semantic-release, `.releaserc.json` as kanalveschaniya actually works: commit-analyzer, release-notes, github — the version lives in the git tag + GitHub Release, CI commits nothing back (decided 20.10: kanalveschaniya lists `@semantic-release/git`, but without the changelog / npm plugins it has nothing to commit — no `CHANGELOG.md`, `package.json` stays `0.0.0`)
 - `docker` job — build & push `ghcr.io/iwwwanow/xtc-toaster:<version>` and `:latest`, gha cache
 - versions stay `0.x` until the 1.0 release on 28.11: tag `v0.1.0` by hand before the first CI run (semantic-release would cut `1.0.0` otherwise) → `feat` bumps minor, `fix` patch
 - the ghcr package is public — doco-cd and Renovate pull it without a token
