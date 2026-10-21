@@ -14,7 +14,7 @@
 - CI done and on `master`: test on every branch → semantic-release → ghcr. `v0.1.0` tagged by hand, first release `v0.1.1` — the ghcr package is already public (anonymous pull works)
 - golden hashes match in CI. ffmpeg in the test image is 7.1 (debian trixie) — `speedUpVideo`'s `fps=source_fps` failed there, fixed (`fix(lib)`: the source rate is probed)
 - `.releaserc.json` — tags + GitHub Releases only (see the CI section)
-- app part (order 1) — branch `feat/server-prod`, CI green, not merged: waits for the manual check of the dev compose
+- app part (order 1) — done: dev compose checked by hand 21.10 (sprint 2 scenario), `feat/server-prod` merged → `0.2.0`. Next — infra (order 3)
 - open: the container runs as root (proposed: keep — `cap_drop: ALL`, `read_only`, `no-new-privileges` in the stack; `bun` user would need `/srv/xtc-toaster/uploads` owned by uid 1000 via Ansible)
 
 ---

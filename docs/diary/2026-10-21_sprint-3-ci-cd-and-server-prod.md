@@ -38,10 +38,16 @@ Golden-хэши в контейнере совпали с десктопом. У
 
 - Контейнер работает от root. Предложение — оставить: в стеке будут `cap_drop: ALL`, `read_only`, `no-new-privileges`. Пользователь `bun` потребует `/srv/xtc-toaster/uploads` с владельцем uid 1000 через Ansible. Не решено.
 
+## Вечер 21.10 — ручная проверка и мерж
+
+Dev-стек на `feat/server-prod` проверен руками: сценарий спринта 2 (загрузка → граф → png → экспорт / импорт тоста) работает, server в compose без `STATIC_DIR` жив, при старте подчистил 9 просроченных загрузок. Подводный камень: страница на `localhost:5173` была пустой — порт держал чужой стек (`onward-spartak-webview`), а наш `web` поднялся без опубликованного порта, compose не ругнулся. Локально `WEB_PORT=5174` в `.env`.
+
+Ветка смержена в `master` (`005bfe7`) → релиз `0.2.0`. Пункт 1 списка ниже закрыт, мерж сделан; infra — завтра.
+
 ## На завтра
 
-1. Ручная проверка dev-стека на ветке `feat/server-prod`: `docker compose up -d`, сценарий спринта 2 на `http://localhost:$WEB_PORT` (upload → граф → png → экспорт / импорт тоста). Server в compose без `STATIC_DIR` и с `HOST` по умолчанию — по коду не затронут, но вживую не проверяли.
-2. Мерж `feat/server-prod` → master → `0.2.0`, проверить job `docker` и образ.
+1. ~~Ручная проверка dev-стека на ветке `feat/server-prod`: `docker compose up -d`, сценарий спринта 2 на `http://localhost:$WEB_PORT` (upload → граф → png → экспорт / импорт тоста). Server в compose без `STATIC_DIR` и с `HOST` по умолчанию — по коду не затронут, но вживую не проверяли.~~ ✅ 21.10
+2. ~~Мерж `feat/server-prod` → master → `0.2.0`~~ ✅ 21.10; проверить job `docker` и образ.
 3. Решить root / `bun`.
 4. Infra (`iwwwanow_infrastructure`, своя ветка): `terraform/dns.tf` (`tofu.sh apply` — руками пользователя), Caddyfile `xtc-toaster.iwwwanow.ru → 127.0.0.1:8097`, стек `stacks/ru-timeweb/xtc-toaster/compose.yml` с `0.2.0` (`PORT=8097`, `HOST=127.0.0.1`, `UPLOADS_DIR`, `mem_limit: 512m`, `cpu_shares: 256`, `read_only` + tmpfs, uploads в `/srv/xtc-toaster/uploads`) + запись в `stacks/.doco-cd.ru-timeweb.yml`.
 5. Дальше по спеке: Renovate на infra, `fix` через всю цепочку + откат, собственный тест на проде, тест сестры.
