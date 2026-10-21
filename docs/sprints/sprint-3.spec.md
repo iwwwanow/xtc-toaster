@@ -121,6 +121,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
    - already written down: `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
 3. Renovate on this repo — deps, the bun image, actions; PR only (automerge — after a few weeks without breakage). fits the "latest exact version" rule from `CLAUDE.md`
 4. the ui says "server unavailable" when the ws drops (a deploy restarts the container — users see a dead page otherwise)
+5. **favicon** — the public link should have one (`packages/web` has none now: no `<link rel="icon">`, no `public/`). Lowest priority in the sprint
 
 ### cut if behind (in order)
 

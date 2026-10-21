@@ -82,6 +82,7 @@
    - [ ] infra: DNS, caddy `127.0.0.1:8097`, stack with `0.2.0` (`iwwwanow_infrastructure`, own branch)
    - [ ] Renovate on infra + one `fix` through the whole chain + rollback
    - [ ] own test on prod, then the user test (the sister)
+   - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week
