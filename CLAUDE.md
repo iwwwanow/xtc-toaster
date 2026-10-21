@@ -11,6 +11,7 @@ Dependencies: always the latest released version, pinned exactly (`"zod": "4.6.5
 ```bash
 bun install          # install workspace deps
 bun run typecheck    # each package's own `typecheck` via `bun run --filter` (one root tsconfig.json, packages extend it)
+bun run test         # each package's own `bun test` via `bun run --filter`
 bun run toast-1      # bake toast-1 (degas) → baked/*.mp4
 bun run web:dev      # web: vite dev server, proxies /api + /ws to SERVER_HOST (default localhost:3000)
 bun run server:dev   # bun server with --watch: POST /api/images, /ws (PORT=3000, UPLOADS_DIR=assets/uploads)
@@ -20,6 +21,8 @@ cp .env.example .env && docker compose up -d   # dev stack: install → server +
 ```
 
 Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. `DEBUG_IMAGE` (path from the repo root, compose default `poppies.jpg`, empty — off) — the page uploads that picture on open; vite dev server only (`vite.config.ts`). A new package in `packages/*` needs its own node_modules volume there.
+
+Prod: `Dockerfile` (multi-stage) — `docker build --target test .` is what CI runs (typecheck + `bun run test` of every package, ffmpeg 7.1 from debian trixie — not the desktop's 8), `docker build .` is the runtime image: one bun process serves the web build (`STATIC_DIR`) + `/api` + `/ws` + `/healthz`. Server env: `PORT`, `HOST` (default `0.0.0.0`), `UPLOADS_DIR`, `UPLOADS_TTL_HOURS` (24), `UPLOADS_MAX_TOTAL_MB` (512), `STATIC_DIR` (unset in dev — vite serves the page). CI — `.github/workflows/release.yml`: any branch → test, `master` → semantic-release (tags + GitHub Releases, `feat` → minor, `fix` → patch while `0.x`) → `ghcr.io/iwwwanow/xtc-toaster:<version>`.
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. `packages/server`: unit tests next to the code, integration in `tests/server.test.ts` (real `Bun.serve` on a random port, uploads into `tests/output/uploads`). No linting tools are configured.
 

@@ -51,7 +51,11 @@ let imageId: string;
 
 beforeAll(async () => {
   await rm(UPLOADS_DIR, { recursive: true, force: true });
-  server = await createServer({ port: 0, uploadsDir: UPLOADS_DIR });
+  server = await createServer({
+    port: 0,
+    uploadsDir: UPLOADS_DIR,
+    uploads: { ttlMs: 3_600_000, maxTotalBytes: 100 * 1024 * 1024 },
+  });
   socket = new WebSocket(new URL("/ws", server.url.href.replace(/^http/, "ws")));
   socket.addEventListener("message", ({ data }) => {
     inbox.push(ServerMessageSchema.parse(JSON.parse(String(data))));

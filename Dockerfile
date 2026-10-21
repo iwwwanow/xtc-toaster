@@ -46,4 +46,8 @@ COPY --from=build /app/packages/web/dist ./packages/web/dist
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV UPLOADS_DIR=/data/uploads
+ENV STATIC_DIR=/app/packages/web/dist
+# no curl in the image — bun fetches /healthz itself
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["bun", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 CMD ["bun", "packages/server/src/index.ts"]
