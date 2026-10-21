@@ -80,6 +80,7 @@
    - [x] 20.10: CI — test (`docker build --target test`) on every branch, `master` → semantic-release → ghcr; `v0.1.0` tagged by hand, first release `v0.1.1` (`ghcr.io/iwwwanow/xtc-toaster:0.1.1`, public)
    - [x] 21.10: app — `/healthz`, `HOST`, `STATIC_DIR`, uploads TTL + quota, image healthcheck; dev compose checked by hand (sprint 2 scenario), `feat/server-prod` merged → `0.2.0`
    - [ ] infra: DNS, caddy `127.0.0.1:8097`, stack with `0.2.0` (`iwwwanow_infrastructure`, own branch)
+     - 21.10 decided: the container stays root, hardened in the stack — `cap_drop: ALL`, `read_only` + tmpfs, `no-new-privileges`; `USER bun` later, with the server review — `docs/backlog/2026-10-21_container-non-root-user.md`
    - [ ] Renovate on infra + one `fix` through the whole chain + rollback
    - [ ] own test on prod, then the user test (the sister)
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)

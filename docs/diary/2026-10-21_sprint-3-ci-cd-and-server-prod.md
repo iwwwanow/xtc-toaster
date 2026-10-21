@@ -48,7 +48,7 @@ Dev-стек на `feat/server-prod` проверен руками: сценар
 
 1. ~~Ручная проверка dev-стека на ветке `feat/server-prod`: `docker compose up -d`, сценарий спринта 2 на `http://localhost:$WEB_PORT` (upload → граф → png → экспорт / импорт тоста). Server в compose без `STATIC_DIR` и с `HOST` по умолчанию — по коду не затронут, но вживую не проверяли.~~ ✅ 21.10
 2. ~~Мерж `feat/server-prod` → master → `0.2.0` ✅ 21.10; проверить job `docker` и образ~~ ✅ — CI зелёный, `ghcr.io/iwwwanow/xtc-toaster:0.2.0` есть.
-3. Решить root / `bun`.
+3. ~~Решить root / `bun`~~ ✅ 21.10: root + `cap_drop: ALL`, `read_only`, `no-new-privileges` в стеке; `USER bun` — позже, `docs/backlog/2026-10-21_container-non-root-user.md`.
 4. Infra (`iwwwanow_infrastructure`, своя ветка): `terraform/dns.tf` (`tofu.sh apply` — руками пользователя), Caddyfile `xtc-toaster.iwwwanow.ru → 127.0.0.1:8097`, стек `stacks/ru-timeweb/xtc-toaster/compose.yml` с `0.2.0` (`PORT=8097`, `HOST=127.0.0.1`, `UPLOADS_DIR`, `mem_limit: 512m`, `cpu_shares: 256`, `read_only` + tmpfs, uploads в `/srv/xtc-toaster/uploads`) + запись в `stacks/.doco-cd.ru-timeweb.yml`.
 5. Дальше по спеке: Renovate на infra, `fix` через всю цепочку + откат, собственный тест на проде, тест сестры.
 6. Favicon — в самый конец спринта, после stretch (добавлен в план 21.10).

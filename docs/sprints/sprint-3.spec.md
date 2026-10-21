@@ -15,7 +15,7 @@
 - golden hashes match in CI. ffmpeg in the test image is 7.1 (debian trixie) — `speedUpVideo`'s `fps=source_fps` failed there, fixed (`fix(lib)`: the source rate is probed)
 - `.releaserc.json` — tags + GitHub Releases only (see the CI section)
 - app part (order 1) — done: dev compose checked by hand 21.10 (sprint 2 scenario), `feat/server-prod` merged → `0.2.0`. Next — infra (order 3)
-- open: the container runs as root (proposed: keep — `cap_drop: ALL`, `read_only`, `no-new-privileges` in the stack; `bun` user would need `/srv/xtc-toaster/uploads` owned by uid 1000 via Ansible)
+- decided 21.10: the container stays root, hardened in the stack — `cap_drop: ALL`, `read_only` + tmpfs, `no-new-privileges`. `USER bun` (needs `/srv/xtc-toaster/uploads` owned by uid 1000 via Ansible) — later, with the server review: `docs/backlog/2026-10-21_container-non-root-user.md`
 
 ---
 
