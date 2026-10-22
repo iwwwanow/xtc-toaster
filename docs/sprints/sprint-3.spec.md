@@ -19,7 +19,7 @@
 
 ### status (2026-10-22)
 
-- infra written and merged into infra `master` locally: DNS record (`tofu apply` done — the record is in the Timeweb API, their NS don't serve it yet), caddy block, stack with `0.2.0`, doco-cd entry. Push — once the NS resolve the name
+- infra written and pushed to infra `master` (by the user, without waiting for DNS): DNS record (`tofu apply` done — the record is in the Timeweb API), caddy block, stack with `0.2.0`, doco-cd entry. End of the session: Timeweb NS still don't serve the name (SOA serial unchanged) → no certificate, the link is dead. Tomorrow first: does the NS serve it (else — the Timeweb panel), caddy logs for the certificate, then the DoD scenario on prod
 - `0.2.0` run locally with the stack limits (`read_only`, `cap_drop: ALL`, `no-new-privileges`, 512m, `cpu_shares: 256`): upload + 2 MP render `hueNoise → hueMask → yRotation` 1.1–1.7 s, `healthy`. Root without `CAP_DAC_OVERRIDE` writes only into a root-owned uploads dir — docker creates `/srv/xtc-toaster/uploads` as root, fine
 - old images: doco-cd `prune_images` is true by default — likely covered, check on the host after the first Renovate update
 - added: app version in the ui (stretch 6, last). One version for the whole repo — the git tag; lib isn't published, needs none
@@ -81,7 +81,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 - disk budget 1–2 GB for the whole service: uploads ≤ 512 MB (quota) + the image + logs (already capped by the `docker` role: `max-size 10m`, `max-file 3`). every release leaves the old image on the host — find out whether doco-cd prunes them, otherwise a periodic `docker image prune`
 - Renovate on infra — the item «Обновление образов — Renovate» of the infra planning; the hosted GitHub App runs on Mend's cloud (Mend — the company behind Renovate), checks registries every few hours — fine for this sprint:
   - GitHub App, `renovate.json`: `docker-compose` manager, `ghcr.io/iwwwanow/*` — automerge (`automergeType: "pr"`), foreign images — PR only
-  - owo evix stays on `1.7.0` (rule from the infra planning), otherwise the first Renovate run bumps it
+  - owo evix isn't pinned (decided 22.10, was «stays on `1.7.0`»): updates with the rest, but only within `1.x` — `allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo` (applies to the iwwwanow instance too; an owo major — by hand)
   - the Dependency Dashboard checkbox — the manual "check now" when the Mend schedule is too slow
 
 #### user test
