@@ -81,6 +81,7 @@
    - [x] 21.10: app — `/healthz`, `HOST`, `STATIC_DIR`, uploads TTL + quota, image healthcheck; dev compose checked by hand (sprint 2 scenario), `feat/server-prod` merged → `0.2.0`
    - [ ] infra: DNS, caddy `127.0.0.1:8097`, stack with `0.2.0` (`iwwwanow_infrastructure`, own branch)
      - 21.10 decided: the container stays root, hardened in the stack — `cap_drop: ALL`, `read_only` + tmpfs, `no-new-privileges`; `USER bun` later, with the server review — `docs/backlog/2026-10-21_container-non-root-user.md`
+     - 22.10: infra `master` (local, not pushed yet): DNS record (applied — in the Timeweb API, the NS don't serve it yet), caddy, stack `stacks/ru-timeweb/xtc-toaster` with `0.2.0`; push once the NS resolve the name (otherwise caddy burns Let's Encrypt attempts). `0.2.0` checked locally under the stack limits (read-only, no caps, 512m): upload + 2 MP render 1.1–1.7 s, `healthy`. Old images — doco-cd `prune_images` (default true), check on the host after the first update. infra secrets moved pass → Vaultwarden (`rbw`)
    - [ ] Renovate on infra + one `fix` through the whole chain + rollback
    - [ ] own test on prod, then the user test (the sister)
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)

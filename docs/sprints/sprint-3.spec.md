@@ -17,6 +17,13 @@
 - app part (order 1) — done: dev compose checked by hand 21.10 (sprint 2 scenario), `feat/server-prod` merged → `0.2.0`. Next — infra (order 3)
 - decided 21.10: the container stays root, hardened in the stack — `cap_drop: ALL`, `read_only` + tmpfs, `no-new-privileges`. `USER bun` (needs `/srv/xtc-toaster/uploads` owned by uid 1000 via Ansible) — later, with the server review: `docs/backlog/2026-10-21_container-non-root-user.md`
 
+### status (2026-10-22)
+
+- infra written and merged into infra `master` locally: DNS record (`tofu apply` done — the record is in the Timeweb API, their NS don't serve it yet), caddy block, stack with `0.2.0`, doco-cd entry. Push — once the NS resolve the name
+- `0.2.0` run locally with the stack limits (`read_only`, `cap_drop: ALL`, `no-new-privileges`, 512m, `cpu_shares: 256`): upload + 2 MP render `hueNoise → hueMask → yRotation` 1.1–1.7 s, `healthy`. Root without `CAP_DAC_OVERRIDE` writes only into a root-owned uploads dir — docker creates `/srv/xtc-toaster/uploads` as root, fine
+- old images: doco-cd `prune_images` is true by default — likely covered, check on the host after the first Renovate update
+- added: app version in the ui (stretch 6, last). One version for the whole repo — the git tag; lib isn't published, needs none
+
 ---
 
 ## slice: hosting
