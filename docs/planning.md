@@ -84,6 +84,7 @@
    - [ ] Renovate on infra + one `fix` through the whole chain + rollback
    - [ ] own test on prod, then the user test (the sister)
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
+   - [ ] app version in the bottom-right corner of the ui — to see which version is hosted; the very last item of the sprint (after the favicon)
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week

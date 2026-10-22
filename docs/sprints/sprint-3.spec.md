@@ -122,6 +122,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 3. Renovate on this repo — deps, the bun image, actions; PR only (automerge — after a few weeks without breakage). fits the "latest exact version" rule from `CLAUDE.md`
 4. the ui says "server unavailable" when the ws drops (a deploy restarts the container — users see a dead page otherwise)
 5. **favicon** — the public link should have one (`packages/web` has none now: no `<link rel="icon">`, no `public/`). Lowest priority in the sprint
+6. **app version in the ui** — bottom-right corner, to see which version is hosted. The very last item, after the favicon. One version for the whole repo — the semantic-release git tag (= the ghcr image tag); every `package.json` stays `0.0.0`. The `docker` job knows it (`new_release_version`) → build arg → into the web build (vite `define`); dev / a local build shows `dev`
 
 ### cut if behind (in order)
 
