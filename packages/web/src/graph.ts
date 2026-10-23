@@ -1,5 +1,6 @@
 import type { Edge, Node, XYPosition } from "@xyflow/svelte";
 import {
+  CHANNELS,
   PARAMS,
   parseToastGraph,
   TOAST_GRAPH_VERSION,
@@ -12,9 +13,10 @@ import {
 export type FlowNodeOf<T extends GraphNode["type"]> = Node<Extract<GraphNode, { type: T }>["data"], T>;
 export type FlowNode = { [T in GraphNode["type"]]: FlowNodeOf<T> }[GraphNode["type"]];
 
-// node types of the left menu: everything with params; input and output are fixed
-export type MenuNodeType = keyof typeof PARAMS;
-export const MENU_NODE_TYPES = Object.keys(PARAMS) as MenuNodeType[];
+// node types of the left menu: everything with params; input and output are fixed.
+// isolateChannel has no range — it picks one of CHANNELS
+export type MenuNodeType = keyof typeof PARAMS | "isolateChannel";
+export const MENU_NODE_TYPES = [...(Object.keys(PARAMS) as (keyof typeof PARAMS)[]), "isolateChannel"] as MenuNodeType[];
 // drag & drop from the menu onto the canvas carries the node type under this mime
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
 // ui name of a node type — the menu item and the node's legend; the type itself stays the contract key
@@ -22,6 +24,13 @@ export const NODE_LABELS = {
   hueNoise: "hue noise",
   hueMask: "hue mask",
   yRotation: "y-rotation",
+  blur: "blur",
+  saturationMask: "saturation mask",
+  valueMask: "value mask",
+  translate: "translate",
+  rotate: "rotate",
+  scale: "scale",
+  isolateChannel: "isolate channel",
 } as const satisfies Record<MenuNodeType, string>;
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
@@ -57,7 +66,10 @@ export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } 
 };
 
 export const createNode = (type: MenuNodeType, position: XYPosition): FlowNode => {
-  const data = Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));
+  const data =
+    type === "isolateChannel"
+      ? { channel: CHANNELS[0] }
+      : Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));
   return { id: crypto.randomUUID(), type, position, data } as FlowNode;
 };
 

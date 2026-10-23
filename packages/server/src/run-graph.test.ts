@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
-import { GraphError, focalLengthPx, toPath } from "./run-graph";
+import { GraphError, focalLengthPx, percentPx, toPath } from "./run-graph";
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: null } };
 const hueNoise: GraphNode = { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } };
@@ -57,5 +57,15 @@ describe("focalLengthPx", () => {
   ])("36 mm spans the larger side: %s", (_, dimensions) => {
     expect(focalLengthPx(36, dimensions)).toBe(360);
     expect(focalLengthPx(50, dimensions)).toBe(500);
+  });
+});
+
+describe("percentPx", () => {
+  test.each([
+    [50, 250, 125],
+    [-100, 359, -359],
+    [0, 250, 0],
+  ])("%p %% of %p px → %p px", (percent, size, px) => {
+    expect(percentPx(percent, size)).toBe(px);
   });
 });

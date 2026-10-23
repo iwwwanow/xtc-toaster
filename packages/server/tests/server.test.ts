@@ -224,6 +224,106 @@ describe("ws render: y-rotation", () => {
   });
 });
 
+describe("ws render: single-layer nodes", () => {
+  const single = (type: string, data: Record<string, unknown>) => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "n", type, data },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [
+      { id: "in-n", source: "in", target: "n" },
+      { id: "n-out", source: "n", target: "out" },
+    ],
+  });
+
+  let requestId = 100;
+  const render = async (type: string, data: Record<string, unknown>) => {
+    send({ type: "render", requestId: ++requestId, graph: single(type, data) });
+    const message = await nextMessage();
+    if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
+    const png = await loadImage(Buffer.from(message.png, "base64"));
+    const context = createCanvas(png.width, png.height).getContext("2d");
+    context.drawImage(png, 0, 0);
+    const { data: pixels, width, height } = context.getImageData(0, 0, png.width, png.height);
+    const at = (x: number, y: number) => [...pixels.slice((y * width + x) * 4, (y * width + x) * 4 + 4)];
+    return { pixels, width, height, at };
+  };
+  const alphas = (pixels: Uint8ClampedArray) => pixels.filter((_, i) => i % 4 === 3);
+
+  // mean |difference| of horizontally adjacent red values — a blur makes it smaller
+  const roughness = ({ pixels, width, height }: Awaited<ReturnType<typeof render>>) => {
+    let sum = 0;
+    for (let y = 0; y < height; y++)
+      for (let x = 1; x < width; x++) sum += Math.abs(pixels[(y * width + x) * 4]! - pixels[(y * width + x - 1) * 4]!);
+    return sum / (height * (width - 1));
+  };
+
+  test("blur: radius 8 is smoother than radius 0, the picture stays opaque", async () => {
+    const sharp = await render("blur", { radius: 0 });
+    const blurred = await render("blur", { radius: 8 });
+    expect(roughness(blurred)).toBeLessThan(roughness(sharp) / 2);
+    expect(alphas(blurred.pixels).every((a) => a === 255)).toBe(true);
+  });
+
+  // poppies: saturated red flowers and greens, a pale sky — the masks keep part, drop part
+  test.each([
+    ["saturationMask", { saturation: 100, tolerance: 30 }],
+    ["valueMask", { value: 100, tolerance: 30 }],
+  ])("%s keeps part of the picture, the rest goes transparent", async (type, data) => {
+    const alpha = alphas((await render(type, data)).pixels);
+    expect(alpha.some((a) => a === 0)).toBe(true);
+    expect(alpha.some((a) => a > 128)).toBe(true);
+  });
+
+  test.each([
+    ["red", [255, 0, 0]],
+    ["green", [0, 255, 0]],
+    ["blue", [0, 0, 255]],
+  ])("isolateChannel %s: every pixel turns the channel color, its value goes to alpha", async (channel, rgb) => {
+    const { pixels, at } = await render("isolateChannel", { channel });
+    expect(at(0, 0).slice(0, 3)).toEqual(rgb);
+    expect(new Set(alphas(pixels)).size).toBeGreaterThan(1);
+  });
+
+  // poppies is 250 × 359: 50 % of the width moves the picture 125 px right
+  test("translate x 50 %: the left half goes transparent, the right half stays", async () => {
+    const { at, height } = await render("translate", { x: 50, y: 0 });
+    const row = Math.floor(height / 2);
+    expect([at(0, row)[3], at(124, row)[3], at(125, row)[3], at(249, row)[3]]).toEqual([0, 0, 255, 255]);
+  });
+
+  test("translate y -50 %: the picture moves up, the bottom goes transparent", async () => {
+    const { at } = await render("translate", { x: 0, y: -50 });
+    expect([at(125, 0)[3], at(125, 358)[3]]).toEqual([255, 0]);
+  });
+
+  test.each([
+    ["rotate 45°", "rotate", { angle: 45 }],
+    ["scale 0.5", "scale", { x: 0.5, y: 0.5 }],
+  ])("%s around the center: the corners go transparent, the center stays", async (_, type, data) => {
+    const { at, width, height } = await render(type, data);
+    expect([at(0, 0)[3], at(width - 1, height - 1)[3], at(Math.floor(width / 2), Math.floor(height / 2))[3]]).toEqual([
+      0, 0, 255,
+    ]);
+  });
+
+  test("scale 2: the center fills the frame, no transparent corners", async () => {
+    const { pixels } = await render("scale", { x: 2, y: 2 });
+    expect(alphas(pixels).every((a) => a === 255)).toBe(true);
+  });
+
+  test.each([
+    ["blur", { radius: 50 }],
+    ["isolateChannel", { channel: "cyan" }],
+    ["scale", { x: 0, y: 1 }],
+  ])("%s out of range → render-error on that node", async (type, data) => {
+    send({ type: "render", requestId: ++requestId, graph: single(type, data) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId, nodeId: "n" });
+  });
+});
+
 describe("ws latest-wins", () => {
   // a render must not block the event loop: messages that come in during it reach the queue,
   // so after the running one only the newest renders

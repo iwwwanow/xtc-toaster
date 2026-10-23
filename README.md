@@ -6,7 +6,7 @@
 
 Node editor for layer-based pixel processing. Upload a picture, build a toast — a graph `input → … → output` of effect, mask and transform nodes — the server renders it, download the png, export / import the toast as a file.
 
-Status: `0.x`, 1.0 planned for 28.11. Nodes today: hue noise, hue mask, y-rotation. Plan and sprints — [`docs/planning.md`](docs/planning.md), [`docs/sprints/`](docs/sprints/).
+Status: `0.x`, 1.0 planned for 28.11. Nodes: hue noise, blur; hue / saturation / value mask; isolate channel; translate, rotate, scale, y-rotation. Plan and sprints — [`docs/planning.md`](docs/planning.md), [`docs/sprints/`](docs/sprints/).
 
 ## Packages
 

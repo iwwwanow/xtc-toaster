@@ -1,6 +1,12 @@
 import { join } from "node:path";
-import type { GraphNode, InputNode, NodeId, ToastGraph } from "@xtc-toaster/contract";
-import { Composition, imageFileToRawData, type ImageRawDataArray, type LayerDimensions } from "@xtc-toaster/lib";
+import type { GraphNode, InputNode, IsolateChannelNode, NodeId, ToastGraph } from "@xtc-toaster/contract";
+import {
+  Channel,
+  Composition,
+  imageFileToRawData,
+  type ImageRawDataArray,
+  type LayerDimensions,
+} from "@xtc-toaster/lib";
 
 // becomes render-error; nodeId points the client at the node to highlight
 export class GraphError extends Error {
@@ -50,6 +56,16 @@ export const toPath = ({ nodes, edges }: ToastGraph): GraphNode[] => {
 export const focalLengthPx = (mm: number, { width, height }: LayerDimensions) =>
   (mm / 36) * Math.max(width, height);
 
+// contract percent of the image size → lib px
+export const percentPx = (percent: number, size: number) => (percent / 100) * size;
+
+const CHANNEL: Record<IsolateChannelNode["data"]["channel"], Channel> = {
+  red: Channel.Red,
+  green: Channel.Green,
+  blue: Channel.Blue,
+  alpha: Channel.Alpha,
+};
+
 const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: string) => {
   if (imageId === null) throw new GraphError("upload an image", id);
   // imageId is a uuid (contract) — safe to build a path from
@@ -83,6 +99,32 @@ export const runGraph = async (
           name: "yRotation",
           params: { angle: node.data.angle, focalLength: focalLengthPx(node.data.focalLength, { width, height }) },
         });
+        break;
+      case "blur":
+        layer.applyEffect({ name: "blur", options: { radius: node.data.radius } });
+        break;
+      case "saturationMask":
+        // contract has percent for both, lib takes the tolerance normalized
+        layer.mask({ name: "saturation", value: node.data.saturation, tolerance: node.data.tolerance / 100 });
+        break;
+      case "valueMask":
+        layer.mask({ name: "value", value: node.data.value, tolerance: node.data.tolerance / 100 });
+        break;
+      case "isolateChannel":
+        layer.isolateChannel(CHANNEL[node.data.channel]);
+        break;
+      case "translate":
+        // contract has percent of the image size, lib takes px
+        layer.setTransform({
+          name: "translate",
+          params: { tx: percentPx(node.data.x, width), ty: percentPx(node.data.y, height) },
+        });
+        break;
+      case "rotate":
+        layer.setTransform({ name: "rotate", params: { alpha: node.data.angle } });
+        break;
+      case "scale":
+        layer.setTransform({ name: "scale", params: { scaleX: node.data.x, scaleY: node.data.y } });
         break;
       case "output":
         return { data: composition.render(), width, height };
