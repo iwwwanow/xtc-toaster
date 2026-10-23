@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { PARAMS } from "@xtc-toaster/contract";
-import { createNode, fromToastFile, toFlow, toGraph, toToastFile, ToastFileError } from "./graph";
+import { INITIAL_DATA, PARAMS } from "@xtc-toaster/contract";
+import { createNode, fromToastFile, MENU_NODE_TYPES, toFlow, toGraph, toToastFile, ToastFileError } from "./graph";
 
 describe("toFlow", () => {
   test("places nodes left to right by chain order", () => {
@@ -44,6 +44,34 @@ describe("createNode", () => {
       angle: PARAMS.yRotation.angle.initial,
       focalLength: PARAMS.yRotation.focalLength.initial,
     });
+  });
+
+  test.each(["blur", "saturationMask", "valueMask", "translate", "rotate", "scale", "skew", "perspective", "opacity"] as const)(
+    "%s starts with every param at its initial",
+    (type) => {
+      const initials = Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));
+      expect<unknown>(createNode(type, { x: 0, y: 0 }).data).toEqual(initials);
+    },
+  );
+
+  test("an isolate channel starts on red", () => {
+    expect(createNode("isolateChannel", { x: 0, y: 0 }).data).toEqual({ channel: "red" });
+  });
+
+  test.each(["homography", "fill", "tint"] as const)("%s starts with its INITIAL_DATA", (type) => {
+    expect<unknown>(createNode(type, { x: 0, y: 0 }).data).toEqual(INITIAL_DATA[type]);
+  });
+
+  test("two homographies don't share one matrix array", () => {
+    const a = createNode("homography", { x: 0, y: 0 });
+    const b = createNode("homography", { x: 0, y: 0 });
+    expect((a.data as { matrix: number[] }).matrix).not.toBe((b.data as { matrix: number[] }).matrix);
+  });
+
+  // every menu node, dropped as is, is a valid graph node — the server accepts it
+  test.each(MENU_NODE_TYPES)("a dropped %s passes the contract", (type) => {
+    const nodes = [createNode(type, { x: 0, y: 0 })];
+    expect(() => toGraph(nodes, [])).not.toThrow();
   });
 });
 

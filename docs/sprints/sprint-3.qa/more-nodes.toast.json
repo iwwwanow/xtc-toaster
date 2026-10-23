@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "sk", "type": "skew", "data": { "x": 15, "y": 0 } },
+    { "id": "pe", "type": "perspective", "data": { "topLeftX": 10, "topLeftY": 0, "topRightX": 90, "topRightY": 0, "bottomRightX": 100, "bottomRightY": 100, "bottomLeftX": 0, "bottomLeftY": 100 } },
+    { "id": "ho", "type": "homography", "data": { "matrix": [1, 0, 0, 0, 1, 0, 0, 0, 1] } },
+    { "id": "ti", "type": "tint", "data": { "color": "#ff0000" } },
+    { "id": "op", "type": "opacity", "data": { "opacity": 0.5 } },
+    { "id": "out", "type": "output", "data": {} },
+    { "id": "fi", "type": "fill", "data": { "color": "#a4a4a4" } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "in", "target": "sk" },
+    { "id": "e2", "source": "sk", "target": "pe" },
+    { "id": "e3", "source": "pe", "target": "ho" },
+    { "id": "e4", "source": "ho", "target": "ti" },
+    { "id": "e5", "source": "ti", "target": "op" },
+    { "id": "e6", "source": "op", "target": "out" }
+  ]
+}

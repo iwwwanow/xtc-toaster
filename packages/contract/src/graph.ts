@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { PARAMS, type ParamBounds } from "./params";
+import { CHANNELS, PARAMS, type ParamBounds } from "./params";
 
 const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
 
@@ -38,6 +38,96 @@ export const YRotationNodeSchema = z.object({
   }),
 });
 
+export const BlurNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("blur"),
+  data: z.object({ radius: ranged(PARAMS.blur.radius) }),
+});
+
+export const SaturationMaskNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("saturationMask"),
+  data: z.object({
+    saturation: ranged(PARAMS.saturationMask.saturation),
+    tolerance: ranged(PARAMS.saturationMask.tolerance),
+  }),
+});
+
+export const ValueMaskNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("valueMask"),
+  data: z.object({ value: ranged(PARAMS.valueMask.value), tolerance: ranged(PARAMS.valueMask.tolerance) }),
+});
+
+export const IsolateChannelNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("isolateChannel"),
+  data: z.object({ channel: z.enum(CHANNELS) }),
+});
+
+export const TranslateNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("translate"),
+  data: z.object({ x: ranged(PARAMS.translate.x), y: ranged(PARAMS.translate.y) }),
+});
+
+export const RotateNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("rotate"),
+  data: z.object({ angle: ranged(PARAMS.rotate.angle) }),
+});
+
+export const ScaleNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("scale"),
+  data: z.object({ x: ranged(PARAMS.scale.x), y: ranged(PARAMS.scale.y) }),
+});
+
+export const SkewNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("skew"),
+  data: z.object({ x: ranged(PARAMS.skew.x), y: ranged(PARAMS.skew.y) }),
+});
+
+export const PerspectiveNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("perspective"),
+  data: z.object(
+    Object.fromEntries(Object.entries(PARAMS.perspective).map(([name, bounds]) => [name, ranged(bounds)])) as {
+      [K in keyof typeof PARAMS.perspective]: z.ZodNumber;
+    },
+  ),
+});
+
+// 3×3, row-major, px of the image, lib convention: [x, y, 1] · H — the translation is the last row.
+// No bounds: any finite numbers; a singular matrix is a render-error on the node
+export const HomographyNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("homography"),
+  data: z.object({ matrix: z.array(z.number()).length(9) }),
+});
+
+// #rrggbb — what <input type="color"> gives
+const HexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
+
+export const FillNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("fill"),
+  data: z.object({ color: HexColorSchema }),
+});
+
+export const TintNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("tint"),
+  data: z.object({ color: HexColorSchema }),
+});
+
+export const OpacityNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("opacity"),
+  data: z.object({ opacity: ranged(PARAMS.opacity.opacity) }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -49,6 +139,19 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   HueNoiseNodeSchema,
   HueMaskNodeSchema,
   YRotationNodeSchema,
+  BlurNodeSchema,
+  SaturationMaskNodeSchema,
+  ValueMaskNodeSchema,
+  IsolateChannelNodeSchema,
+  TranslateNodeSchema,
+  RotateNodeSchema,
+  ScaleNodeSchema,
+  SkewNodeSchema,
+  PerspectiveNodeSchema,
+  HomographyNodeSchema,
+  FillNodeSchema,
+  TintNodeSchema,
+  OpacityNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -56,6 +159,19 @@ export type InputNode = z.infer<typeof InputNodeSchema>;
 export type HueNoiseNode = z.infer<typeof HueNoiseNodeSchema>;
 export type HueMaskNode = z.infer<typeof HueMaskNodeSchema>;
 export type YRotationNode = z.infer<typeof YRotationNodeSchema>;
+export type BlurNode = z.infer<typeof BlurNodeSchema>;
+export type SaturationMaskNode = z.infer<typeof SaturationMaskNodeSchema>;
+export type ValueMaskNode = z.infer<typeof ValueMaskNodeSchema>;
+export type IsolateChannelNode = z.infer<typeof IsolateChannelNodeSchema>;
+export type TranslateNode = z.infer<typeof TranslateNodeSchema>;
+export type RotateNode = z.infer<typeof RotateNodeSchema>;
+export type ScaleNode = z.infer<typeof ScaleNodeSchema>;
+export type SkewNode = z.infer<typeof SkewNodeSchema>;
+export type PerspectiveNode = z.infer<typeof PerspectiveNodeSchema>;
+export type HomographyNode = z.infer<typeof HomographyNodeSchema>;
+export type FillNode = z.infer<typeof FillNodeSchema>;
+export type TintNode = z.infer<typeof TintNodeSchema>;
+export type OpacityNode = z.infer<typeof OpacityNodeSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({

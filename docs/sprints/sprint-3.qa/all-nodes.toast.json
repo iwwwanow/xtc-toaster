@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "bl", "type": "blur", "data": { "radius": 4 } },
+    { "id": "ro", "type": "rotate", "data": { "angle": 15 } },
+    { "id": "sc", "type": "scale", "data": { "x": 0.75, "y": 0.75 } },
+    { "id": "tr", "type": "translate", "data": { "x": 10, "y": 0 } },
+    { "id": "ic", "type": "isolateChannel", "data": { "channel": "red" } },
+    { "id": "out", "type": "output", "data": {} },
+    { "id": "sm", "type": "saturationMask", "data": { "saturation": 100, "tolerance": 30 } },
+    { "id": "vm", "type": "valueMask", "data": { "value": 100, "tolerance": 30 } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "in", "target": "bl" },
+    { "id": "e2", "source": "bl", "target": "ro" },
+    { "id": "e3", "source": "ro", "target": "sc" },
+    { "id": "e4", "source": "sc", "target": "tr" },
+    { "id": "e5", "source": "tr", "target": "ic" },
+    { "id": "e6", "source": "ic", "target": "out" }
+  ]
+}
