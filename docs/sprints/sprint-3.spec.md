@@ -24,6 +24,14 @@
 - old images: doco-cd `prune_images` is true by default — likely covered, check on the host after the first Renovate update
 - added: app version in the ui (stretch 6, last). One version for the whole repo — the git tag; lib isn't published, needs none
 
+### status (2026-10-23) — the link is live
+
+- DNS published overnight (Timeweb NS lag — hours, not minutes), caddy got the Let's Encrypt certificate on 22.10 by itself. The sprint 2 scenario checked by the user in the browser
+- host (`ru-timeweb`): `0.2.0` `healthy`, `mem_limit` 512m, `cpu_shares` 256, read-only, `cap_drop: ALL`, `no-new-privileges`; uploads dir root-owned
+- 3 renders of 2 MP in a row: 0.9–1.9 s each, vaultwarden answered in 27–96 ms meanwhile. Memory peak **212 MiB** of 512 — cgroup `memory.peak` since the start (the user's scenario + 5 renders of 2 MP), `oom 0`; `docker stats` (sampled ~1/s) showed only ~106 MiB — misses the render spike, read `memory.peak` instead. Idle 64 MiB. Host RAM 972 MiB, 431 available
+- disk: image 353 MB + uploads quota 512 MB + logs ≤ 30 MB ≈ 0.9 GB — fits the 1–2 GB budget; whether old images go after an update — check with the first Renovate bump. `/` 40 % used
+- next: Renovate on infra
+
 ---
 
 ## slice: hosting
@@ -92,11 +100,11 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 
 ### definition of done
 
-- [ ] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
+- [x] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
 - [ ] a `feat` / `fix` push to `master` reaches prod with no manual step: CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
 - [ ] red tests or typecheck in CI → no release, no image
-- [ ] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
-- [ ] `docker ps` shows the container `healthy`
+- [x] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
+- [x] `docker ps` shows the container `healthy`
 - [ ] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota)
 - [ ] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
 - [ ] rollback checked once: revert of the Renovate PR → the previous version on prod
