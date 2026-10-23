@@ -82,8 +82,9 @@
    - [x] infra: DNS, caddy `127.0.0.1:8097`, stack with `0.2.0` (`iwwwanow_infrastructure`, own branch) — 23.10: https://xtc-toaster.iwwwanow.ru live, scenario checked by the user, `healthy`, 2 MP render ~1 s, memory peak 212 MiB of 512 (cgroup `memory.peak`)
      - 21.10 decided: the container stays root, hardened in the stack — `cap_drop: ALL`, `read_only` + tmpfs, `no-new-privileges`; `USER bun` later, with the server review — `docs/backlog/2026-10-21_container-non-root-user.md`
      - 22.10: infra pushed: DNS record (applied — in the Timeweb API, but at the end of the session their NS still don't serve it), caddy, stack `stacks/ru-timeweb/xtc-toaster` with `0.2.0`. Next session first: DNS on the NS (else — the Timeweb panel), caddy certificate, the DoD scenario on prod. `0.2.0` checked locally under the stack limits (read-only, no caps, 512m): upload + 2 MP render 1.1–1.7 s, `healthy`. Old images — doco-cd `prune_images` (default true), check on the host after the first update. infra secrets moved pass → Vaultwarden (`rbw`)
-   - [ ] Renovate on infra + one `fix` through the whole chain + rollback
-     - 23.10: Renovate on infra done — owo evix 1.7.0 → 1.12.0 went PR → automerge → doco-cd, old image pruned. Left: a `fix` of xtc-toaster through the chain + rollback
+   - [x] Renovate on infra + one `fix` through the whole chain + rollback
+     - 23.10: Renovate on infra done — owo evix 1.7.0 → 1.12.0 went PR → automerge → doco-cd, old image pruned
+     - 23.10: `fix(web)` "server unavailable" went push → `0.2.1` → Renovate PR → automerge → prod in ~6 min (Renovate run started by the dashboard checkbox); rollback by revert — 45 s, Renovate reopens the bump without automerge
      - 22.10 decided: owo evix isn't pinned to `1.7.0` — updates, but only within `1.x` (`allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo`)
    - [ ] own test on prod, then the user test (the sister)
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
