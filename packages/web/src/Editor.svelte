@@ -4,6 +4,7 @@
   import { isMenuNodeType, NODE_TYPE_MIME, type FlowNode } from "./graph";
   import { nodeTypes } from "./nodes";
   import ActionsPanel from "./panels/ActionsPanel.svelte";
+  import ConnectionPanel from "./panels/ConnectionPanel.svelte";
   import NodeMenu from "./panels/NodeMenu.svelte";
   import { session } from "./session.svelte";
 
@@ -64,5 +65,6 @@
     <Controls />
     <NodeMenu />
     <ActionsPanel />
+    <ConnectionPanel />
   </SvelteFlow>
 </div>

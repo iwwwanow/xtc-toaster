@@ -35,6 +35,9 @@ class Session {
   edges = $state.raw<Edge[]>(initial.edges);
 
   connected = $state(false);
+  // the socket closed (a deploy restarts the container, the network dropped) and is reconnecting —
+  // not set before the first open, so the page doesn't flash it on load
+  serverUnavailable = $state(false);
   uploading = $state(false);
   rendering = $state(false);
   // png of the last sent requestId — output shows it, download saves the same bytes
@@ -58,10 +61,14 @@ class Session {
 
   connect() {
     this.socket = connectSocket(wsUrl(location), {
-      onOpen: () => (this.connected = true),
+      onOpen: () => {
+        this.connected = true;
+        this.serverUnavailable = false;
+      },
       onClose: (event) => {
         console.error("ws disconnected", event);
         this.connected = false;
+        this.serverUnavailable = true;
         // an in-flight response is lost — the graph is re-sent after reconnect
         this.rendering = false;
       },
