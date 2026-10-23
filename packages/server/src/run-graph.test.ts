@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
-import { GraphError, focalLengthPx, percentPx, toPath } from "./run-graph";
+import { GraphError, focalLengthPx, percentPx, perspectiveCorners, toPath } from "./run-graph";
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: null } };
 const hueNoise: GraphNode = { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } };
@@ -67,5 +67,23 @@ describe("percentPx", () => {
     [0, 250, 0],
   ])("%p %% of %p px → %p px", (percent, size, px) => {
     expect(percentPx(percent, size)).toBe(px);
+  });
+});
+
+describe("perspectiveCorners", () => {
+  const untouched = {
+    topLeftX: 0, topLeftY: 0, topRightX: 100, topRightY: 0,
+    bottomRightX: 100, bottomRightY: 100, bottomLeftX: 0, bottomLeftY: 100,
+  };
+
+  test("0 / 100 % land on the first / last pixel — the source corners, the identity", () => {
+    expect(perspectiveCorners(untouched, { width: 250, height: 359 })).toEqual([
+      { x: 0, y: 0 }, { x: 249, y: 0 }, { x: 249, y: 358 }, { x: 0, y: 358 },
+    ]);
+  });
+
+  test("percent of the size, past the frame too", () => {
+    const [topLeft] = perspectiveCorners({ ...untouched, topLeftX: -50, topLeftY: 50 }, { width: 101, height: 201 });
+    expect(topLeft).toEqual({ x: -50, y: 100 });
   });
 });

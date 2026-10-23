@@ -314,10 +314,122 @@ describe("ws render: single-layer nodes", () => {
     expect(alphas(pixels).every((a) => a === 255)).toBe(true);
   });
 
+  // skew x leans the verticals: the top row shifts against the bottom one — opaque spans differ
+  test("skew x 30°: the top and bottom rows shift opposite ways, corners go transparent", async () => {
+    const { at, width, height } = await render("skew", { x: 30, y: 0 });
+    const opaqueFrom = (y: number) => [...Array(width).keys()].find((x) => at(x, y)[3] === 255);
+    expect(opaqueFrom(0)).not.toBe(opaqueFrom(height - 1));
+    expect(at(Math.floor(width / 2), Math.floor(height / 2))[3]).toBe(255);
+  });
+
+  const corners = {
+    topLeftX: 0, topLeftY: 0, topRightX: 100, topRightY: 0,
+    bottomRightX: 100, bottomRightY: 100, bottomLeftX: 0, bottomLeftY: 100,
+  };
+
+  test("perspective with the corners untouched — the picture as is", async () => {
+    const plain = await render("blur", { radius: 0 });
+    const same = await render("perspective", corners);
+    expect([...same.pixels]).toEqual([...plain.pixels]);
+  });
+
+  test("perspective keystone (the top 25 % narrower each side): the top corners go transparent, the bottom stays", async () => {
+    const { at, width, height } = await render("perspective", { ...corners, topLeftX: 25, topRightX: 75 });
+    expect([at(0, 0)[3], at(width - 1, 0)[3], at(0, height - 1)[3], at(width - 1, height - 1)[3]]).toEqual([0, 0, 255, 255]);
+  });
+
+  test("homography identity — the picture as is", async () => {
+    const plain = await render("blur", { radius: 0 });
+    const same = await render("homography", { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] });
+    expect([...same.pixels]).toEqual([...plain.pixels]);
+  });
+
+  // translation is the last row ([x, y, 1] · H): 125 px right — like translate x 50 %
+  test("homography with a translation row moves the picture", async () => {
+    const { at, height } = await render("homography", { matrix: [1, 0, 0, 0, 1, 0, 125, 0, 1] });
+    const row = Math.floor(height / 2);
+    expect([at(0, row)[3], at(249, row)[3]]).toEqual([0, 255]);
+  });
+
+  test("fill: every pixel is the color, opaque", async () => {
+    const { pixels } = await render("fill", { color: "#a4a4ff" });
+    const colors = new Set<string>();
+    for (let i = 0; i < pixels.length; i += 4) colors.add(pixels.slice(i, i + 4).join(","));
+    expect([...colors]).toEqual(["164,164,255,255"]);
+  });
+
+  test("tint after a mask: the color everywhere, the mask's alpha kept", async () => {
+    const graph = {
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId } },
+        { id: "hm", type: "hueMask", data: { hue: 0, tolerance: 30 } },
+        { id: "t", type: "tint", data: { color: "#00ff00" } },
+        { id: "out", type: "output", data: {} },
+      ],
+      edges: [
+        { id: "a", source: "in", target: "hm" },
+        { id: "b", source: "hm", target: "t" },
+        { id: "c", source: "t", target: "out" },
+      ],
+    };
+    send({ type: "render", requestId: ++requestId, graph });
+    const message = await nextMessage();
+    if (message.type !== "rendered") throw new Error(JSON.stringify(message));
+    const png = await loadImage(Buffer.from(message.png, "base64"));
+    const context = createCanvas(png.width, png.height).getContext("2d");
+    context.drawImage(png, 0, 0);
+    const { data } = context.getImageData(0, 0, png.width, png.height);
+    const opaque = [...Array(data.length / 4).keys()].map((i) => [...data.slice(i * 4, i * 4 + 4)]).filter((p) => p[3] === 255);
+    expect(opaque.length).toBeGreaterThan(0);
+    expect(opaque.every(([r, g, b]) => r === 0 && g === 255 && b === 0)).toBe(true);
+    expect(alphas(data).some((a) => a === 0)).toBe(true);
+  });
+
+  // 255 · 0.5 = 127.5 — Uint8ClampedArray rounds it to 128
+  test("opacity 0.5 halves the alpha", async () => {
+    const alpha = new Set(alphas((await render("opacity", { opacity: 0.5 })).pixels));
+    expect([...alpha]).toEqual([128]);
+  });
+
+  test("two opacity nodes multiply: 0.5 · 0.5 → a quarter", async () => {
+    const graph = {
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId } },
+        { id: "o1", type: "opacity", data: { opacity: 0.5 } },
+        { id: "o2", type: "opacity", data: { opacity: 0.5 } },
+        { id: "out", type: "output", data: {} },
+      ],
+      edges: [
+        { id: "a", source: "in", target: "o1" },
+        { id: "b", source: "o1", target: "o2" },
+        { id: "c", source: "o2", target: "out" },
+      ],
+    };
+    send({ type: "render", requestId: ++requestId, graph });
+    const message = await nextMessage();
+    if (message.type !== "rendered") throw new Error(JSON.stringify(message));
+    const png = await loadImage(Buffer.from(message.png, "base64"));
+    const context = createCanvas(png.width, png.height).getContext("2d");
+    context.drawImage(png, 0, 0);
+    expect(new Set(alphas(context.getImageData(0, 0, png.width, png.height).data))).toEqual(new Set([64]));
+  });
+
+  test.each([
+    ["a singular homography", "homography", { matrix: [0, 0, 0, 0, 0, 0, 0, 0, 1] }],
+    ["a perspective with every corner in one point", "perspective", Object.fromEntries(Object.keys(corners).map((k) => [k, 50]))],
+  ])("%s → render-error on that node, not a crash", async (_, type, data) => {
+    send({ type: "render", requestId: ++requestId, graph: single(type, data) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId, nodeId: "n" });
+  });
+
   test.each([
     ["blur", { radius: 50 }],
     ["isolateChannel", { channel: "cyan" }],
     ["scale", { x: 0, y: 1 }],
+    ["fill", { color: "red" }],
+    ["homography", { matrix: [1, 0, 0] }],
   ])("%s out of range → render-error on that node", async (type, data) => {
     send({ type: "render", requestId: ++requestId, graph: single(type, data) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId, nodeId: "n" });

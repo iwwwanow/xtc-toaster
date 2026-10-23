@@ -45,7 +45,37 @@ export const PARAMS = {
     x: { min: 0.1, max: 3, initial: 0.75 },
     y: { min: 0.1, max: 3, initial: 0.75 },
   },
+  // degrees, around the image center: x leans the verticals, y the horizontals (±90 would be flat)
+  skew: {
+    x: { min: -60, max: 60, initial: 15 },
+    y: { min: -60, max: 60, initial: 0 },
+  },
+  // where the picture's corners land, percent of the image width / height; may go past the frame.
+  // initial — a slight keystone (the top narrower) so a dropped node shows something
+  perspective: {
+    topLeftX: { min: -50, max: 150, initial: 10 },
+    topLeftY: { min: -50, max: 150, initial: 0 },
+    topRightX: { min: -50, max: 150, initial: 90 },
+    topRightY: { min: -50, max: 150, initial: 0 },
+    bottomRightX: { min: -50, max: 150, initial: 100 },
+    bottomRightY: { min: -50, max: 150, initial: 100 },
+    bottomLeftX: { min: -50, max: 150, initial: 0 },
+    bottomLeftY: { min: -50, max: 150, initial: 100 },
+  },
+  // 0 — transparent, 1 — as is; several in a row multiply
+  opacity: {
+    opacity: { min: 0, max: 1, initial: 0.5 },
+  },
 } as const satisfies Record<string, Record<string, ParamBounds>>;
 
-// isolateChannel picks one of these — not a range: the ui shows a select, a dropped node starts on the first
+// isolateChannel picks one of these — not a range: the ui shows a select
 export const CHANNELS = ["red", "green", "blue", "alpha"] as const;
+
+// nodes whose params are not ranges — what a node dropped from the menu starts with
+export const INITIAL_DATA = {
+  isolateChannel: { channel: "red" },
+  // identity — a raw matrix has no meaningful "something visible" start
+  homography: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
+  fill: { color: "#a4a4a4" },
+  tint: { color: "#ff0000" },
+} as const;
