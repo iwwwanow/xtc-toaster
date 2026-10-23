@@ -30,7 +30,8 @@
 - host (`ru-timeweb`): `0.2.0` `healthy`, `mem_limit` 512m, `cpu_shares` 256, read-only, `cap_drop: ALL`, `no-new-privileges`; uploads dir root-owned
 - 3 renders of 2 MP in a row: 0.9–1.9 s each, vaultwarden answered in 27–96 ms meanwhile. Memory peak **212 MiB** of 512 — cgroup `memory.peak` since the start (the user's scenario + 5 renders of 2 MP), `oom 0`; `docker stats` (sampled ~1/s) showed only ~106 MiB — misses the render spike, read `memory.peak` instead. Idle 64 MiB. Host RAM 972 MiB, 431 available
 - disk: image 353 MB + uploads quota 512 MB + logs ≤ 30 MB ≈ 0.9 GB — fits the 1–2 GB budget; whether old images go after an update — check with the first Renovate bump. `/` 40 % used
-- next: Renovate on infra
+- Renovate on infra (same day): Mend app, `renovate.json` — own images automerge (`ignoreTests`: no checks on infra PRs, tests ran in the app CI), owo `allowedVersions: "<2"`. First real bump: owo evix 1.7.0 → 1.12.0 — PR merged in 2 s, doco-cd deployed in ~20 s, the old image pruned from the host → «old images don't pile up» confirmed
+- next: one `fix` in this repo through the whole chain, then rollback by reverting the Renovate PR
 
 ---
 
@@ -106,7 +107,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 - [x] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
 - [x] `docker ps` shows the container `healthy`
 - [ ] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota)
-- [ ] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
+- [x] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
 - [ ] rollback checked once: revert of the Renovate PR → the previous version on prod
 - [ ] user test done: the tester made toasts from 3 pictures on the public link, her feedback is in `docs/diary/`
 - [ ] `bun run typecheck` and `bun test` green; dev docker compose works as before
