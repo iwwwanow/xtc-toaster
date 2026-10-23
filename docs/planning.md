@@ -11,7 +11,7 @@
 ## readiness criteria
 
 - [ ] public link available
-- [ ] project works with all current backend filters
+- [ ] project works with all current backend filters — 23.10: every single-layer operation is a node in the branch `feat/single-layer-nodes` (not merged): batch 1 (blur, saturation / value mask, isolate channel, translate, rotate, scale) checked by the user by hand — works; batch 2 (skew, perspective, homography, fill, tint, opacity) — QA pending (`docs/sprints/sprint-3.qa.md`). Left for sprint 4: blend modes (need two layers)
   - effects:
   1. noize (addHueNoise): случайно сдвигает hue каждого пикселя, сила сдвига задаётся deviationCoefficient (0–1). В ui — нода «hue noise»; переименование типа в `hueNoise` — `docs/backlog/2026-10-15_rename-noize-to-hue-noise.md`.
   2. blur (boxBlur): box blur с радиусом radius.
@@ -88,6 +88,7 @@
      - 22.10 decided: owo evix isn't pinned to `1.7.0` — updates, but only within `1.x` (`allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo`)
    - [x] own test on prod — 23.10: the scenario by hand, 2 MP render ~1 s, memory peak 212 MiB of 512, the host keeps answering; `UPLOAD_MAX_MEGAPIXELS` stays 2
    - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front
+   - [ ] stretch 1 — the rest of the single-layer nodes: done in `feat/single-layer-nodes` (13 nodes, beyond the spec's 7 — skew, perspective, homography, fill, tint, opacity added 23.10), batch 1 checked by hand, batch 2 QA pending; merge → `0.3.0` after QA
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
    - [ ] app version in the bottom-right corner of the ui — to see which version is hosted; the very last item of the sprint (after the favicon)
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`

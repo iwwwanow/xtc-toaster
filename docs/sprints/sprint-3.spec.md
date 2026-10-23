@@ -35,6 +35,12 @@
 - rollback: `git revert` of PR #4 pushed 17:00:39 → prod on `0.2.0` `healthy` at 17:01:25. Renovate reopened the bump (PR #5) right after the push but **didn't automerge it** — "a matching PR was automerged previously". So a real rollback = revert + close that PR unmerged (Renovate then skips the version until a newer one). Here the version was fine → PR #5 merged by hand, prod back on `0.2.1` at 17:02:46
 - infra PRs do get one check — GitGuardian (secrets scan, an account-level app); `ignoreTests` only stops Renovate waiting
 
+### status (2026-10-23, evening) — stretch 1
+
+- branch `feat/single-layer-nodes` (not merged): every single-layer operation of lib is a node — the spec's 7 (blur, saturation / value mask, isolate channel, translate, rotate, scale) plus, decided 23.10, skew, perspective (8 numbers for now, dragging corners on the preview later), homography (a raw matrix), fill, tint, opacity
+- batch 1 checked by the user by hand — works; batch 2 — QA pending: `docs/sprints/sprint-3.qa.md`
+- the user test: async, by text (decided 23.10) — the message is in `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`
+
 ---
 
 ## slice: hosting
