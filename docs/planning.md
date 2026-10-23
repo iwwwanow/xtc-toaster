@@ -90,7 +90,7 @@
    - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
    - [ ] app version in the bottom-right corner of the ui — to see which version is hosted; the very last item of the sprint (after the favicon)
-   - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`
+   - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week
    - layer composing on output node
