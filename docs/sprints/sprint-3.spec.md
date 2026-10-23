@@ -99,16 +99,17 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 
 - one tester — the user's sister, an artist: on the public link she makes toasts from 3 different pictures of her own
 - free form — what feedback she brings is part of the result; the link is open, no auth (decided 19.10)
+- decided 23.10: async, by text — no call. A short message: the link, what to do (3 own pictures), how it works (the chain left to right, render on slider release, right click deletes, download png top right), the limits up front (jpg / png, ≤ 2 MP ≈ 1600×1200 — bigger ones get `too-large`; phone photos may come out rotated — EXIF), then open questions: what was unclear, did anything she got appeal to her, what was missing. The ui is raw — the message says so
 - result: notes in `docs/diary/`, a ui polish list for sprints 4+ (`docs/planning.md`: "ui polish — after the user test in sprint 3")
 
 ### definition of done
 
 - [x] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
 - [x] a `feat` / `fix` push to `master` reaches prod with no manual step (23.10 — the run was started by the dashboard checkbox to save time; without it — Mend's schedule): CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
-- [ ] red tests or typecheck in CI → no release, no image
+- [ ] red tests or typecheck in CI → no release, no image — by `release.yml`: `release` needs `test`, `docker` needs `release`; not provoked live
 - [x] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
 - [x] `docker ps` shows the container `healthy`
-- [ ] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota)
+- [x] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota) — 21.10 on the built image: TTL 0.001 h + restart, quota 0.05 MB (`docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`)
 - [x] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
 - [x] rollback checked once: revert of the Renovate PR → the previous version on prod
 - [ ] user test done: the tester made toasts from 3 pictures on the public link, her feedback is in `docs/diary/`

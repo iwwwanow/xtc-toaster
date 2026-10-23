@@ -86,7 +86,8 @@
      - 23.10: Renovate on infra done — owo evix 1.7.0 → 1.12.0 went PR → automerge → doco-cd, old image pruned
      - 23.10: `fix(web)` "server unavailable" went push → `0.2.1` → Renovate PR → automerge → prod in ~6 min (Renovate run started by the dashboard checkbox); rollback by revert — 45 s, Renovate reopens the bump without automerge
      - 22.10 decided: owo evix isn't pinned to `1.7.0` — updates, but only within `1.x` (`allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo`)
-   - [ ] own test on prod, then the user test (the sister)
+   - [x] own test on prod — 23.10: the scenario by hand, 2 MP render ~1 s, memory peak 212 MiB of 512, the host keeps answering; `UPLOAD_MAX_MEGAPIXELS` stays 2
+   - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front
    - [ ] favicon — the public link should have one; lowest priority in the sprint (after the stretch)
    - [ ] app version in the bottom-right corner of the ui — to see which version is hosted; the very last item of the sprint (after the favicon)
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`
