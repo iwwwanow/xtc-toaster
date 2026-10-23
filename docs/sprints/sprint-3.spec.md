@@ -37,7 +37,7 @@
 
 ### status (2026-10-23, evening) — stretch 1
 
-- branch `feat/single-layer-nodes` (not merged): every single-layer operation of lib is a node — the spec's 7 (blur, saturation / value mask, isolate channel, translate, rotate, scale) plus, decided 23.10, skew, perspective (8 numbers for now, dragging corners on the preview later), homography (a raw matrix), fill, tint, opacity
+- branch `feat/single-layer-nodes` (merged 23.10 → `0.3.0`, before the batch 2 QA — by the user's call): every single-layer operation of lib is a node — the spec's 7 (blur, saturation / value mask, isolate channel, translate, rotate, scale) plus, decided 23.10, skew, perspective (8 numbers for now, dragging corners on the preview later), homography (a raw matrix), fill, tint, opacity
 - batch 1 checked by the user by hand — works; batch 2 — QA pending: `docs/sprints/sprint-3.qa.md`
 - the user test: async, by text (decided 23.10) — the message is in `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`
 
