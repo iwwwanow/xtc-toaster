@@ -91,7 +91,7 @@
    - [x] stretch 1 — the rest of the single-layer nodes: `feat/single-layer-nodes` merged 23.10 → `0.3.0` (13 nodes, beyond the spec's 7 — skew, perspective, homography, fill, tint, opacity added 23.10); batch 1 checked by hand 23.10, batch 2 — 24.10 (`docs/sprints/sprint-3.qa.md`, 2б)
    - [x] favicon — 24.10: `feat/favicon` merged → `0.4.0`. Source — `packages/web/favicon/favicon.svg` (Inkscape, pages `light` / `dark`), a vite plugin generates ico / themed svg / apple-touch / manifest pngs on every dev start and build (sharp), nothing generated is committed
    - [x] app version in the bottom-right corner of the ui — 24.10, same branch: the docker job passes `APP_VERSION` (build arg) → vite `define`; dev / a local build — `dev`
-   - [ ] the next `feat` / `fix` release reaches prod by Renovate's own schedule, no dashboard checkbox — check with the favicon / version release (`0.4.0`, pushed 24.10 09:46 UTC)
+   - [x] the next `feat` / `fix` release reaches prod by Renovate's own schedule, no dashboard checkbox — 24.10: `0.4.0` push 09:46 UTC → ghcr 09:48:58 → Renovate PR #7 09:49:41 (nobody ticked the box), automerged → prod 09:51 (favicon, `v0.4.0` in the corner, `/healthz` 200). `0.3.0` 23.10 went the same way, PR 4 h after the release
    - [ ] manual review + refactoring (server → contract → web → lib) — moved to the end of the sprint 24.10
    - 24.10 decided: no Renovate on this repo for now — infra is enough
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`, `docs/diary/2026-10-24_favicon-and-app-version.md` (+ infra: `iwwwanow_infrastructure/docs/diary/2026-10-23_xtc-toaster-stack-renovate-rbw.md`)
