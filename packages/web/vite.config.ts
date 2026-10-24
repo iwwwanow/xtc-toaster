@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig, type Plugin } from "vite";
+import { favicon } from "./favicon/favicon";
 
 // one origin: relative /api and /ws, in dev proxied to the bun server (host:port, docker compose: server:3000)
 const SERVER = process.env.SERVER_HOST ?? "localhost:3000";
@@ -22,7 +23,7 @@ const debugImage = (path: string | null): Plugin => ({
 });
 
 export default defineConfig({
-  plugins: [svelte(), debugImage(DEBUG_IMAGE)],
+  plugins: [svelte(), debugImage(DEBUG_IMAGE), favicon(resolve(import.meta.dirname, "favicon/favicon.svg"))],
   server: {
     proxy: {
       "/api": `http://${SERVER}`,
