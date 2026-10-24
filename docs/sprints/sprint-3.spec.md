@@ -45,7 +45,9 @@
 
 - batch 2 (skew, perspective, homography, fill, tint, opacity) checked by the user by hand — works (`docs/sprints/sprint-3.qa.md`)
 - stretch reordered: favicon → app version in the ui (now) → manual review + refactoring (last). Renovate on this repo dropped — infra is enough for now
-- open: the next `feat` / `fix` release has to reach prod by Renovate's own schedule, no Dependency Dashboard checkbox (23.10 the run was started by hand) — check with the favicon / version release
+- stretch 3 + 4 done: `feat/favicon` merged → `0.4.0` (pushed 09:46 UTC). Favicon — one Inkscape svg with two pages (`light` / `dark`) in `packages/web/favicon/`, a vite plugin (sharp) generates `favicon.ico`, a themed `icon.svg` (`prefers-color-scheme`), `apple-touch-icon.png` and the manifest pngs (light page) on every dev start and build, links with `?v=<source hash>`. Version — `APP_VERSION` build arg from the docker job → vite `define` → bottom-right corner, above xyflow's attribution
+- open: `0.4.0` has to reach prod by Renovate's own schedule, no Dependency Dashboard checkbox (23.10 the run was started by hand). Then on prod: `healthy`, `v0.4.0` in the corner, the favicon served
+- left in the sprint: the user test (the sister), manual review + refactoring
 
 ---
 

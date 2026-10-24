@@ -89,12 +89,12 @@
    - [x] own test on prod — 23.10: the scenario by hand, 2 MP render ~1 s, memory peak 212 MiB of 512, the host keeps answering; `UPLOAD_MAX_MEGAPIXELS` stays 2
    - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front
    - [x] stretch 1 — the rest of the single-layer nodes: `feat/single-layer-nodes` merged 23.10 → `0.3.0` (13 nodes, beyond the spec's 7 — skew, perspective, homography, fill, tint, opacity added 23.10); batch 1 checked by hand 23.10, batch 2 — 24.10 (`docs/sprints/sprint-3.qa.md`, 2б)
-   - [ ] favicon — the public link should have one (24.10: now)
-   - [ ] app version in the bottom-right corner of the ui — to see which version is hosted (after the favicon)
-   - [ ] the next `feat` / `fix` release reaches prod by Renovate's own schedule, no dashboard checkbox — check with the favicon / version release
+   - [x] favicon — 24.10: `feat/favicon` merged → `0.4.0`. Source — `packages/web/favicon/favicon.svg` (Inkscape, pages `light` / `dark`), a vite plugin generates ico / themed svg / apple-touch / manifest pngs on every dev start and build (sharp), nothing generated is committed
+   - [x] app version in the bottom-right corner of the ui — 24.10, same branch: the docker job passes `APP_VERSION` (build arg) → vite `define`; dev / a local build — `dev`
+   - [ ] the next `feat` / `fix` release reaches prod by Renovate's own schedule, no dashboard checkbox — check with the favicon / version release (`0.4.0`, pushed 24.10 09:46 UTC)
    - [ ] manual review + refactoring (server → contract → web → lib) — moved to the end of the sprint 24.10
    - 24.10 decided: no Renovate on this repo for now — infra is enough
-   - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md` (+ infra: `iwwwanow_infrastructure/docs/diary/2026-10-23_xtc-toaster-stack-renovate-rbw.md`)
+   - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`, `docs/diary/2026-10-24_favicon-and-app-version.md` (+ infra: `iwwwanow_infrastructure/docs/diary/2026-10-23_xtc-toaster-stack-renovate-rbw.md`)
 4. [ ] 26.10-01.11. two-layers toast
    - 1 week
    - layer composing on output node
