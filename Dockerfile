@@ -27,6 +27,8 @@ RUN bun run typecheck && bun run test
 
 FROM deps AS build
 COPY . .
+# the semantic-release version from the docker job, shown in the ui; a local build — "dev"
+ARG APP_VERSION=dev
 RUN bun run --filter @xtc-toaster/web build
 
 # server deps only (canvas, zod) — no vite / svelte / typescript

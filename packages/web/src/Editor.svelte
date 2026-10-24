@@ -6,6 +6,7 @@
   import ActionsPanel from "./panels/ActionsPanel.svelte";
   import ConnectionPanel from "./panels/ConnectionPanel.svelte";
   import NodeMenu from "./panels/NodeMenu.svelte";
+  import VersionPanel from "./panels/VersionPanel.svelte";
   import { session } from "./session.svelte";
 
   const { screenToFlowPosition, deleteElements } = useSvelteFlow<FlowNode, Edge>();
@@ -66,5 +67,6 @@
     <NodeMenu />
     <ActionsPanel />
     <ConnectionPanel />
+    <VersionPanel />
   </SvelteFlow>
 </div>

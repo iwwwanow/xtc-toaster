@@ -11,6 +11,9 @@ const SERVER = process.env.SERVER_HOST ?? "localhost:3000";
 const DEBUG_IMAGE = process.env.DEBUG_IMAGE || null;
 const DEBUG_IMAGE_URL = "/debug-image";
 
+// the release version, shown in the ui: the docker job passes the semantic-release tag (Dockerfile ARG); anything else — "dev"
+const APP_VERSION = process.env.APP_VERSION || "dev";
+
 const debugImage = (path: string | null): Plugin => ({
   name: "debug-image",
   apply: "serve",
@@ -23,6 +26,7 @@ const debugImage = (path: string | null): Plugin => ({
 });
 
 export default defineConfig({
+  define: { "import.meta.env.APP_VERSION": JSON.stringify(APP_VERSION) },
   plugins: [svelte(), debugImage(DEBUG_IMAGE), favicon(resolve(import.meta.dirname, "favicon/favicon.svg"))],
   server: {
     proxy: {
