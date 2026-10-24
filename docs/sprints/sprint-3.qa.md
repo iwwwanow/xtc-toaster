@@ -55,14 +55,16 @@ _23.10 — партию 1 пользователь проверил руками
 | tint | цвет (#ff0000) | цвет везде, прозрачность сохраняется — после маски красит только то, что осталось |
 | opacity | 0–1 (0.5) | картинка полупрозрачная (на белом фоне — бледнее); две opacity подряд перемножаются (0.5 · 0.5 = 0.25) |
 
-- [ ] skew
-- [ ] perspective
-- [ ] homography
-- [ ] fill
-- [ ] tint
-- [ ] opacity
-- [ ] импорт `docs/sprints/sprint-3.qa/more-nodes.toast.json`: input → skew → perspective → homography → tint → opacity → output, fill — отдельно. Рендер — наклон, трапеция, красный тон, полупрозрачность
-- [ ] цвет в fill / tint применяется, когда палитра закрывается (один рендер на выбор)
+- [x] skew
+- [x] perspective
+- [x] homography
+- [x] fill
+- [x] tint
+- [x] opacity
+- [x] импорт `docs/sprints/sprint-3.qa/more-nodes.toast.json`: input → skew → perspective → homography → tint → opacity → output, fill — отдельно. Рендер — наклон, трапеция, красный тон, полупрозрачность
+- [x] цвет в fill / tint применяется, когда палитра закрывается (один рендер на выбор)
+
+_24.10 — партию 2 пользователь проверил руками, все работают._
 
 ## 3. Цепочки
 

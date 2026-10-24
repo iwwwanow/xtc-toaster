@@ -41,6 +41,12 @@
 - batch 1 checked by the user by hand — works; batch 2 — QA pending: `docs/sprints/sprint-3.qa.md`
 - the user test: async, by text (decided 23.10) — the message is in `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`
 
+### status (2026-10-24)
+
+- batch 2 (skew, perspective, homography, fill, tint, opacity) checked by the user by hand — works (`docs/sprints/sprint-3.qa.md`)
+- stretch reordered: favicon → app version in the ui (now) → manual review + refactoring (last). Renovate on this repo dropped — infra is enough for now
+- open: the next `feat` / `fix` release has to reach prod by Renovate's own schedule, no Dependency Dashboard checkbox (23.10 the run was started by hand) — check with the favicon / version release
+
 ---
 
 ## slice: hosting
@@ -139,15 +145,15 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
    - isolateChannel
    - translate, rotate, scale
    - before the user test if they're done by then — more to play with
-2. **manual review + refactoring** of the vibe-coded code — by the user, Claude helps:
+2. the ui says "server unavailable" when the ws drops (a deploy restarts the container — users see a dead page otherwise)
+3. **favicon** — the public link should have one (`packages/web` has none now: no `<link rel="icon">`, no `public/`)
+4. **app version in the ui** — bottom-right corner, to see which version is hosted. After the favicon. One version for the whole repo — the semantic-release git tag (= the ghcr image tag); every `package.json` stays `0.0.0`. The `docker` job knows it (`new_release_version`) → build arg → into the web build (vite `define`); dev / a local build shows `dev`
+5. **manual review + refactoring** of the vibe-coded code — by the user, Claude helps. Moved to the end on 24.10:
    - order: `server` (goes public first) → `contract` → `web` → `lib`
    - rules: no behaviour change, tests green before and after, one package = one branch; findings that don't fit → `docs/backlog/`
    - commits `refactor:` — semantic-release doesn't release them, nothing reaches prod until the next `feat` / `fix`
    - already written down: `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
-3. Renovate on this repo — deps, the bun image, actions; PR only (automerge — after a few weeks without breakage). fits the "latest exact version" rule from `CLAUDE.md`
-4. the ui says "server unavailable" when the ws drops (a deploy restarts the container — users see a dead page otherwise)
-5. **favicon** — the public link should have one (`packages/web` has none now: no `<link rel="icon">`, no `public/`). Lowest priority in the sprint
-6. **app version in the ui** — bottom-right corner, to see which version is hosted. The very last item, after the favicon. One version for the whole repo — the semantic-release git tag (= the ghcr image tag); every `package.json` stays `0.0.0`. The `docker` job knows it (`new_release_version`) → build arg → into the web build (vite `define`); dev / a local build shows `dev`
+- ~~Renovate on this repo~~ — dropped 24.10: Renovate on infra is enough for now
 
 ### cut if behind (in order)
 
