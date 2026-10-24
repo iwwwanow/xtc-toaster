@@ -87,7 +87,7 @@
      - 23.10: `fix(web)` "server unavailable" went push → `0.2.1` → Renovate PR → automerge → prod in ~6 min (Renovate run started by the dashboard checkbox); rollback by revert — 45 s, Renovate reopens the bump without automerge
      - 22.10 decided: owo evix isn't pinned to `1.7.0` — updates, but only within `1.x` (`allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo`)
    - [x] own test on prod — 23.10: the scenario by hand, 2 MP render ~1 s, memory peak 212 MiB of 512, the host keeps answering; `UPLOAD_MAX_MEGAPIXELS` stays 2
-   - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front
+   - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front. 24.10: sent to her (on `0.4.0`), waiting for the feedback → `docs/diary/`
    - [x] stretch 1 — the rest of the single-layer nodes: `feat/single-layer-nodes` merged 23.10 → `0.3.0` (13 nodes, beyond the spec's 7 — skew, perspective, homography, fill, tint, opacity added 23.10); batch 1 checked by hand 23.10, batch 2 — 24.10 (`docs/sprints/sprint-3.qa.md`, 2б)
    - [x] favicon — 24.10: `feat/favicon` merged → `0.4.0`. Source — `packages/web/favicon/favicon.svg` (Inkscape, pages `light` / `dark`), a vite plugin generates ico / themed svg / apple-touch / manifest pngs on every dev start and build (sharp), nothing generated is committed
    - [x] app version in the bottom-right corner of the ui — 24.10, same branch: the docker job passes `APP_VERSION` (build arg) → vite `define`; dev / a local build — `dev`

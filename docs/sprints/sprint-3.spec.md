@@ -47,7 +47,8 @@
 - stretch reordered: favicon → app version in the ui (now) → manual review + refactoring (last). Renovate on this repo dropped — infra is enough for now
 - stretch 3 + 4 done: `feat/favicon` merged → `0.4.0` (pushed 09:46 UTC). Favicon — one Inkscape svg with two pages (`light` / `dark`) in `packages/web/favicon/`, a vite plugin (sharp) generates `favicon.ico`, a themed `icon.svg` (`prefers-color-scheme`), `apple-touch-icon.png` and the manifest pngs (light page) on every dev start and build, links with `?v=<source hash>`. Version — `APP_VERSION` build arg from the docker job → vite `define` → bottom-right corner, above xyflow's attribution
 - delivery with no manual step confirmed: `0.4.0` push 09:46 UTC → ghcr 09:48:58 → Renovate PR #7 09:49:41 (no checkbox — the user didn't tick it), automerged → prod 09:51: favicon served, `v0.4.0` in the corner, `/healthz` 200. `0.3.0` (23.10) went the same way — PR 4 h after the release, so Mend's latency varies from a minute to hours
-- left in the sprint: the user test (the sister), manual review + refactoring
+- the user test: the message sent to the sister 24.10 (prod on `0.4.0`) — waiting for her feedback
+- left in the sprint: the sister's feedback, manual review + refactoring
 
 ---
 
