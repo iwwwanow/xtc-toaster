@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig, type Plugin } from "vite";
+import { favicon } from "./favicon/favicon";
 
 // one origin: relative /api and /ws, in dev proxied to the bun server (host:port, docker compose: server:3000)
 const SERVER = process.env.SERVER_HOST ?? "localhost:3000";
@@ -9,6 +10,9 @@ const SERVER = process.env.SERVER_HOST ?? "localhost:3000";
 // debug: DEBUG_IMAGE=<path from the repo root> → the page uploads it on open (dev server only)
 const DEBUG_IMAGE = process.env.DEBUG_IMAGE || null;
 const DEBUG_IMAGE_URL = "/debug-image";
+
+// the release version, shown in the ui: the docker job passes the semantic-release tag (Dockerfile ARG); anything else — "dev"
+const APP_VERSION = process.env.APP_VERSION || "dev";
 
 const debugImage = (path: string | null): Plugin => ({
   name: "debug-image",
@@ -22,7 +26,8 @@ const debugImage = (path: string | null): Plugin => ({
 });
 
 export default defineConfig({
-  plugins: [svelte(), debugImage(DEBUG_IMAGE)],
+  define: { "import.meta.env.APP_VERSION": JSON.stringify(APP_VERSION) },
+  plugins: [svelte(), debugImage(DEBUG_IMAGE), favicon(resolve(import.meta.dirname, "favicon/favicon.svg"))],
   server: {
     proxy: {
       "/api": `http://${SERVER}`,

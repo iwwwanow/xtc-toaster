@@ -91,6 +91,9 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          # baked into the web build — the ui shows which version is hosted
+          build-args: |
+            APP_VERSION=${{ needs.release.outputs.new_release_version }}
           tags: |
             ghcr.io/${{ github.repository }}:${{ needs.release.outputs.new_release_version }}
             ghcr.io/${{ github.repository }}:latest
