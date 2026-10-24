@@ -121,7 +121,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 
 - [x] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
 - [x] a `feat` / `fix` push to `master` reaches prod with no manual step (23.10 — the run was started by the dashboard checkbox to save time; 24.10 `0.4.0` — by Mend's own schedule, no checkbox, push → prod ~5 min): CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
-- [ ] red tests or typecheck in CI → no release, no image — by `release.yml`: `release` needs `test`, `docker` needs `release`; not provoked live
+- [x] red tests or typecheck in CI → no release, no image — by `release.yml`: `release` needs `test`, `docker` needs `release`. 24.10 provoked on a temporary branch `ci/red-ci-check` (the `release` job's `if` let that branch through, a `fix:` commit with a test failing on purpose): `test` failed → `release` and `docker` skipped, no tag (run 40085277586); the branch deleted, nothing in `master`
 - [x] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
 - [x] `docker ps` shows the container `healthy`
 - [x] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota) — 21.10 on the built image: TTL 0.001 h + restart, quota 0.05 MB (`docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`)
