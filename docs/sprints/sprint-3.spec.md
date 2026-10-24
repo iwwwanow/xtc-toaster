@@ -119,7 +119,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 ### definition of done
 
 - [x] https://xtc-toaster.iwwwanow.ru opens with a valid certificate; the sprint 2 scenario works there: upload → `input → hue mask → y-rotation → output` → download png → export toast → import it back
-- [x] a `feat` / `fix` push to `master` reaches prod with no manual step (23.10 — the run was started by the dashboard checkbox to save time; without it — Mend's schedule): CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
+- [x] a `feat` / `fix` push to `master` reaches prod with no manual step (23.10 — the run was started by the dashboard checkbox to save time; 24.10 `0.4.0` — by Mend's own schedule, no checkbox, push → prod ~5 min): CI green → ghcr image → Renovate PR automerged → doco-cd deploys; a `docs` / `refactor` push releases nothing
 - [ ] red tests or typecheck in CI → no release, no image — by `release.yml`: `release` needs `test`, `docker` needs `release`; not provoked live
 - [x] the container has `mem_limit` and `cpu_shares`; a 2 MP render stays under the limit (`docker stats`), the rest of the host keeps working during it
 - [x] `docker ps` shows the container `healthy`
@@ -127,7 +127,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 - [x] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
 - [x] rollback checked once: revert of the Renovate PR → the previous version on prod
 - [ ] user test done: the tester made toasts from 3 pictures on the public link, her feedback is in `docs/diary/`
-- [ ] `bun run typecheck` and `bun test` green; dev docker compose works as before
+- [x] `bun run typecheck` and `bun test` green; dev docker compose works as before — 24.10: green locally and in CI (`0.4.0`); dev compose with the favicon checked by the user, upload through the vite proxy works
 
 ### order
 
