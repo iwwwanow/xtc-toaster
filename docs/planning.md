@@ -101,7 +101,7 @@
    - the graph is a DAG: one output → many links (fan-out), edges carry `targetHandle`; the server evaluates from the output with a memo per node
    - export picture (png) — done in sprint 2, a DoD check only
    - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`; one `validateGraph` in contract for web and server
-   - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first
+   - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first; uiu is a git submodule `vendor/uiu` on a release tag (decided 26.10), CI checkout with `submodules: true`
    - stretch: the sister's quick fixes → cursor lag → degas t = 0 as a graph → friendly node names
    - not here: preview node + export settings — after 1.0, `docs/backlog/2026-10-26_preview-node-and-export-settings.md`
    - cut if behind:

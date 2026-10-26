@@ -63,7 +63,13 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 `iwwwanow_uiu` (owo design language: `owo.css` tokens + reset + typography, `ai-generated.css` components). Count of what's missing (26.10): node frame (owo's `.hr_fieldset` is a separator, not a frame), color input, file input, dark theme, xyflow chrome (handles, `Controls`, edges) — ~5, small enough → use it.
 
 - the rule in `CLAUDE.md` — written 26.10: uiu first; a hand-written style gets a `TODO(uiu)` comment + a backlog note (`/log-backlog`) to move it into uiu
-- dependency: git dependency pinned to the release tag (`github:iwwwanow/uiu#v0.3.0` or newer) — check that `bun` installs it (uiu's root `package.json` is `private`, a pnpm workspace inside)
+- dependency — a **git submodule** (decided 26.10), not a package:
+  - path `vendor/uiu` at the repo root — **not** under `packages/` (the bun workspace glob `packages/*` would pick it up; uiu has its own pnpm workspace inside)
+  - pinned to the commit of a release tag (`v0.3.0` or newer); a bump — `git -C vendor/uiu fetch --tags && git -C vendor/uiu checkout vX.Y.Z` + a `chore(web): uiu vX.Y.Z` commit. No Renovate on this repo → bumps by hand
+  - web imports the css by path (`vendor/uiu/owo.css`, `ai-generated.css`) — vite bundles it, nothing is fetched from GitHub Pages at runtime (owo's Google Fonts `@import` stays external)
+  - CI: `actions/checkout` with `submodules: true` in the `test` and `docker` jobs of `release.yml` — the docker build context is that checkout; without it the web build fails (red CI, not a silent miss)
+  - a clone — `git clone --recurse-submodules`, an existing one — `git submodule update --init`; check the dev compose sees `vendor/` (mounts) and svelte-check / the root tsconfig don't scan it
+  - uiu changes are made in `../iwwwanow_uiu` → released there → bumped here
 - spike first (≤ 2 h): owo's global reset (`* { border: none; margin: 0; padding: 0 }`) vs the node fieldset frame and xyflow's own css. The node look — fieldset with a legend — **stays** (the user likes it); only paddings and colors come from uiu tokens
 - apply to what exists: buttons (actions panel), `<select>` (isolate channel, composer blend), range sliders, number inputs (homography), the menu panel, the error / connection banners
 - everything uiu doesn't cover stays as is, with `TODO(uiu)` + backlog
@@ -75,7 +81,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 - [ ] invalid links can't be drawn: a second link into a taken handle replaces the first; a cycle / a link into input is refused; the server answers the same graph sent by hand with `render-error` on the node
 - [ ] export toast with a composer → import it back — same graph; signac and a sprint 3 export import unchanged
 - [ ] a 7-row composer on a 2 MP picture under the prod limits (`read_only`, 512m, `cpu_shares: 256`): render time and cgroup `memory.peak` measured, peak < 512 MiB; numbers in `docs/diary/`
-- [ ] uiu: the rule in `CLAUDE.md`, uiu pinned, existing buttons / selects / sliders / inputs styled from it, every hand-written style — `TODO(uiu)` + a backlog note
+- [ ] uiu: the rule in `CLAUDE.md`, uiu a submodule on a release tag (CI and the prod image build with it), existing buttons / selects / sliders / inputs styled from it, every hand-written style — `TODO(uiu)` + a backlog note
 - [ ] `bun run typecheck` and `bun run test` green; dev docker compose works; a `feat` release (`0.5.0`) reached prod by itself
 - [ ] QA list `docs/sprints/sprint-4.qa.md` checked by hand (like sprint 3)
 
@@ -84,7 +90,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 1. **27.10 tue** — contract: `targetHandle`, `composer`, `validateGraph` + tests. server: DAG evaluation + composer + tests (`feat/composer`)
 2. **28.10 wed** — web: `ComposerNode` (rows, handles, `+`, `×`, blend select, reorder), `toGraph` / `toFlow` with handles, layout of forks, `isValidConnection` + replace
 3. **29.10 thu** — QA list, by hand in dev compose; 7-row measurement under the prod limits; merge → `0.5.0` → prod, DoD scenario on prod
-4. **30.10 fri** — uiu: spike (dependency, reset vs fieldset / xyflow) → apply to existing elements → backlog for the gaps (separate branch `feat/uiu`)
+4. **30.10 fri** — uiu: spike (submodule + CI checkout, reset vs fieldset / xyflow) → apply to existing elements → backlog for the gaps (separate branch `feat/uiu`)
 5. **31.10 sat** — stretch 1–2
 6. **01.11 sun** — buffer / stretch 3, sprint close, diary
 
@@ -122,6 +128,7 @@ answered 26.10:
 - Q1: composer — a plain node with layer rows (like blender's Mix node), the chains stay outside it. A group / subflow → backlog
 - Q2: blend mode — a `<select>` on the composer row, not a node (it only means something while composing). Opacity stays a node — it already exists and multiplies along the chain
 - Q3: the top row is the top layer (Photoshop / Figma); the server creates layers bottom → top
+- Q5 (later the same day): uiu comes in as a git submodule `vendor/uiu`, pinned to a release tag — not a bun git dependency
 - Q4: sprint 3 closed; the sister's feedback → `/log-backlog`; manual review + refactoring → sprint 7 (the last week)
 - defaults (set 26.10 while planning, not asked separately — change here if wrong): `TOAST_GRAPH_VERSION` stays `1`; one input; composer → composer allowed; unlinked rows skipped, an empty composer is an error; ≤ 8 layers
 - the diagram TODOs answered: "how to link one input to several layers" — several edges from one source handle, xyflow does it as is; "raw `Uint8ClampedArray` to the client for previews" — see the preview backlog

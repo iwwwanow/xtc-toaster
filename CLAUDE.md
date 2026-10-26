@@ -46,7 +46,7 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 
 ## UI styles — uiu first
 
-`web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`, local `../iwwwanow_uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix), pinned to a release tag like any dependency.
+`web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix) — a git submodule in `vendor/uiu`, pinned to a release tag commit (`git submodule update --init` after a clone; bump: checkout the new tag inside it + a `chore(web): uiu vX.Y.Z` commit). uiu itself is edited in `../iwwwanow_uiu`, released there, then bumped here.
 
 - uiu covers it → use its tokens / classes, no local copy
 - uiu doesn't cover it (node frame, color / file input, xyflow chrome, …) → write the style here, mark it `/* TODO(uiu): hand-written — uiu has no <what> */` and right away add a backlog note (`/log-backlog`) to move it into uiu
