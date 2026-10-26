@@ -15,9 +15,9 @@
 
 ## uiu
 
-Посмотрели `../iwwwanow_uiu` (теги до `v0.3.0`). В `owo.css` — токены, reset и типографика, в `ai-generated.css` — около 20 компонентов: btn, input, select, range, panel, alert, tooltip, toast… Чего не хватает для web: рамки ноды (`.hr_fieldset` в owo — это разделитель, а не рамка), color input, file input, тёмной темы и элементов xyflow. Всего около 5 позиций, это немного, так что uiu берём. Риск: глобальный reset `* { border: none; margin: 0; padding: 0 }` снесёт fieldset-рамку, которую пользователь просил оставить. Поэтому сначала спайк на ≤ 2 ч. Подключать через git-зависимость с тегом — так соблюдается правило «версия закреплена». Правило «сначала uiu, ручной стиль → `TODO(uiu)` + `/log-backlog`» записано в `CLAUDE.md` в тот же день, как пользователь просил в схеме.
+Посмотрели `../iwwwanow_uiu` (теги до `v0.3.0`). В `owo.css` — токены, reset и типографика, в `ai-generated.css` — около 20 компонентов: btn, input, select, range, panel, alert, tooltip, toast… Чего не хватает для web: рамки ноды (`.hr_fieldset` в owo — это разделитель, а не рамка), color input, file input, тёмной темы и элементов xyflow. Всего около 5 позиций, это немного, так что uiu берём. Глобальный reset `* { border: none; margin: 0; padding: 0 }` убирает рамку fieldset — поэтому рамку ноды пишем руками (см. ниже), а проверка на ≤ 2 ч в пятницу — про то, что reset делает с css xyflow. Правило «сначала uiu, ручной стиль → `TODO(uiu)` + `/log-backlog`» записано в `CLAUDE.md` в тот же день, как пользователь просил в схеме.
 
-Позже в тот же день пользователь решил подключать uiu как git submodule, а не git-зависимостью bun. Путь — `vendor/uiu` в корне: в `packages/` нельзя, туда смотрит workspace-глоб. Коммит сабмодуля — коммит релизного тега. Что это тянет за собой: в `release.yml` у `actions/checkout` в jobs `test` и `docker` нужен `submodules: true`, потому что контекст docker-сборки — это и есть checkout. Без него сборка web упадёт, а не молча соберётся без стилей. Подробности — в спеке, раздел uiu.
+Как подключать uiu, решали в два захода. Сначала пользователь выбрал git submodule (`vendor/uiu`). За ним тянулись `submodules: true` у `actions/checkout` в CI и `--recurse-submodules` при каждом клоне. Потом сравнили альтернативы: git-зависимость bun, npm-пакет, копия скриптом, CDN, subtree. В пользу сабмодуля говорило только то, что owo подключает uiu так же. Остановились на **git-зависимости bun**, `"uiu": "github:iwwwanow/uiu#v0.3.0"`: проще, CI не трогаем, коммит фиксирует `bun.lock`. Рамку ноды (fieldset + legend) пишем руками здесь. Основа — fieldset, border, шрифты и отступы из uiu; это случай `TODO(uiu)` + бэклог по правилу. Проверка в пятницу теперь про то, что глобальный reset owo делает с css xyflow, а не про рамку.
 
 ## Решения пользователя
 
@@ -33,4 +33,11 @@
 
 ## Что дальше
 
-Завтра (27.10) — ветка `feat/composer`: contract (`targetHandle`, `composer`, `validateGraph`) и вычисление DAG на сервере с тестами. План по дням — в спеке, раздел «order».
+Ничего из спринта 4 в коде ещё не начато, всё лежит в документах: спека `docs/sprints/sprint-4.spec.md`, схема `sprint-4.diagram.d2` / `.svg`, правило uiu в `CLAUDE.md`.
+
+Завтра (27.10) — ветка `feat/composer`, шаг 1 из «order» спеки:
+
+- contract: необязательный `targetHandle` у ребра; нода `composer` (`data.layers: [{ id, blendMode }]`, верхний слой первым, 1–8 слоёв, новая нода — 2 × `normal`); `validateGraph` (одна связь на handle, `targetHandle` только у composer и только из его `layers`, без циклов и самосвязей, ничего не входит в input и не выходит из output, ровно один input и один output) + тесты рядом с `graph.test.ts`
+- server: `toPath` → вычисление от output с памятью по `nodeId`; по ребру идут пиксели + opacity; на развилке — копия буфера; composer создаёт слои снизу вверх (`setOpacity`, `setBlendMode`), пустые строки пропускает, пустой composer — `render-error` на нём. Тесты: развилка, порядок, каждый blend mode, opacity в цепочке, пустая строка, пустой composer, отказ `validateGraph`
+
+Среда (28.10) — web: `ComposerNode`, `targetHandle` в `toGraph` / `toFlow`, раскладка развилок, `isValidConnection` с заменой занятой связи.

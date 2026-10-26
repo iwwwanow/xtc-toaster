@@ -46,11 +46,11 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 
 ## UI styles — uiu first
 
-`web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix) — a git submodule in `vendor/uiu`, pinned to a release tag commit (`git submodule update --init` after a clone; bump: checkout the new tag inside it + a `chore(web): uiu vX.Y.Z` commit). uiu itself is edited in `../iwwwanow_uiu`, released there, then bumped here.
+`web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix) — a bun git dependency of `packages/web`, pinned to a release tag (`"uiu": "github:iwwwanow/uiu#vX.Y.Z"`, `import "uiu/owo.css"`); bump: the tag + `bun install`, a `chore(web): uiu vX.Y.Z` commit. uiu itself is edited in `../iwwwanow_uiu`, released there, then bumped here.
 
 - uiu covers it → use its tokens / classes, no local copy
 - uiu doesn't cover it (node frame, color / file input, xyflow chrome, …) → write the style here, mark it `/* TODO(uiu): hand-written — uiu has no <what> */` and right away add a backlog note (`/log-backlog`) to move it into uiu
-- the node look stays a `fieldset` with a `legend`; only paddings and colors come from uiu tokens
+- the node look stays a `fieldset` with a `legend`, its frame written by hand here from uiu's fieldset / border / font / spacing styles (a `TODO(uiu)` case)
 
 ## lib architecture
 
