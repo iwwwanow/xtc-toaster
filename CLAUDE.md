@@ -44,6 +44,14 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 - **Barrel exports.** A package exposes one entry — `"exports": { ".": "<barrel>" }` (`src/index.ts`, lib: `main.ts`) — and other packages import only from the package root, never subpaths or deep paths. Inside a package, a folder with a public surface gets its own `index.ts` barrel. A barrel never re-exports a module with side effects on import (e.g. `toast-1_degas`).
 - **Output file naming.** Every file the project produces for the user (render downloads, baked videos, exports) is named `<toast>_<YYYYMMDD-HHmmss>.<ext>` — `<toast>` is the toast directory name, timestamp in local time. Example: `toast-2_signac_20261009-153012.png`.
 
+## UI styles — uiu first
+
+`web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`, local `../iwwwanow_uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix), pinned to a release tag like any dependency.
+
+- uiu covers it → use its tokens / classes, no local copy
+- uiu doesn't cover it (node frame, color / file input, xyflow chrome, …) → write the style here, mark it `/* TODO(uiu): hand-written — uiu has no <what> */` and right away add a backlog note (`/log-backlog`) to move it into uiu
+- the node look stays a `fieldset` with a `legend`; only paddings and colors come from uiu tokens
+
 ## lib architecture
 
 Zero-DOM: everything works on raw `Uint8ClampedArray` RGBA (`ImageRawDataArray`), the browser/canvas is only touched in `infrastructure/`.

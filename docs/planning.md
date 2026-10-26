@@ -73,7 +73,7 @@
    - cut if behind:
      - (#2) export / import toast → sprint 3
      - (#3) y-rotation → sprint 4
-3. [ ] 19.10-25.10. hosting - public access
+3. [x] 19.10-25.10. hosting - public access — closed 26.10: the sister's feedback in, manual review + refactoring → sprint 7
    - 1 week
    - user test
    - 19.10: spec written — `docs/sprints/sprint-3.spec.md`: one image (Bun serves `dist`), CI test → semantic-release → ghcr, Renovate + doco-cd on `ru-timeweb`, uploads TTL + quota (disk budget 1–2 GB), user test — the sister, 3 pictures; stretch — the rest of the single-layer nodes first
@@ -87,20 +87,26 @@
      - 23.10: `fix(web)` "server unavailable" went push → `0.2.1` → Renovate PR → automerge → prod in ~6 min (Renovate run started by the dashboard checkbox); rollback by revert — 45 s, Renovate reopens the bump without automerge
      - 22.10 decided: owo evix isn't pinned to `1.7.0` — updates, but only within `1.x` (`allowedVersions: "<2"` for `ghcr.io/iwwwanow/owo`)
    - [x] own test on prod — 23.10: the scenario by hand, 2 MP render ~1 s, memory peak 212 MiB of 512, the host keeps answering; `UPLOAD_MAX_MEGAPIXELS` stays 2
-   - [ ] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front. 24.10: sent to her (on `0.4.0`), waiting for the feedback → `docs/diary/`
+   - [x] user test (the sister) — 23.10 decided: async, by text (no call), open-form feedback; the message names the 2 MP limit and the EXIF rotation up front. 24.10: sent to her (on `0.4.0`), the feedback came the same evening (a +/− table) — written down and sorted 26.10: `docs/backlog/2026-10-26_sprint-3-user-test-feedback.md`; quick fixes → sprint 4 stretch 1
    - [x] stretch 1 — the rest of the single-layer nodes: `feat/single-layer-nodes` merged 23.10 → `0.3.0` (13 nodes, beyond the spec's 7 — skew, perspective, homography, fill, tint, opacity added 23.10); batch 1 checked by hand 23.10, batch 2 — 24.10 (`docs/sprints/sprint-3.qa.md`, 2б)
    - [x] favicon — 24.10: `feat/favicon` merged → `0.4.0`. Source — `packages/web/favicon/favicon.svg` (Inkscape, pages `light` / `dark`), a vite plugin generates ico / themed svg / apple-touch / manifest pngs on every dev start and build (sharp), nothing generated is committed
    - [x] app version in the bottom-right corner of the ui — 24.10, same branch: the docker job passes `APP_VERSION` (build arg) → vite `define`; dev / a local build — `dev`
    - [x] the next `feat` / `fix` release reaches prod by Renovate's own schedule, no dashboard checkbox — 24.10: `0.4.0` push 09:46 UTC → ghcr 09:48:58 → Renovate PR #7 09:49:41 (nobody ticked the box), automerged → prod 09:51 (favicon, `v0.4.0` in the corner, `/healthz` 200). `0.3.0` 23.10 went the same way, PR 4 h after the release
-   - [ ] manual review + refactoring (server → contract → web → lib) — moved to the end of the sprint 24.10
+   - [ ] manual review + refactoring (server → contract → web → lib) — moved to the end of the sprint 24.10; 26.10 → sprint 7, the last week (the server's `run-graph` is rewritten in sprint 4 anyway)
    - 24.10 decided: no Renovate on this repo for now — infra is enough
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`, `docs/diary/2026-10-24_favicon-and-app-version.md` (+ infra: `iwwwanow_infrastructure/docs/diary/2026-10-23_xtc-toaster-stack-renovate-rbw.md`)
-4. [ ] 26.10-01.11. two-layers toast
+4. [ ] 26.10-01.11. two-layers toast — spec `docs/sprints/sprint-4.spec.md`, diagram `docs/sprints/sprint-4.diagram.d2`; planned 26.10, work starts 27.10 — `docs/diary/2026-10-26_sprint-4-planning.md`
    - 1 week
-   - layer composing on output node
-   - export picture (png)
-   - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`
+   - ~~layer composing on output node~~ → a separate **composer** node: layer rows (handle, blend mode select, drag to reorder, `+` / `×`), the top row is the top layer; chains stay outside it. Composer as a group of nodes — `docs/backlog/2026-10-26_composer-as-node-group.md`
+   - the graph is a DAG: one output → many links (fan-out), edges carry `targetHandle`; the server evaluates from the output with a memo per node
+   - export picture (png) — done in sprint 2, a DoD check only
+   - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`; one `validateGraph` in contract for web and server
+   - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first
+   - stretch: the sister's quick fixes → cursor lag → degas t = 0 as a graph → friendly node names
+   - not here: preview node + export settings — after 1.0, `docs/backlog/2026-10-26_preview-node-and-export-settings.md`
    - cut if behind:
+     - uiu → only the rule + tokens (goes first)
+     - drag-to-reorder → `↑` / `↓`
      - (#4) blend-modes: normal + add only
 5. [ ] 02.11-15.11. animation node with export (timeline node)
    - 2 weeks
@@ -119,6 +125,8 @@
    - cut if behind:
      - (#5) 2 toasts instead of 3
 7. [ ] 23.11-29.11. free buffer
+   - manual review + refactoring of the vibe-coded code — by the user, Claude helps (moved from sprint 3 on 26.10): `server` → `contract` → `web` → `lib`, no behaviour change, tests green before and after, one package = one branch, `refactor:` commits; findings that don't fit → `docs/backlog/`. Already written down: `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
+   - before the release 28.11 — the buffer first goes to whatever slipped from sprints 4–6
 
 ## cut-list
 

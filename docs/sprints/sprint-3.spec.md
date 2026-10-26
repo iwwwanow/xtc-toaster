@@ -50,6 +50,11 @@
 - the user test: the message sent to the sister 24.10 (prod on `0.4.0`) — waiting for her feedback
 - left in the sprint: the sister's feedback, manual review + refactoring
 
+### status (2026-10-26) — closed
+
+- the sister's feedback: a +/− table, written down and sorted — `docs/backlog/2026-10-26_sprint-3-user-test-feedback.md`. The core is clear to her without explanations; the weak spots — terms (hue / saturation mask, homography), the zoom controls' corner, the picture lost on reload, MP vs MB, cursor lag. Quick fixes → sprint 4 stretch 1
+- manual review + refactoring (stretch 5) not started → sprint 7, the last week (26.10, the user's call)
+
 ---
 
 ## slice: hosting
@@ -127,7 +132,7 @@ by hand only `git push`. no app changes beyond what deploy needs (healthcheck, s
 - [x] uploads older than the TTL are removed (checked with a shortened TTL); over the quota the oldest go first (checked with a small quota) — 21.10 on the built image: TTL 0.001 h + restart, quota 0.05 MB (`docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`)
 - [x] the service fits the 1–2 GB disk budget: uploads quota + image + logs; old images don't pile up after releases
 - [x] rollback checked once: revert of the Renovate PR → the previous version on prod
-- [ ] user test done: the tester made toasts from 3 pictures on the public link, her feedback is in `docs/diary/`
+- [x] user test done: the tester made toasts from 3 pictures on the public link — 24.10 her feedback came; written down 26.10 in `docs/backlog/2026-10-26_sprint-3-user-test-feedback.md` (by the user's call — a backlog note, not the diary)
 - [x] `bun run typecheck` and `bun test` green; dev docker compose works as before — 24.10: green locally and in CI (`0.4.0`); dev compose with the favicon checked by the user, upload through the vite proxy works
 
 ### order

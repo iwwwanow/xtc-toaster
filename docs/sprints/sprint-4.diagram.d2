@@ -1,65 +1,63 @@
 vars: {
   d2-config: {
-    layout-engine: elk
+    layout-engine: dagre
   }
 }
+
+# sprint 4 — composer. spec: docs/sprints/sprint-4.spec.md
+# решено 26.10 (docs/diary/2026-10-26_sprint-4-planning.md):
+# - один output input-ноды → сколько угодно рёбер (xyflow умеет из коробки) — ни ноды-умножителя, ни кнопки «дублировать выход»
+# - composer — обычная нода со строками-слоями, цепочки снаружи; группа (subflow) — после 1.0
+# - blend mode — select в строке слоя, не нода; opacity — нода в цепочке (уже есть)
+# - верхняя строка = верхний слой
+# - preview-node и настройки экспорта в output — после 1.0, сначала обсуждение
 
 direction: right
 
 input-image: {
-  # output-1
-  # output-2
-  # output-3
-  # TODO: duplicate-output-button. is needed?
+  label: "input"
 }
 
-composer-node: {
-  layer-1.drag-drop-icon
-  layer-2.drag-drop-icon
-  layer-3.drag-drop-icon
-  opacity-node
-  isolate-channel-node
-  blend-mode-node
-  noize-node
-  plus-button
-
-  layer-1 -> opacity-node -> isolate-channel-node -> blend-mode-node
-  layer-2 -> noize-node
+chain-1: "layer 1 chain" {
+  style.stroke-dash: 3
+  opacity-node: "opacity"
+  isolate-channel-node: "isolate channel"
+  opacity-node -> isolate-channel-node
 }
 
-# TODO: how to multiple input image node edges?
-# middleware multiplier node
-# OR plus-button on node - which duplicate output dot
-input-image -> composer-node.layer-1
-input-image -> composer-node.layer-2
+chain-2: "layer 2 chain" {
+  style.stroke-dash: 3
+  hue-noise-node: "hue noise"
+}
+
+composer-node: "composer" {
+  layer-1: "⠿ layer 1 · [add ▾] · ×"
+  layer-2: "⠿ layer 2 · [normal ▾] · ×"
+  layer-3: "⠿ layer 3 · [normal ▾] · ×"
+  plus-button: "+ layer"
+}
+
+output-node: "output" {
+  label: "output\n(download png)"
+}
+
+# fan-out: одна точка выхода, три ребра
 input-image -> composer-node.layer-3
+input-image -> chain-2.hue-noise-node
+input-image -> chain-1.opacity-node
+
+chain-1.isolate-channel-node -> composer-node.layer-1
+chain-2.hue-noise-node -> composer-node.layer-2
 
 composer-node -> output-node
 
-# TODO: preview node
-# split output node into preview node & output with export options
-# and preview-node may connect into every part of workflow - after layer too
-# layer rresult not output anything
-# или наоборот - composer-node - принимает только outputs уже хоровых пайплайнов. ранжирует их и выставляет blender-mode
-# текущая схема подразумевает работу в обоих вариантоах - к layer можно также подключить preview. тоесть после layer
+after-1-0: "after 1.0 — backlog" {
+  style.stroke-dash: 3
+  style.opacity: 0.6
+  preview-node: "preview node\n(any point of the chain)"
+  export-settings: "output: export settings"
+  composer-group: "composer as a group (subflow)"
+}
 
-# TODO: composer-node is group of nodes
-# all into it has similar border-color
-# or composer-node has background - и ноды не могут перемещаться вовне. это важный момент. какбудто могут всетаки. все, кроме layer-нод
-# тогда output-dot можем потерятся
-
-# TODO: по поводу UI. на выходных написал репозиторий uiu - там ui-kit. нам нужно задейстоввать его точечно
-# - при этом нужно будет оставить наш элемент нод - мне нравится как сделанно fieldset с подписью
-# - при этом нужно будет подбить отступы и цвета из этого ui-kit.вроде должно все сойтись
-# - давай также сразу установим правило в claude.md - в приоритете использовать стили из uiu
-# - если стилей недостаточно - мы их прописываем прям в текущем репо.при этом проставляем комментарий TODO на то, что этот стиль написан вручную, стили uiu не покрывают и сразу создавать новую запись в бэклог по правилу /log-backlog на переработку и добавление этого стиля в uiu
-
-# TODO: тебе нужно изучить текущую схему и дать мне развернутый комментарий по поводу ui/ux
-# дальшей оценить задачи на текущий спринт
-# и предложить план работы на неделю
-# также изучи как готовились и велись все предыдущие спритны - мы делили задачи на must&stretch. здесь давай сделаем также
-# на счет uiu - я думаю его можно использовать. все готово впринципе. нужно только понять какого количества ui-элементов нам не будет хватать. если этого количества слишком много. то будем оставлять элементы в текущем виде. а менять только то, что уже есть в uiu
-# на счет компоузинга сразу в output-node - я думаю, что это плохая идея. лучше выделить под это отдельную ноду. название ей предлагаю composer-node
-# также предлагаю разделить output-node на preview-node & output-node
-# в первой ноде будет просто превью output в текущем состоянии цепочки. сейчас понял, чо это не самая простая задача. можно вынести в отедльный спринт, уже после текущего релиза. только после обсуждения. вопрос - можем ли мы записывать на диск просто uint8clampedArray и затем возвращать его на клиент (чтобы мы могли кэшировать промежуточные preview). и как будет работать с этим массивом клиент? достаточно ли массива пикселей или обязательно его собирать в изображение? в картинку (png, jpeg)
-# во вторую добавим настройки экспорта - обсудим это. на данный момент в минимальном виде настроек хватит
+# ui — uiu точечно: fieldset ноды остаётся, отступы и цвета — из токенов uiu.
+# правило — CLAUDE.md, раздел «UI styles — uiu first»
