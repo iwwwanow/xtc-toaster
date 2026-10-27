@@ -31,7 +31,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 #### contract
 
 - edge gets an optional `targetHandle` — the composer's layer row it goes into; every other node has one unnamed handle (no field). Toast files of sprint 2–3 (no `targetHandle`) stay valid → `TOAST_GRAPH_VERSION` stays `1` (additive change)
-- `composer` node: `data: { layers: [{ id, blendMode }] }` — **top first**; `id` — the handle id (unique within the node), `blendMode` — `normal` | `add` | `lch-hue`. 1–8 layers (degas needs 7; memory checked on prod limits). New node — 2 layers, both `normal`
+- `composer` node: `data: { layers: [{ id, blendMode }] }` — **top first**; `id` — the handle id (unique within the node), `blendMode` — `normal` | `add` | `lch-hue`. At least 1 layer, **no max in the contract** — the cap is a server env (see server). New node — 2 layers, both `normal`
 - `validateGraph` (contract, used by server **and** web `isValidConnection`) — the rules beyond the zod shape:
   - one link per target handle (a node's input, a composer row)
   - a composer edge's `targetHandle` is one of its layer ids; any other node's edge has none
@@ -46,8 +46,9 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 - fan-out: a node consumed by several nodes hands each a **copy** — lib ops are eager and `fill` / `tint` write in place
 - composer: linked rows bottom → top → `createLayerFromPixelData` + `setOpacity` + `setBlendMode`, `render()` → pixels with opacity 1. Unlinked rows are skipped; no linked row → `render-error` on the composer. The bottom row's blend mode has no effect (nothing under it) — the ui says so
 - composer → composer (nesting) works for free — no special case
+- layer cap — env `RENDER_MAX_LAYERS`, fallback **4** (decided 27.10): the sum of linked rows over **all** composers of one render (a per-composer cap is bypassed by nesting) → over it `render-error` on the composer that crosses it. Unmeasured guess — the 29.10 measurement sets the prod value. Documented with the other server env (`CLAUDE.md`, `.env.example`, compose)
 - errors keep pointing at the node (`nodeId`)
-- tests: fan-out (input → 2 chains → composer), order (swap rows → different hash), each blend mode, opacity in a chain, unlinked row, empty composer, cycle / double link refused by `validateGraph`
+- tests: fan-out (input → 2 chains → composer), order (swap rows → different hash), each blend mode, opacity in a chain, unlinked row, empty composer, over `RENDER_MAX_LAYERS` (incl. nested), cycle / double link refused by `validateGraph`
 
 #### web
 
@@ -80,7 +81,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 - [ ] dragging a row to another place changes the picture; a blend mode change re-renders; `×` removes the row and its link
 - [ ] invalid links can't be drawn: a second link into a taken handle replaces the first; a cycle / a link into input is refused; the server answers the same graph sent by hand with `render-error` on the node
 - [ ] export toast with a composer → import it back — same graph; signac and a sprint 3 export import unchanged
-- [ ] a 7-row composer on a 2 MP picture under the prod limits (`read_only`, 512m, `cpu_shares: 256`): render time and cgroup `memory.peak` measured, peak < 512 MiB; numbers in `docs/diary/`
+- [ ] composers of 4 and 7 rows on a 2 MP picture under the prod limits (`read_only`, 512m, `cpu_shares: 256`): render time and cgroup `memory.peak` measured, peak < 512 MiB; numbers in `docs/diary/`; the prod `RENDER_MAX_LAYERS` set from them
 - [ ] uiu: the rule in `CLAUDE.md`, uiu a bun git dependency on a release tag (CI and the prod image build with it), the node frame hand-written from uiu tokens, existing buttons / selects / sliders / inputs styled from it, every hand-written style — `TODO(uiu)` + a backlog note
 - [ ] `bun run typecheck` and `bun run test` green; dev docker compose works; a `feat` release (`0.5.0`) reached prod by itself
 - [ ] QA list `docs/sprints/sprint-4.qa.md` checked by hand (like sprint 3)
@@ -89,7 +90,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 
 1. **27.10 tue** — contract: `targetHandle`, `composer`, `validateGraph` + tests. server: DAG evaluation + composer + tests (`feat/composer`)
 2. **28.10 wed** — web: `ComposerNode` (rows, handles, `+`, `×`, blend select, reorder), `toGraph` / `toFlow` with handles, layout of forks, `isValidConnection` + replace
-3. **29.10 thu** — QA list, by hand in dev compose; 7-row measurement under the prod limits; merge → `0.5.0` → prod, DoD scenario on prod
+3. **29.10 thu** — QA list, by hand in dev compose; 4- / 7-row measurement under the prod limits → prod `RENDER_MAX_LAYERS`; merge → `0.5.0` → prod, DoD scenario on prod
 4. **30.10 fri** — uiu: spike (bun git dependency in dev / docker, reset vs xyflow) → the node frame by hand from uiu tokens → apply to existing elements → backlog for the gaps (separate branch `feat/uiu`)
 5. **31.10 sat** — stretch 1–2
 6. **01.11 sun** — buffer / stretch 3, sprint close, diary
@@ -103,7 +104,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
    - "clear graph" — back to input → output, the picture stays; no `confirm()` dialog
    - the export button says what the .json is — a toast preset
 2. **cursor lag** (the same note, item 3) — reproduce first (Windows + Chrome like hers): "thinks long, hard to hit" vs `session.locked` during a render / handle size; "the cursor turns white" — over the output picture?
-3. **degas t = 0 as a graph** — `toast-1_degas` (7 layers, `lch-hue`, value masks, tint, blur, opacity) as a static toast file: the real check of the composer and the first of the "3 toasts" of sprint 6. The golden hash of `t=0` (`packages/lib/tests/pipeline.golden.test.ts`) is the target; a mismatch from param conversions (blur radius, tolerances) — look at the numbers, a visual match is acceptable, write down why. Animation (`t`) — sprint 5
+3. **degas t = 0 as a graph** — `toast-1_degas` (7 layers, `lch-hue`, value masks, tint, blur, opacity) as a static toast file: the real check of the composer and the first of the "3 toasts" of sprint 6. The golden hash of `t=0` (`packages/lib/tests/pipeline.golden.test.ts`) is the target; a mismatch from param conversions (blur radius, tolerances) — look at the numbers, a visual match is acceptable, write down why. Animation (`t`) — sprint 5. Needs `RENDER_MAX_LAYERS` ≥ 7 (the fallback is 4)
 4. friendly node names + one-line hints (the sister's items 4–6) — ui labels only (`NODE_LABELS`), contract types untouched; a hint via uiu `tooltip`
 
 ### cut if behind (in order)
@@ -131,5 +132,5 @@ answered 26.10:
 - Q5 (later the same day): uiu — a bun git dependency `"uiu": "github:iwwwanow/uiu#v0.3.0"` (a git submodule like owo's was considered and dropped — the bun dependency is simpler: no CI checkout flag, no clone ritual)
 - Q6: the node frame (fieldset + legend) is written by hand here, from uiu's fieldset / border / font / spacing styles, `TODO(uiu)` + backlog
 - Q4: sprint 3 closed; the sister's feedback → `/log-backlog`; manual review + refactoring → sprint 7 (the last week)
-- defaults (set 26.10 while planning, not asked separately — change here if wrong): `TOAST_GRAPH_VERSION` stays `1`; one input; composer → composer allowed; unlinked rows skipped, an empty composer is an error; ≤ 8 layers
+- defaults (set 26.10 while planning, not asked separately — change here if wrong): `TOAST_GRAPH_VERSION` stays `1`; one input; composer → composer allowed; unlinked rows skipped, an empty composer is an error; ~~≤ 8 layers~~ → 27.10: env `RENDER_MAX_LAYERS`, fallback 4, per render
 - the diagram TODOs answered: "how to link one input to several layers" — several edges from one source handle, xyflow does it as is; "raw `Uint8ClampedArray` to the client for previews" — see the preview backlog
