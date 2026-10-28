@@ -9,6 +9,8 @@ export type ServerOptions = {
   hostname?: string;
   uploadsDir: string;
   uploads: UploadsLimits;
+  // linked composer rows over one render; unset — RENDER_MAX_LAYERS_DEFAULT
+  maxLayers?: number;
   // the web build; without it (dev) the vite dev server serves the page
   staticDir?: string;
 };
@@ -17,7 +19,7 @@ const CLEANUP_INTERVAL_MS = 3_600_000;
 
 const notFound = () => new Response("not found", { status: 404 });
 
-export const createServer = async ({ port, hostname, uploadsDir, uploads, staticDir }: ServerOptions) => {
+export const createServer = async ({ port, hostname, uploadsDir, uploads, maxLayers, staticDir }: ServerOptions) => {
   await mkdir(uploadsDir, { recursive: true });
 
   const cleanup = () =>
@@ -41,7 +43,7 @@ export const createServer = async ({ port, hostname, uploadsDir, uploads, static
           ? undefined
           : new Response("websocket upgrade expected", { status: 400 }),
     },
-    websocket: createWsHandler(uploadsDir),
+    websocket: createWsHandler(uploadsDir, maxLayers),
     fetch: staticDir ? createStaticHandler(staticDir) : notFound,
   });
 };

@@ -1,5 +1,16 @@
 import { join } from "node:path";
-import type { GraphNode, InputNode, IsolateChannelNode, NodeId, PerspectiveNode, ToastGraph } from "@xtc-toaster/contract";
+import {
+  validateGraph,
+  type ComposerNode,
+  type GraphEdge,
+  type GraphNode,
+  type InputNode,
+  type IsolateChannelNode,
+  type NodeId,
+  type OutputNode,
+  type PerspectiveNode,
+  type ToastGraph,
+} from "@xtc-toaster/contract";
 import {
   Channel,
   Color,
@@ -23,35 +34,32 @@ export class GraphError extends Error {
 
 const NO_PATH = "connect the input to the output";
 
-// The path input → … → output, walked back from the output like blender: every
-// node pulls its one image from the node linked into it. Nodes off the path
-// (unlinked, dead-end forks) are ignored. A node on the path with several
-// incoming links would need layers to merge them — sprint 4.
-export const toPath = ({ nodes, edges }: ToastGraph): GraphNode[] => {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  if (byId.size !== nodes.length) throw new GraphError("duplicate node id");
+// the layer cap when RENDER_MAX_LAYERS is unset — a guess until the prod measurement (sprint 4)
+export const RENDER_MAX_LAYERS_DEFAULT = 4;
 
-  // one of each for now — several inputs / outputs may come later
-  const inputs = nodes.filter((node) => node.type === "input");
-  const outputs = nodes.filter((node) => node.type === "output");
-  if (inputs.length !== 1 || outputs.length !== 1) throw new GraphError("graph needs exactly one input and one output");
+// The output's ancestry, walked back from it like blender: how many links pull each node's
+// result. Nodes off it (unlinked, dead-end forks) are ignored. Fails before any pixel work: a
+// node on the way without its link, a composer without a linked row, too many layers.
+const ancestry = (byId: Map<NodeId, GraphNode>, into: Map<NodeId, GraphEdge[]>, outputId: NodeId, maxLayers: number) => {
+  const pulls = new Map<NodeId, number>();
+  const queue = [outputId];
+  let layers = 0;
+  for (const id of queue) {
+    const node = byId.get(id)!;
+    const links = into.get(id) ?? [];
+    if (node.type === "composer") {
+      if (links.length === 0) throw new GraphError("link a layer", id);
+      // over all composers of the render — a per-composer cap is bypassed by nesting
+      layers += links.length;
+      if (layers > maxLayers) throw new GraphError(`over ${maxLayers} layers in one render`, id);
+    } else if (node.type !== "input" && links.length === 0) throw new GraphError(NO_PATH, id);
 
-  const sources = new Map<NodeId, NodeId[]>();
-  for (const { source, target } of edges) {
-    if (!byId.has(source) || !byId.has(target)) throw new GraphError("edge points to a missing node");
-    sources.set(target, [...(sources.get(target) ?? []), source]);
+    for (const { source } of links) {
+      if (!pulls.has(source)) queue.push(source);
+      pulls.set(source, (pulls.get(source) ?? 0) + 1);
+    }
   }
-
-  const path: GraphNode[] = [outputs[0]!];
-  while (path[0]!.type !== "input") {
-    const { id } = path[0]!;
-    const [source, ...rest] = sources.get(id) ?? [];
-    if (source === undefined) throw new GraphError(NO_PATH, id);
-    if (rest.length > 0) throw new GraphError("a node takes one link in — merging comes with layers", id);
-    if (path.some((node) => node.id === source)) throw new GraphError("the path loops", id);
-    path.unshift(byId.get(source)!);
-  }
-  return path;
+  return pulls;
 };
 
 // 35 mm equivalent like a blender camera with sensor fit Auto: the 36 mm sensor
@@ -91,7 +99,7 @@ const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: strin
   return imageFileToRawData(path);
 };
 
-type Applied = { node: Exclude<GraphNode, InputNode>; layer: Layer } & LayerDimensions;
+type Applied = { node: Exclude<GraphNode, InputNode | ComposerNode | OutputNode>; layer: Layer } & LayerDimensions;
 
 // one node onto the layer; opacity is returned, not applied — lib keeps one opacity per layer and
 // bakes it at render, so the chain multiplies its opacity nodes here
@@ -155,35 +163,80 @@ const applyNode = ({ node, layer, width, height }: Applied, opacity: number): nu
       break;
     case "opacity":
       return opacity * node.data.opacity;
-    case "output":
-      break;
   }
   return opacity;
 };
 
+// what flows along an edge: pixels + the chain's opacity, baked into the layer at a composer / the output
+type Flow = { data: ImageRawDataArray; opacity: number };
+
+// Evaluation pulled from the output, each node once per render. A node pulled by several links
+// hands every link but the last a copy and the last its own buffer — lib ops are eager and some
+// (fill / tint) write in place, so consumers never share a buffer.
 export const runGraph = async (
   graph: ToastGraph,
   uploadsDir: string,
+  maxLayers = RENDER_MAX_LAYERS_DEFAULT,
 ): Promise<{ data: ImageRawDataArray } & LayerDimensions> => {
-  const [input, ...rest] = toPath(graph) as [InputNode, ...GraphNode[]];
+  const issue = validateGraph(graph);
+  if (issue) throw new GraphError(issue.message, issue.nodeId);
+
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const into = new Map<NodeId, GraphEdge[]>();
+  for (const edge of graph.edges) into.set(edge.target, [...(into.get(edge.target) ?? []), edge]);
+  // validateGraph: exactly one of each
+  const input = graph.nodes.find((node) => node.type === "input")!;
+  const output = graph.nodes.find((node) => node.type === "output")!;
+
+  const pulls = ancestry(byId, into, output.id, maxLayers);
   const { data, width, height } = await loadInput(input, uploadsDir);
 
-  const composition = new Composition(width, height);
-  const layer = composition.createLayerFromPixelData(data);
-  let opacity = 1;
+  const results = new Map<NodeId, Flow>();
+  const pull = (id: NodeId): Flow => {
+    if (!results.has(id)) results.set(id, evaluate(byId.get(id)!));
+    const flow = results.get(id)!;
+    const left = pulls.get(id)! - 1;
+    pulls.set(id, left);
+    if (left > 0) return { data: new Uint8ClampedArray(flow.data), opacity: flow.opacity };
+    results.delete(id);
+    return flow;
+  };
 
-  for (const node of rest) {
-    if (node.type === "input") throw new GraphError(NO_PATH, node.id); // unreachable: the path starts at the only input
-    if (node.type === "output") {
-      if (opacity < 1) layer.setOpacity(opacity);
-      return { data: composition.render(), width, height };
+  // linked rows bottom → top; the bottom row's blend mode has nothing under it
+  const compose = ({ data: { layers } }: ComposerNode, links: GraphEdge[]): Flow => {
+    const composition = new Composition(width, height);
+    for (const { id, blendMode } of [...layers].reverse()) {
+      const link = links.find(({ targetHandle }) => targetHandle === id);
+      if (!link) continue;
+      const flow = pull(link.source);
+      const layer = composition.createLayerFromPixelData(flow.data);
+      if (flow.opacity < 1) layer.setOpacity(flow.opacity);
+      layer.setBlendMode(blendMode);
     }
+    return { data: composition.render(), opacity: 1 };
+  };
+
+  // ancestry() checked every node on the way has its links
+  const evaluate = (node: GraphNode): Flow => {
+    if (node.type === "input") return { data, opacity: 1 };
+    const links = into.get(node.id)!;
+    if (node.type === "composer") return compose(node, links);
+
+    const flow = pull(links[0]!.source);
+    if (node.type === "output") return flow;
+    const layer = new Composition(width, height).createLayerFromPixelData(flow.data);
     try {
-      opacity = applyNode({ node, layer, width, height }, opacity);
+      const opacity = applyNode({ node, layer, width, height }, flow.opacity);
+      return { data: layer.imageData, opacity };
     } catch (error) {
       // lib throws plain errors (a singular matrix of a degenerate perspective / homography) — point them at the node
       throw error instanceof GraphError ? error : new GraphError(error instanceof Error ? error.message : String(error), node.id);
     }
-  }
-  throw new GraphError(NO_PATH); // unreachable: the path ends with the output
+  };
+
+  const composition = new Composition(width, height);
+  const { data: result, opacity } = evaluate(output);
+  const layer = composition.createLayerFromPixelData(result);
+  if (opacity < 1) layer.setOpacity(opacity);
+  return { data: composition.render(), width, height };
 };

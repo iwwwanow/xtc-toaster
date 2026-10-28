@@ -133,6 +133,38 @@ describe("ws render", () => {
   });
 });
 
+describe("ws render: composer", () => {
+  // input fans out: one row straight, one through hue noise
+  const composed = (imageId: string, extra: object[] = []) => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
+      { id: "cmp", type: "composer", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [
+      { id: "in-nz", source: "in", target: "nz" },
+      { id: "nz-cmp", source: "nz", target: "cmp", targetHandle: "top" },
+      { id: "in-cmp", source: "in", target: "cmp", targetHandle: "bottom" },
+      { id: "cmp-out", source: "cmp", target: "out" },
+      ...extra,
+    ],
+  });
+
+  test("renders a fan-out through a composer", async () => {
+    send({ type: "render", requestId: 11, graph: composed(imageId) });
+    const message = await nextMessage();
+    if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
+    expect([message.width, message.height]).toEqual([250, 359]);
+  });
+
+  test("a link the web would refuse → render-error on the node", async () => {
+    send({ type: "render", requestId: 12, graph: composed(imageId, [{ id: "nz-cmp-2", source: "nz", target: "cmp", targetHandle: "bottom" }]) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 12, nodeId: "cmp" });
+  });
+});
+
 describe("ws render: hue mask", () => {
   const hueMask = (hue: number, tolerance: number) => ({
     version: TOAST_GRAPH_VERSION,
