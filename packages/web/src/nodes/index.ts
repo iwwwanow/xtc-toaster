@@ -1,5 +1,6 @@
 import type { NodeTypes } from "@xyflow/svelte";
 import BlurNode from "./BlurNode.svelte";
+import ComposerNode from "./ComposerNode.svelte";
 import FillNode from "./FillNode.svelte";
 import HomographyNode from "./HomographyNode.svelte";
 import HueMaskNode from "./HueMaskNode.svelte";
@@ -37,5 +38,6 @@ export const nodeTypes = {
   fill: FillNode,
   tint: TintNode,
   opacity: OpacityNode,
+  composer: ComposerNode,
   output: OutputNode,
 } satisfies NodeTypes;

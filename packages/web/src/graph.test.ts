@@ -1,7 +1,36 @@
 import { describe, expect, test } from "bun:test";
 import { toast2signac } from "@xtc-toaster/toasts";
 import { INITIAL_DATA, PARAMS } from "@xtc-toaster/contract";
-import { createNode, fromToastFile, MENU_NODE_TYPES, toFlow, toGraph, toToastFile, ToastFileError } from "./graph";
+import type { Edge } from "@xyflow/svelte";
+import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
+import {
+  canConnect,
+  createNode,
+  fromToastFile,
+  MENU_NODE_TYPES,
+  toFlow,
+  toGraph,
+  toToastFile,
+  ToastFileError,
+  withoutTaken,
+} from "./graph";
+
+// input fans out: one row straight, one through hue noise; the composer into the output
+const fanOut = () => ({
+  version: TOAST_GRAPH_VERSION,
+  nodes: [
+    { id: "in", type: "input", data: { imageId: null } },
+    { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
+    { id: "cmp", type: "composer", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
+    { id: "out", type: "output", data: {} },
+  ] as GraphNode[],
+  edges: [
+    { id: "in-nz", source: "in", target: "nz" },
+    { id: "nz-cmp", source: "nz", target: "cmp", targetHandle: "top" },
+    { id: "in-cmp", source: "in", target: "cmp", targetHandle: "bottom" },
+    { id: "cmp-out", source: "cmp", target: "out" },
+  ] as GraphEdge[],
+});
 
 describe("toFlow", () => {
   test("places nodes left to right by chain order", () => {
@@ -17,6 +46,35 @@ describe("toFlow", () => {
     const y = Object.fromEntries(toFlow(bypass).nodes.map(({ id, position }) => [id, position.y]));
     expect(y.in).toBe(y.out!);
     expect(y.nz!).toBeGreaterThan(y.in!);
+  });
+
+  test("a fork: a node sits right of everything it pulls, a column stacks top-down", () => {
+    const position = Object.fromEntries(toFlow(fanOut()).nodes.map(({ id, position }) => [id, position]));
+    // cmp pulls in directly and through nz — the longest path puts it after nz
+    expect(position.in!.x).toBeLessThan(position.nz!.x);
+    expect(position.nz!.x).toBeLessThan(position.cmp!.x);
+    expect(position.cmp!.x).toBeLessThan(position.out!.x);
+  });
+
+  test("two nodes at one depth stack in one column", () => {
+    const graph = fanOut();
+    graph.nodes.splice(2, 0, { id: "nz2", type: "hueNoise", data: { deviationCoefficient: 0.1 } });
+    graph.edges.push({ id: "in-nz2", source: "in", target: "nz2" });
+    const position = Object.fromEntries(toFlow(graph).nodes.map(({ id, position }) => [id, position]));
+    expect(position.nz2!.x).toBe(position.nz!.x);
+    expect(position.nz2!.y).toBeGreaterThan(position.nz!.y);
+  });
+
+  test("a cycle doesn't hang the layout", () => {
+    const graph = fanOut();
+    graph.edges.push({ id: "cmp-nz", source: "cmp", target: "nz" });
+    expect(toFlow(graph).nodes).toHaveLength(4);
+  });
+
+  test("carries targetHandle, a plain edge stays without it", () => {
+    const { edges } = toFlow(fanOut());
+    expect(edges.find(({ id }) => id === "nz-cmp")).toMatchObject({ targetHandle: "top" });
+    expect(edges.find(({ id }) => id === "in-nz")).not.toHaveProperty("targetHandle");
   });
 
   test("input and output can't be deleted, effects can", () => {
@@ -90,6 +148,54 @@ describe("toGraph", () => {
   });
 });
 
+describe("composer graph", () => {
+  test("round-trips through the flow", () => {
+    const { nodes, edges } = toFlow(fanOut());
+    expect<unknown>(toGraph(nodes, edges)).toEqual(fanOut());
+  });
+
+  test("xyflow's null handles don't reach the contract", () => {
+    const { nodes, edges } = toFlow(fanOut());
+    const fromXyflow = edges.map((edge) => ({ sourceHandle: null, targetHandle: null, ...edge }));
+    expect(toGraph(nodes, fromXyflow).edges[0]).toEqual({ id: "in-nz", source: "in", target: "nz" });
+  });
+});
+
+describe("drawing links", () => {
+  const flow = () => toFlow(fanOut());
+  const link = (source: string, target: string, targetHandle: string | null = null) => ({ source, target, targetHandle });
+
+  test.each([
+    ["into a free row", link("nz", "cmp", "bottom")],
+    ["onto a taken input — it replaces the link", link("in", "out")],
+    ["the same output into a second node", link("in", "cmp", "top")],
+  ])("allows %s", (_, connection) => {
+    const { nodes, edges } = flow();
+    expect(canConnect(nodes, edges, connection)).toBe(true);
+  });
+
+  test.each([
+    ["a cycle", link("cmp", "nz")],
+    ["a link into the input", link("nz", "in")],
+    ["a link to itself", link("nz", "nz")],
+    ["a composer link without a row", link("nz", "cmp")],
+  ])("refuses %s", (_, connection) => {
+    const { nodes, edges } = flow();
+    expect(canConnect(nodes, edges, connection)).toBe(false);
+  });
+
+  test("a new link frees its target handle — other rows keep theirs", () => {
+    const ids = (edges: Edge[]) => edges.map(({ id }) => id);
+    expect(ids(withoutTaken(flow().edges, link("nz", "cmp", "bottom")))).toEqual(["in-nz", "nz-cmp", "cmp-out"]);
+    expect(ids(withoutTaken(flow().edges, link("in", "nz")))).toEqual(["nz-cmp", "in-cmp", "cmp-out"]);
+  });
+
+  test("a moved link stays — only the one it lands on goes", () => {
+    const moved = { id: "nz-cmp", source: "nz", target: "cmp", targetHandle: "bottom" };
+    expect(withoutTaken(flow().edges, moved, "nz-cmp").map(({ id }) => id)).toEqual(["in-nz", "nz-cmp", "cmp-out"]);
+  });
+});
+
 describe("toast file", () => {
   const IMAGE_ID = "3f6c1a52-8e0b-4c1d-9a7e-2b5f4d6e8a90";
   const withImage = () => {
@@ -126,6 +232,7 @@ describe("toast file", () => {
     ["a newer version", JSON.stringify({ ...toast2signac, version: 2 }), "not a toast file"],
     ["no output", JSON.stringify({ ...toast2signac, nodes: onlyInput, edges: [] }), "a toast needs exactly one input and one output"],
     ["two inputs", JSON.stringify({ ...toast2signac, nodes: [...toast2signac.nodes, { ...onlyInput[0], id: "in2" }] }), "a toast needs exactly one input and one output"],
+    ["a cycle", JSON.stringify({ ...fanOut(), edges: [...fanOut().edges.slice(1), { id: "cmp-nz", source: "cmp", target: "nz" }] }), "the graph loops"],
     ["duplicate ids", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "hueMask" ? { ...node, id: "nz" } : node)) }), "duplicate node id"],
   ])("import rejects %s with a message for the ui", (_, text, message) => {
     expect(() => fromToastFile(text, null)).toThrow(new ToastFileError(message));
