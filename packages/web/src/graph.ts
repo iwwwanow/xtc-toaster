@@ -38,6 +38,7 @@ export const NODE_LABELS = {
   homography: "homography",
   fill: "fill",
   tint: "tint",
+  composer: "composer",
 } as const satisfies Record<MenuNodeType, string>;
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 

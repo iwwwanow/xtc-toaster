@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { CHANNELS, PARAMS, type ParamBounds } from "./params";
+import { BLEND_MODES, CHANNELS, PARAMS, type ParamBounds } from "./params";
 
 const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
 
@@ -128,6 +128,29 @@ export const OpacityNodeSchema = z.object({
   data: z.object({ opacity: ranged(PARAMS.opacity.opacity) }),
 });
 
+// a layer row: its own target handle (id) and blend mode
+export const ComposerLayerSchema = z.object({
+  id: z.string().min(1),
+  blendMode: z.enum(BLEND_MODES),
+});
+
+// layers top first; no max here — the cap is a server env (RENDER_MAX_LAYERS), per render
+export const ComposerNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("composer"),
+  data: z.object({
+    layers: z
+      .array(ComposerLayerSchema)
+      .min(1)
+      .superRefine((layers, ctx) => {
+        layers.forEach(({ id }, index) => {
+          if (layers.findIndex((layer) => layer.id === id) !== index)
+            ctx.addIssue({ code: "custom", path: [index, "id"], message: "duplicate layer id" });
+        });
+      }),
+  }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -152,6 +175,7 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   FillNodeSchema,
   TintNodeSchema,
   OpacityNodeSchema,
+  ComposerNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -172,12 +196,17 @@ export type HomographyNode = z.infer<typeof HomographyNodeSchema>;
 export type FillNode = z.infer<typeof FillNodeSchema>;
 export type TintNode = z.infer<typeof TintNodeSchema>;
 export type OpacityNode = z.infer<typeof OpacityNodeSchema>;
+export type ComposerNode = z.infer<typeof ComposerNodeSchema>;
+export type ComposerLayer = z.infer<typeof ComposerLayerSchema>;
+export type BlendMode = ComposerLayer["blendMode"];
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: NodeIdSchema,
   target: NodeIdSchema,
+  // a composer edge: the layer row it goes into; every other node has one unnamed handle (no field)
+  targetHandle: z.string().min(1).optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 

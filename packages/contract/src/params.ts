@@ -71,6 +71,10 @@ export const PARAMS = {
 // isolateChannel picks one of these — not a range: the ui shows a select
 export const CHANNELS = ["red", "green", "blue", "alpha"] as const;
 
+// how a composer row lays its layer onto the ones below — lib's BlendMode, duplicated for now
+// (docs/backlog/2026-10-27_contract-lib-shared-types.md)
+export const BLEND_MODES = ["normal", "add", "lch-hue"] as const;
+
 // nodes whose params are not ranges — what a node dropped from the menu starts with
 export const INITIAL_DATA = {
   isolateChannel: { channel: "red" },
@@ -78,4 +82,11 @@ export const INITIAL_DATA = {
   homography: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
   fill: { color: "#a4a4a4" },
   tint: { color: "#ff0000" },
+  // top first; ids are handle ids, unique within the node
+  composer: {
+    layers: [
+      { id: "layer-1", blendMode: "normal" },
+      { id: "layer-2", blendMode: "normal" },
+    ],
+  },
 } as const;
