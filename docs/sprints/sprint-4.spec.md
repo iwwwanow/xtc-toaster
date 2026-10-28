@@ -6,6 +6,11 @@
    - cut if behind:
      - (#4) blend-modes: normal + add only
 
+### status (2026-10-28) — a day behind, the plan shifted by a day
+
+- 27.10 went to decisions (spec, backlog), no code; 28.10 — contract + server (`92fb7ea`, `bb041bb`)
+- order from here: 29.10 web, 30.10 QA + measurement + release, 31.10 uiu, 01.11 buffer / close; stretch mostly gone — cut list as written
+
 ### status (2026-10-26) — spec written, work starts 27.10
 
 - the spec was a 5-line stub; brought up to the sprint 3 shape. Open questions answered 26.10 — see the decisions at the end; the analysis — `docs/diary/2026-10-26_sprint-4-planning.md`
