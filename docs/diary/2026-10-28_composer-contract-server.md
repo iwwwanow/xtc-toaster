@@ -22,15 +22,20 @@
 - Тесты `run-graph.test.ts` переписаны на настоящий `runGraph`: poppies копируется в `tests/output/run-graph/<uuid>`, результат сравнивается через `Bun.hash`. Проверены структура, развилка, порядок строк, три blend mode, запекание opacity (белый на 0.5 даёт середину ±1), неподключённая строка, одна нода в обе строки, вложенность и лимит. Мутационная проверка: если убрать копию на развилке, падают 5 тестов. Плюс два ws-теста в `tests/server.test.ts`. Ловушка: `expect(promise).rejects` без `await` в bun молча проходит — расставил `await`.
 - Документация: env описана в `CLAUDE.md`, `.env.example` и `docker-compose.yml`. В prod compose (`iwwwanow_infrastructure`) переменную не добавляли — значения 4 хватает до замера.
 
+## Web (в тот же день, после /wrap)
+
+Пользователь попросил после wrap сразу взяться за клиент, так что web сделан в тот же день, и отставание по плану ушло.
+
+- `ComposerNode.svelte`: у каждой строки свой target handle, `id` handle совпадает с `layer.id`. Handle лежит внутри строки с `position: relative` и сдвинут `left: calc(-0.75em - 4px)` на край ноды: padding fieldset + рамка. Кнопка `+ layer` добавляет строку сверху. Подпись `layer N` позиционная, нижняя строка — 1. Select нижней строки выключен, в `title` объяснение, почему. `×` выключен, когда строка одна. После любого изменения строк вызывается `useUpdateNodeInternals` через microtask, иначе xyflow не перемеряет handle.
+- Reorder — HTML5 drag & drop за `⠿`, со своим mime. На строках стоит `nodrag`, drop делает `stopPropagation`, чтобы не задеть drop нод из меню в Editor. Уложились без кнопок `↑` / `↓`.
+- Чистые функции в `composer.ts`: add / remove / move / setBlendMode, `removeLayerEdges`. Id новой строки — первый свободный `layer-N`.
+- `graph.ts`: `toGraphEdge` выкидывает xyflow-ный `targetHandle: null`. Раскладка: колонка — самый длинный путь от input (раунды по фронту, ограничены числом нод, так что цикл не вешает). Колонка складывается сверху вниз, недостижимые ноды идут рядом ниже. `canConnect` = `validateGraph` на графе-кандидате без zod. `withoutTaken(edges, link, keep?)` освобождает handle.
+- Editor: `isValidConnection` → `session.canConnect`. `onbeforeconnect` / `onbeforereconnect` освобождают занятый handle (у reconnect сама перетаскиваемая связь остаётся). Импорт тоже прогоняется через `validateGraph`.
+- Проверено в headless chrome + CDP (dev server + vite локально, compose не поднимали), со скриптом в scratchpad. Импорт toast с развилкой, tint → opacity → верхняя строка: картинка верная. Смена blend mode пересчитывает картинку. Перетаскивание строки меняет handle местами, связи едут за строками, картинка меняется. Настоящей мышью: связь на занятую строку заменяет старую, связь composer → tint (цикл) отклонена. `×` убирает строку и её связь, `+` добавляет `layer-3`.
+- Мелочь: на раскладке импорта ребро input → composer проходит за нодой tint. Визуально выглядит, будто оно идёт от tint. Не правили.
+
 ## Что дальше
 
-29.10 — web на `feat/composer`, пункт «web» из спеки:
-
-- `ComposerNode.svelte`: строки (`⠿`, `layer N`, `<select>` blend mode, `×`), target handle слева на каждой строке (id = `layer.id`), `+` добавляет строку сверху с новым уникальным id, один source handle. Нижняя строка показывает, что её blend mode ни на что не влияет
-- reorder перетаскиванием строк (`nodrag`); если дольше полудня — кнопки `↑` / `↓`
-- `toGraph` / `toFlow` переносят `targetHandle`; xyflow даёт `null` там, где handle нет, и в контракт его передавать нельзя. Раскладка импорта для развилок — по глубине от input, вместо `chainOrder`
-- `isValidConnection` через `validateGraph`; связь, брошенная на занятый handle, заменяет старую
-- `×` на строке удаляет и связь в эту строку
-- round trip экспорта и импорта; signac и экспорт спринта 3 должны импортироваться без изменений
-
-30.10 — QA-лист, замер 4 / 7 строк под лимитами прода → prod `RENDER_MAX_LAYERS`, merge → `0.5.0`. 31.10 — uiu.
+- 29.10: QA-лист `docs/sprints/sprint-4.qa.md` руками в dev compose; замер composer на 4 / 7 строк на 2 МП под лимитами прода (`read_only`, 512m, `cpu_shares: 256`) → prod `RENDER_MAX_LAYERS` (в `iwwwanow_infrastructure`); merge → `0.5.0` → DoD-сценарий на проде
+- 30.10: uiu (ветка `feat/uiu`) — план из спеки снова на своём месте, день отыгран
+- потом stretch по списку спеки (быстрые фиксы сестры, degas t=0 как граф)
