@@ -1,0 +1,32 @@
+timeline: {
+  props: {
+    prop-1
+    prop-2
+    prop-3
+  }
+  time-window-1
+  time-window-2
+  time-window-3
+}
+
+node-1: {
+  prop-1
+  prop-2
+}
+
+node-2: {
+  prop-1
+}
+
+node-1.prop-1 -> timeline.props.prop-1
+node-1.prop-2 -> timeline.props.prop-3
+
+node-2.prop-1 -> timeline.props.prop-2
+
+node-1 -> timeline.time-window-1
+node-2 -> timeline.time-window-3
+node-3 -> timeline.time-window-2
+
+timeline -> output
+
+# TODO: need validation, review and details
