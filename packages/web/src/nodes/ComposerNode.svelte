@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
-  import { BLEND_MODES, type BlendMode } from "@xtc-toaster/contract";
-  import { addLayer, moveLayer, setBlendMode } from "../composer";
+  import { BLEND_MODES, LAYER_NAME_MAX, type BlendMode } from "@xtc-toaster/contract";
+  import { addLayer, layerName, moveLayer, renameLayer, setBlendMode, toggleLayer } from "../composer";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { session } from "../session.svelte";
 
@@ -37,6 +37,18 @@
     dragged = over = null;
   };
   const ondragend = () => (dragged = over = null);
+
+  // rename in place: double-click the name → input; Enter / blur keeps, Esc drops
+  let editing = $state<string | null>(null);
+  const rename = (id: string, name: string) => {
+    if (editing !== id) return; // Esc already closed it — the blur that follows changes nothing
+    editing = null;
+    setLayers(renameLayer(data.layers, id, name));
+  };
+  const onrenamekey = (id: string) => (event: KeyboardEvent & { currentTarget: HTMLInputElement }) => {
+    if (event.key === "Enter") rename(id, event.currentTarget.value);
+    if (event.key === "Escape") editing = null;
+  };
 </script>
 
 <fieldset>
@@ -65,7 +77,32 @@
         ondragstart={ondragstart(index)}
         {ondragend}>⠿</span
       >
-      <span style="flex: 1">layer {data.layers.length - index}</span>
+      <input
+        type="checkbox"
+        checked={layer.visible !== false}
+        disabled={session.locked}
+        title="show / hide the layer"
+        onchange={() => setLayers(toggleLayer(data.layers, layer.id))}
+      />
+      {#if editing === layer.id}
+        <input
+          style="flex: 1; min-width: 0"
+          maxlength={LAYER_NAME_MAX}
+          value={layerName(layer)}
+          {@attach (input: HTMLInputElement) => (input.focus(), input.select())}
+          onkeydown={onrenamekey(layer.id)}
+          onblur={({ currentTarget }) => rename(layer.id, currentTarget.value)}
+        />
+      {:else}
+        <span
+          role="textbox"
+          tabindex="-1"
+          title="double-click to rename"
+          style="flex: 1"
+          style:opacity={layer.visible === false ? 0.4 : 1}
+          ondblclick={() => !session.locked && (editing = layer.id)}>{layerName(layer)}</span
+        >
+      {/if}
       <!-- nothing under the bottom layer — its blend mode has no effect -->
       <select
         value={layer.blendMode}

@@ -16,6 +16,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`) �
 | `limit-5` | the same + a center row → `render-error` on the composer: over 4 layers |
 | `nested-4` | composer (2 rows) in a composer (2 rows) = 4 → three quarters render |
 | `nested-5` | 2 + 3 = 5 → `render-error` (the cap counts all composers of a render) |
+| `hidden-row` | fork-3 with names (`poppies`, `hue noise`) and the green `add` row hidden: poppies over hue noise, no green; the hidden row dimmed, its checkbox off |
 | `unlinked-row` | the top row unlinked — skipped; poppies over the picture |
 | `empty-composer` | no row linked → `render-error` on the composer |
 | `broken-cycle` | import refused: a cycle (off the output path) |

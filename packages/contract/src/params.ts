@@ -82,11 +82,12 @@ export const INITIAL_DATA = {
   homography: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
   fill: { color: "#a4a4a4" },
   tint: { color: "#ff0000" },
-  // top first; ids are handle ids, unique within the node
+  // top first; ids are handle ids, unique within the node, counted from the bottom — a row added on top
+  // continues them, and the shown name comes from the id
   composer: {
     layers: [
-      { id: "layer-1", blendMode: "normal" },
       { id: "layer-2", blendMode: "normal" },
+      { id: "layer-1", blendMode: "normal" },
     ],
   },
 } as const;

@@ -34,7 +34,11 @@ export class GraphError extends Error {
 
 const NO_PATH = "connect the input to the output";
 
-// the layer cap when RENDER_MAX_LAYERS is unset — a guess until the prod measurement (sprint 4)
+// a hidden composer row is skipped like an unlinked one: its chain isn't evaluated, its layer isn't counted
+const shownLinks = ({ data: { layers } }: ComposerNode, links: GraphEdge[]) =>
+  links.filter(({ targetHandle }) => layers.find(({ id }) => id === targetHandle)?.visible !== false);
+
+// the layer cap when RENDER_MAX_LAYERS is unset; prod sets 8 (measured 29.10 — docs/diary/2026-10-29_sprint-4-qa-and-measurement.md)
 export const RENDER_MAX_LAYERS_DEFAULT = 4;
 
 // The output's ancestry, walked back from it like blender: how many links pull each node's
@@ -46,9 +50,11 @@ const ancestry = (byId: Map<NodeId, GraphNode>, into: Map<NodeId, GraphEdge[]>, 
   let layers = 0;
   for (const id of queue) {
     const node = byId.get(id)!;
-    const links = into.get(id) ?? [];
+    const linked = into.get(id) ?? [];
+    const links = node.type === "composer" ? shownLinks(node, linked) : linked;
     if (node.type === "composer") {
-      if (links.length === 0) throw new GraphError("link a layer", id);
+      if (linked.length === 0) throw new GraphError("link a layer", id);
+      if (links.length === 0) throw new GraphError("show a layer", id);
       // over all composers of the render — a per-composer cap is bypassed by nesting
       layers += links.length;
       if (layers > maxLayers) throw new GraphError(`over ${maxLayers} layers in one render`, id);
@@ -202,12 +208,12 @@ export const runGraph = async (
     return flow;
   };
 
-  // linked rows bottom → top; the bottom row's blend mode has nothing under it
+  // linked shown rows bottom → top; the bottom row's blend mode has nothing under it
   const compose = ({ data: { layers } }: ComposerNode, links: GraphEdge[]): Flow => {
     const composition = new Composition(width, height);
-    for (const { id, blendMode } of [...layers].reverse()) {
+    for (const { id, blendMode, visible } of [...layers].reverse()) {
       const link = links.find(({ targetHandle }) => targetHandle === id);
-      if (!link) continue;
+      if (!link || visible === false) continue;
       const flow = pull(link.source);
       const layer = composition.createLayerFromPixelData(flow.data);
       if (flow.opacity < 1) layer.setOpacity(flow.opacity);

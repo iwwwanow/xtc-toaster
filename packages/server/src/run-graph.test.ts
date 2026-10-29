@@ -138,6 +138,20 @@ describe("runGraph: composer", () => {
     expect(await hashOf(nodes, [edge("in", "cmp", "r1"), edge("cmp", "out")])).toBe(await plain());
   });
 
+  test("a hidden row is skipped like an unlinked one", async () => {
+    const { composer: cmp, edges } = twoRows("f", "in");
+    const hidden = { ...cmp, data: { layers: [{ id: "r0", blendMode: "normal", visible: false }, { id: "r1", blendMode: "normal" }] } } as GraphNode;
+    expect(await hashOf([input, fill("f"), hidden, output], [edge("in", "f"), ...edges])).toBe(await plain());
+  });
+
+  test("all linked rows hidden → an error on the composer", async () => {
+    const hidden = { ...composer("cmp", "normal"), data: { layers: [{ id: "r0", blendMode: "normal", visible: false }] } } as GraphNode;
+    await expect(render([input, hidden, output], [edge("in", "cmp", "r0"), edge("cmp", "out")])).rejects.toMatchObject({
+      nodeId: "cmp",
+      message: "show a layer",
+    });
+  });
+
   test("one node into both rows of a composer", async () => {
     const nodes = [input, composer("cmp", "normal", "normal"), output];
     expect(await hashOf(nodes, [edge("in", "cmp", "r0"), edge("in", "cmp", "r1"), edge("cmp", "out")])).toBe(await plain());
@@ -168,6 +182,13 @@ describe("runGraph: layer cap", () => {
     expect(await hashOf(atCap.nodes, atCap.edges)).toBe(await plain());
     const over = rows(RENDER_MAX_LAYERS_DEFAULT + 1);
     await expect(render(over.nodes, over.edges)).rejects.toMatchObject({ nodeId: "cmp" });
+  });
+
+  test("hidden rows don't count", async () => {
+    const { edges } = rows(3);
+    const layers = (["r0", "r1", "r2"] as const).map((id) => ({ id, blendMode: "normal" as const, ...(id === "r0" && { visible: false }) }));
+    const cmp: GraphNode = { id: "cmp", type: "composer", data: { layers } };
+    expect(await hashOf([input, cmp, output], edges, 2)).toBe(await plain());
   });
 
   test("the cap comes from the caller", async () => {

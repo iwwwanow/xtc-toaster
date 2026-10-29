@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TOAST_GRAPH_VERSION } from "./constants";
+import { LAYER_NAME_MAX, TOAST_GRAPH_VERSION } from "./constants";
 import { parseToastGraph, type GraphEdge, type GraphNode } from "./graph";
 import { INITIAL_DATA } from "./params";
 import { validateGraph } from "./validate";
@@ -87,8 +87,20 @@ describe("composer in parseToastGraph", () => {
     expect(() => parseToastGraph(graph(nodes as GraphNode[], []))).not.toThrow();
   });
 
+  test("a layer keeps its name and visibility; both optional", () => {
+    const layers = [{ id: "a", blendMode: "normal", name: "poppies", visible: false }, { id: "b", blendMode: "add" }];
+    const parsed = parseToastGraph(graph([input, { ...composer, data: { layers } } as GraphNode, output], []));
+    expect(parsed.nodes[1]!.data).toEqual({ layers });
+  });
+
   test.each([
     ["no layers", { layers: [] }, ["nodes", 1, "data", "layers"]],
+    ["an empty layer name", { layers: [{ id: "a", blendMode: "normal", name: "" }] }, ["nodes", 1, "data", "layers", 0, "name"]],
+    [
+      "a layer name over the max",
+      { layers: [{ id: "a", blendMode: "normal", name: "x".repeat(LAYER_NAME_MAX + 1) }] },
+      ["nodes", 1, "data", "layers", 0, "name"],
+    ],
     ["an unknown blend mode", { layers: [{ id: "a", blendMode: "multiply" }] }, ["nodes", 1, "data", "layers", 0, "blendMode"]],
     [
       "a duplicate layer id",

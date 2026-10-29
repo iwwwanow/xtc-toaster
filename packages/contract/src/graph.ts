@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TOAST_GRAPH_VERSION } from "./constants";
+import { LAYER_NAME_MAX, TOAST_GRAPH_VERSION } from "./constants";
 import { BLEND_MODES, CHANNELS, PARAMS, type ParamBounds } from "./params";
 
 const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
@@ -128,10 +128,13 @@ export const OpacityNodeSchema = z.object({
   data: z.object({ opacity: ranged(PARAMS.opacity.opacity) }),
 });
 
-// a layer row: its own target handle (id) and blend mode
+// a layer row: its own target handle (id) and blend mode; name — set by the user, none → derived from
+// the id (it moves with the row); visible: false — skipped like an unlinked row
 export const ComposerLayerSchema = z.object({
   id: z.string().min(1),
   blendMode: z.enum(BLEND_MODES),
+  name: z.string().min(1).max(LAYER_NAME_MAX).optional(),
+  visible: z.boolean().optional(),
 });
 
 // layers top first; no max here — the cap is a server env (RENDER_MAX_LAYERS), per render

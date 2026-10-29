@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { INITIAL_DATA, type ComposerLayer } from "@xtc-toaster/contract";
-import { addLayer, moveLayer, removeLayer, removeLayerEdges, setBlendMode } from "./composer";
+import { addLayer, layerName, moveLayer, removeLayer, removeLayerEdges, renameLayer, setBlendMode, toggleLayer } from "./composer";
 
 const layers = (): ComposerLayer[] => [
   { id: "a", blendMode: "add" },
@@ -13,7 +13,7 @@ describe("composer rows", () => {
   test("a new row goes on top, normal, with an id not in use", () => {
     const added = addLayer(INITIAL_DATA.composer.layers);
     expect(added[0]).toEqual({ id: "layer-3", blendMode: "normal" });
-    expect(ids(added.slice(1))).toEqual(["layer-1", "layer-2"]);
+    expect(ids(added.slice(1))).toEqual(["layer-2", "layer-1"]);
   });
 
   test("a removed row's id is not handed out again while a later one lives", () => {
@@ -25,6 +25,23 @@ describe("composer rows", () => {
   test("remove, blend mode", () => {
     expect(ids(removeLayer(layers(), "b"))).toEqual(["a", "c"]);
     expect(setBlendMode(layers(), "b", "add")[1]).toEqual({ id: "b", blendMode: "add" });
+  });
+
+  test("the name comes from the id until the user sets one — it moves with the row", () => {
+    expect(layerName({ id: "layer-3", blendMode: "normal" })).toBe("layer 3");
+    expect(layerName(moveLayer(renameLayer(layers(), "a", " poppies "), 0, 2)[2]!)).toBe("poppies");
+  });
+
+  test("an empty name or the id-derived one drops the name", () => {
+    const named = renameLayer([{ id: "layer-1", blendMode: "normal" }], "layer-1", "poppies");
+    expect(renameLayer(named, "layer-1", "  ")[0]).toEqual({ id: "layer-1", blendMode: "normal" });
+    expect(renameLayer(named, "layer-1", "layer 1")[0]).toEqual({ id: "layer-1", blendMode: "normal" });
+  });
+
+  test("hide / show: visible false only while hidden", () => {
+    const hidden = toggleLayer(layers(), "b");
+    expect(hidden[1]).toEqual({ id: "b", blendMode: "normal", visible: false });
+    expect(toggleLayer(hidden, "b")[1]).toEqual({ id: "b", blendMode: "normal" });
   });
 
   test.each([
