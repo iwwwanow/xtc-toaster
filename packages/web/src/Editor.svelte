@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Background, Controls, SvelteFlow, useSvelteFlow, type Edge } from "@xyflow/svelte";
+  import { Background, Controls, SvelteFlow, useSvelteFlow, type Connection, type Edge } from "@xyflow/svelte";
   import LinkEdge from "./edges/LinkEdge.svelte";
   import { isMenuNodeType, NODE_TYPE_MIME, type FlowNode } from "./graph";
   import { nodeTypes } from "./nodes";
@@ -37,6 +37,16 @@
     void deleteElements({ edges: [edge] });
   };
 
+  // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect
+  const onbeforeconnect = (connection: Connection) => {
+    session.freeTarget(connection);
+    return connection;
+  };
+  const onbeforereconnect = (edge: Edge) => {
+    session.freeTarget(edge, edge.id);
+    return edge;
+  };
+
   // a link end dropped into empty space → unlink
   const onreconnectend = (_: unknown, edge: Edge, __: unknown, { isValid }: { isValid: boolean | null }) => {
     if (!isValid) session.edges = session.edges.filter(({ id }) => id !== edge.id);
@@ -61,6 +71,9 @@
     {onnodecontextmenu}
     {onedgecontextmenu}
     {onreconnectend}
+    isValidConnection={(connection) => session.canConnect(connection)}
+    {onbeforeconnect}
+    {onbeforereconnect}
   >
     <Background />
     <Controls />

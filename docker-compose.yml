@@ -29,6 +29,8 @@ services:
     environment:
       PORT: 3000
       UPLOADS_DIR: /data/uploads
+      # linked composer rows over one render; unset in .env — the server fallback (4)
+      RENDER_MAX_LAYERS: ${RENDER_MAX_LAYERS:-}
     depends_on:
       install:
         condition: service_completed_successfully

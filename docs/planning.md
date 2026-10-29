@@ -102,6 +102,11 @@
    - export picture (png) — done in sprint 2, a DoD check only
    - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`; one `validateGraph` in contract for web and server
    - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first; uiu is a bun git dependency `"uiu": "github:iwwwanow/uiu#v0.3.0"` (decided 26.10, a submodule dropped as more complex); the node fieldset frame — by hand here, from uiu's fieldset / border / font / spacing styles
+   - prod `RENDER_MAX_LAYERS=8` (agreed 29.10): covers degas (7 layers), peak ~430 of 512 MiB; the limit is render time (~1.2 s per row, one worker per process), not memory — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`. Goes into the prod compose (`iwwwanow_infrastructure`, `stacks/ru-timeweb/xtc-toaster/compose.yml`) — not done 29.10: the local infra checkout has diverged from origin + uncommitted ansible changes; until then prod runs the fallback 4
+   - 29.10: QA sections 1 + 2.1–2.3 passed, the rest of QA → **sat 31.10** on `0.5.0` (`docs/sprints/sprint-4.qa.md`, test toasts `tests/toasts/`); measured → prod `RENDER_MAX_LAYERS=8` (below); `feat/composer` merged → `0.5.0` before QA ends (decided by the user 29.10)
+   - from QA 29.10, done the same day before the merge (one contract change, both optional fields → `TOAST_GRAPH_VERSION` stays 1):
+     - composer layer **name** — fixed to the layer (moves with the row, not `layer N` by position), renamable in the row
+     - composer layer **`visible: boolean`** — an eye toggle in the row; a hidden row is skipped like an unlinked one (not evaluated, not counted in `RENDER_MAX_LAYERS`)
    - stretch: the sister's quick fixes → cursor lag → degas t = 0 as a graph → friendly node names
    - not here: preview node + export settings — after 1.0, `docs/backlog/2026-10-26_preview-node-and-export-settings.md`
    - cut if behind:

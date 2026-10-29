@@ -6,6 +6,17 @@
    - cut if behind:
      - (#4) blend-modes: normal + add only
 
+### status (2026-10-29) — measured, layer name + visible, merged; QA → sat
+
+- measurement: 4 rows ~375, 7 rows ~415 of 512 MiB, no OOM; the limit is time (~1.2 s per row) → prod `RENDER_MAX_LAYERS=8` — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`
+- QA: test toasts in `tests/toasts/` (`?toast=<name>` in dev); sections 1 + 2.1–2.3 passed; found — the layer name is positional, no `visible` → both done the same day (contract `name?` / `visible?`, server skips hidden rows, web: checkbox + rename on double-click)
+- merged into master before QA ends (the user's call) → `0.5.0`; the rest of QA + section 6 (name / visible) — **sat 31.10**. Week plan shifts: 30.10 uiu as planned, 31.10 QA + stretch, 01.11 buffer / close
+
+### status (2026-10-28) — contract, server and web done
+
+- 27.10 went to decisions (spec, backlog), no code; 28.10 — contract + server (`92fb7ea`, `bb041bb`)
+- web done the same evening (`ComposerNode`, drag reorder, `canConnect` + replace, fork layout) — the day caught up: 29.10 QA + measurement + release, 30.10 uiu, as planned
+
 ### status (2026-10-26) — spec written, work starts 27.10
 
 - the spec was a 5-line stub; brought up to the sprint 3 shape. Open questions answered 26.10 — see the decisions at the end; the analysis — `docs/diary/2026-10-26_sprint-4-planning.md`
@@ -36,6 +47,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
   - one link per target handle (a node's input, a composer row)
   - a composer edge's `targetHandle` is one of its layer ids; any other node's edge has none
   - no cycles, no self-links; nothing links into `input`, nothing out of `output`
+  - checks the **whole** graph, dead branches too (decided 27.10 — simpler, the same rules for web and server; the sprint 3 test "ignores a cycle off the path" flips)
   - still exactly one input and one output
 - tests next to the code — like `graph.test.ts`
 
@@ -43,11 +55,12 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 
 - `toPath` → evaluation pulled from the output (as now — nodes off the output's ancestry are ignored, unlinked nodes don't error), each node evaluated once per render (memo by node id)
 - what flows along an edge: pixels + opacity (opacity nodes keep multiplying, as now; baked into the layer at the composer / at the output)
-- fan-out: a node consumed by several nodes hands each a **copy** — lib ops are eager and `fill` / `tint` write in place
+- fan-out: a node consumed by several nodes hands every consumer but the last a **copy**, the last gets the original and the result is dropped (memory follows live buffers, not the node count) — lib ops are eager and `fill` / `tint` write in place (the rest allocate a new array, checked 27.10)
 - composer: linked rows bottom → top → `createLayerFromPixelData` + `setOpacity` + `setBlendMode`, `render()` → pixels with opacity 1. Unlinked rows are skipped; no linked row → `render-error` on the composer. The bottom row's blend mode has no effect (nothing under it) — the ui says so
 - composer → composer (nesting) works for free — no special case
 - layer cap — env `RENDER_MAX_LAYERS`, fallback **4** (decided 27.10): the sum of linked rows over **all** composers of one render (a per-composer cap is bypassed by nesting) → over it `render-error` on the composer that crosses it. Unmeasured guess — the 29.10 measurement sets the prod value. Documented with the other server env (`CLAUDE.md`, `.env.example`, compose)
 - errors keep pointing at the node (`nodeId`)
+- a chain linked into a composer row but not reaching the input → `render-error` on the dangling node, like any chain now (decided 27.10; a warning instead — stretch 5)
 - tests: fan-out (input → 2 chains → composer), order (swap rows → different hash), each blend mode, opacity in a chain, unlinked row, empty composer, over `RENDER_MAX_LAYERS` (incl. nested), cycle / double link refused by `validateGraph`
 
 #### web
@@ -106,6 +119,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 2. **cursor lag** (the same note, item 3) — reproduce first (Windows + Chrome like hers): "thinks long, hard to hit" vs `session.locked` during a render / handle size; "the cursor turns white" — over the output picture?
 3. **degas t = 0 as a graph** — `toast-1_degas` (7 layers, `lch-hue`, value masks, tint, blur, opacity) as a static toast file: the real check of the composer and the first of the "3 toasts" of sprint 6. The golden hash of `t=0` (`packages/lib/tests/pipeline.golden.test.ts`) is the target; a mismatch from param conversions (blur radius, tolerances) — look at the numbers, a visual match is acceptable, write down why. Animation (`t`) — sprint 5. Needs `RENDER_MAX_LAYERS` ≥ 7 (the fallback is 4)
 4. friendly node names + one-line hints (the sister's items 4–6) — ui labels only (`NODE_LABELS`), contract types untouched; a hint via uiu `tooltip`
+5. **render warnings** — `rendered` gets `warnings?: [{ message, nodeIds }]`; a composer row whose chain doesn't reach the input is skipped with a warning instead of an error, the nodes highlighted yellow. ~half a day (contract 15 min, server ~1 h, web 1–2 h) — `docs/backlog/2026-10-27_render-warnings.md`
 
 ### cut if behind (in order)
 
@@ -134,3 +148,10 @@ answered 26.10:
 - Q4: sprint 3 closed; the sister's feedback → `/log-backlog`; manual review + refactoring → sprint 7 (the last week)
 - defaults (set 26.10 while planning, not asked separately — change here if wrong): `TOAST_GRAPH_VERSION` stays `1`; one input; composer → composer allowed; unlinked rows skipped, an empty composer is an error; ~~≤ 8 layers~~ → 27.10: env `RENDER_MAX_LAYERS`, fallback 4, per render
 - the diagram TODOs answered: "how to link one input to several layers" — several edges from one source handle, xyflow does it as is; "raw `Uint8ClampedArray` to the client for previews" — see the preview backlog
+
+answered 27.10:
+
+- the layer cap — env `RENDER_MAX_LAYERS`, fallback 4, per render (not in the contract); the web learns it later — `docs/backlog/2026-10-27_render-max-layers-to-client.md`
+- `validateGraph` checks the whole graph, errors only; a row chain not reaching the input is an error for now, warnings — stretch 5
+- fan-out copies: all consumers but the last
+- `BLEND_MODES` lives in contract next to lib's `BlendMode` — a duplicate for now, a shared types package later — `docs/backlog/2026-10-27_contract-lib-shared-types.md`

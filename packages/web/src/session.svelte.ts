@@ -6,16 +6,20 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
+import { removeLayer, removeLayerEdges } from "./composer";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
+  canConnect,
   createNode,
   fromToastFile,
   toFlow,
   toGraph,
   toToastFile,
   ToastFileError,
+  withoutTaken,
   type FlowNode,
   type FlowNodeOf,
+  type Link,
   type MenuNodeType,
 } from "./graph";
 import { connectSocket, wsUrl } from "./socket";
@@ -101,6 +105,24 @@ class Session {
   // a param change is a graph change → App sends a new render
   setNodeData(id: string, data: FlowNode["data"]) {
     this.nodes = this.nodes.map((node) => (node.id === id ? ({ ...node, data } as FlowNode) : node));
+  }
+
+  // a composer row goes away with its link
+  removeComposerLayer(nodeId: string, layerId: string) {
+    const node = this.nodes.find((node): node is FlowNodeOf<"composer"> => node.id === nodeId && node.type === "composer");
+    if (!node) return;
+    this.edges = removeLayerEdges(this.edges, nodeId, layerId);
+    this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
+  }
+
+  // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused
+  canConnect(connection: Link) {
+    return canConnect(this.nodes, this.edges, connection);
+  }
+
+  // a link dropped on a taken input replaces the one there, like blender; `keep` — the link being moved
+  freeTarget(connection: Link, keep?: string) {
+    this.edges = withoutTaken(this.edges, connection, keep);
   }
 
   render() {

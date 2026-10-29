@@ -31,7 +31,7 @@ const readNodeId = (raw: unknown, path: PropertyKey[]): string | undefined => {
   return typeof id === "string" ? id : undefined;
 };
 
-const handleMessage = async (text: string, uploadsDir: string): Promise<ServerMessage> => {
+const handleMessage = async (text: string, uploadsDir: string, maxLayers?: number): Promise<ServerMessage> => {
   const error = (e: RenderError): ServerMessage => ({ type: "render-error", ...e });
 
   let raw: unknown;
@@ -54,7 +54,7 @@ const handleMessage = async (text: string, uploadsDir: string): Promise<ServerMe
   }
 
   try {
-    const { width, height, png } = await render({ graph: parsed.data.graph, uploadsDir });
+    const { width, height, png } = await render({ graph: parsed.data.graph, uploadsDir, maxLayers });
     return { type: "rendered", requestId: parsed.data.requestId, width, height, png };
   } catch (e) {
     if (e instanceof GraphError) return error({ requestId, ...(e.nodeId && { nodeId: e.nodeId }), message: e.message });
@@ -87,10 +87,10 @@ export const enqueue = (ws: Socket, text: string, handle: Handle): void => {
   void drain(ws, handle);
 };
 
-export const createWsHandler = (uploadsDir: string): WebSocketHandler<WsData> => ({
+export const createWsHandler = (uploadsDir: string, maxLayers?: number): WebSocketHandler<WsData> => ({
   data: initialWsData(),
   message(ws, message) {
     const text = typeof message === "string" ? message : message.toString();
-    enqueue(ws, text, (t) => handleMessage(t, uploadsDir));
+    enqueue(ws, text, (t) => handleMessage(t, uploadsDir, maxLayers));
   },
 });
