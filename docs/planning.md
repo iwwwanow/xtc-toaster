@@ -102,6 +102,7 @@
    - export picture (png) — done in sprint 2, a DoD check only
    - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`; one `validateGraph` in contract for web and server
    - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first; uiu is a bun git dependency `"uiu": "github:iwwwanow/uiu#v0.3.0"` (decided 26.10, a submodule dropped as more complex); the node fieldset frame — by hand here, from uiu's fieldset / border / font / spacing styles
+   - prod `RENDER_MAX_LAYERS=8` (agreed 29.10): covers degas (7 layers), peak ~430 of 512 MiB; the limit is render time (~1.2 s per row, one worker per process), not memory — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`. Goes into the prod compose (`iwwwanow_infrastructure`, `stacks/ru-timeweb/xtc-toaster/compose.yml`) with the `0.5.0` rollout
    - from QA 29.10, before the merge (one contract change, both optional fields → `TOAST_GRAPH_VERSION` stays 1):
      - composer layer **name** — fixed to the layer (moves with the row, not `layer N` by position), renamable in the row
      - composer layer **`visible: boolean`** — an eye toggle in the row; a hidden row is skipped like an unlinked one (not evaluated, not counted in `RENDER_MAX_LAYERS`)
