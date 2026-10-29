@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { LAYER_NAME_MAX, TOAST_GRAPH_VERSION } from "./constants";
-import { parseToastGraph, type GraphEdge, type GraphNode } from "./graph";
+import { parseToastGraph, type ComposerLayer, type GraphEdge, type GraphNode } from "./graph";
 import { INITIAL_DATA } from "./params";
 import { validateGraph } from "./validate";
 
@@ -88,7 +88,7 @@ describe("composer in parseToastGraph", () => {
   });
 
   test("a layer keeps its name and visibility; both optional", () => {
-    const layers = [{ id: "a", blendMode: "normal", name: "poppies", visible: false }, { id: "b", blendMode: "add" }];
+    const layers: ComposerLayer[] = [{ id: "a", blendMode: "normal", name: "poppies", visible: false }, { id: "b", blendMode: "add" }];
     const parsed = parseToastGraph(graph([input, { ...composer, data: { layers } } as GraphNode, output], []));
     expect(parsed.nodes[1]!.data).toEqual({ layers });
   });
