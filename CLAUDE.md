@@ -26,6 +26,8 @@ Prod: `Dockerfile` (multi-stage) — `docker build --target test .` is what CI r
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. `packages/server`: unit tests next to the code, integration in `tests/server.test.ts` (real `Bun.serve` on a random port, uploads into `tests/output/uploads`). No linting tools are configured.
 
+Test toasts: `tests/toasts/*.json` (repo root) — graphs for checking the editor / render by hand, kept across sprints (never in `docs/`). Dev only: `http://localhost:5173/?toast=<name>` imports one on open (`vite.config.ts`, plugin `debug-toasts`). `packages/web/src/test-toasts.test.ts` imports them all — `broken-*` must be refused. What each one checks — `tests/toasts/README.md`; a new one gets a row there.
+
 ## Repo structure
 
 Bun workspace, packages in `packages/*`:

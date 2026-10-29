@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "nodes": [
+    {"id": "in", "type": "input", "data": {"imageId": null}},
+    {"id": "hm", "type": "hueMask", "data": {"hue": 0, "tolerance": 30}},
+    {"id": "ic", "type": "isolateChannel", "data": {"channel": "green"}},
+    {"id": "op", "type": "opacity", "data": {"opacity": 0.5}},
+    {"id": "hn", "type": "hueNoise", "data": {"deviationCoefficient": 0.5}},
+    {"id": "cm", "type": "composer", "data": {"layers": [{"id": "layer-3", "blendMode": "normal"}, {"id": "layer-2", "blendMode": "add"}, {"id": "layer-1", "blendMode": "normal"}]}},
+    {"id": "out", "type": "output", "data": {}}
+  ],
+  "edges": [
+    {"id": "e1", "source": "in", "target": "hm"},
+    {"id": "e2", "source": "hm", "target": "cm", "targetHandle": "layer-3"},
+    {"id": "e3", "source": "in", "target": "ic"},
+    {"id": "e4", "source": "ic", "target": "op"},
+    {"id": "e5", "source": "op", "target": "cm", "targetHandle": "layer-2"},
+    {"id": "e6", "source": "in", "target": "hn"},
+    {"id": "e7", "source": "hn", "target": "cm", "targetHandle": "layer-1"},
+    {"id": "e8", "source": "cm", "target": "out"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "nodes": [
+    {"id": "in", "type": "input", "data": {"imageId": null}},
+    {"id": "cm", "type": "composer", "data": {"layers": [{"id": "layer-2", "blendMode": "normal"}, {"id": "layer-1", "blendMode": "normal"}]}},
+    {"id": "out", "type": "output", "data": {}}
+  ],
+  "edges": [
+    {"id": "e1", "source": "cm", "target": "out"}
+  ]
+}

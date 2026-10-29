@@ -61,14 +61,14 @@ _23.10 — партию 1 пользователь проверил руками
 - [x] fill
 - [x] tint
 - [x] opacity
-- [x] импорт `docs/sprints/sprint-3.qa/more-nodes.toast.json`: input → skew → perspective → homography → tint → opacity → output, fill — отдельно. Рендер — наклон, трапеция, красный тон, полупрозрачность
+- [x] импорт `tests/toasts/more-nodes.json`: input → skew → perspective → homography → tint → opacity → output, fill — отдельно. Рендер — наклон, трапеция, красный тон, полупрозрачность
 - [x] цвет в fill / tint применяется, когда палитра закрывается (один рендер на выбор)
 
 _24.10 — партию 2 пользователь проверил руками, все работают._
 
 ## 3. Цепочки
 
-- [ ] импорт `docs/sprints/sprint-3.qa/all-nodes.toast.json` (import toast справа): цепочка input → blur → rotate → scale → translate → isolate channel → output, маски — отдельно внизу, не подключены. Картинка остаётся та же, рендер — размыто, повёрнуто, уменьшено, сдвинуто, в красном
+- [ ] импорт `tests/toasts/all-nodes.json` (import toast справа): цепочка input → blur → rotate → scale → translate → isolate channel → output, маски — отдельно внизу, не подключены. Картинка остаётся та же, рендер — размыто, повёрнуто, уменьшено, сдвинуто, в красном
 - [ ] подключить маски в цепочку (например, value mask перед rotate) — рендер меняется, ошибок нет
 - [ ] порядок важен: translate → rotate и rotate → translate дают разное
 - [ ] две одинаковые ноды подряд (два blur) — работают

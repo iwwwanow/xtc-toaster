@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "nodes": [
+    {"id": "in", "type": "input", "data": {"imageId": null}},
+    {"id": "bl", "type": "blur", "data": {"radius": 4}},
+    {"id": "ro", "type": "rotate", "data": {"angle": 15}},
+    {"id": "out", "type": "output", "data": {}}
+  ],
+  "edges": [
+    {"id": "e1", "source": "in", "target": "out"},
+    {"id": "e2", "source": "bl", "target": "ro"},
+    {"id": "e3", "source": "ro", "target": "bl"}
+  ]
+}
