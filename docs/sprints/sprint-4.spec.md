@@ -6,6 +6,12 @@
    - cut if behind:
      - (#4) blend-modes: normal + add only
 
+### status (2026-10-29) — measured, layer name + visible, merged; QA → sat
+
+- measurement: 4 rows ~375, 7 rows ~415 of 512 MiB, no OOM; the limit is time (~1.2 s per row) → prod `RENDER_MAX_LAYERS=8` — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`
+- QA: test toasts in `tests/toasts/` (`?toast=<name>` in dev); sections 1 + 2.1–2.3 passed; found — the layer name is positional, no `visible` → both done the same day (contract `name?` / `visible?`, server skips hidden rows, web: checkbox + rename on double-click)
+- merged into master before QA ends (the user's call) → `0.5.0`; the rest of QA + section 6 (name / visible) — **sat 31.10**. Week plan shifts: 30.10 uiu as planned, 31.10 QA + stretch, 01.11 buffer / close
+
 ### status (2026-10-28) — contract, server and web done
 
 - 27.10 went to decisions (spec, backlog), no code; 28.10 — contract + server (`92fb7ea`, `bb041bb`)
