@@ -51,23 +51,34 @@
   };
 </script>
 
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.composer}</legend>
-  <button class="nodrag" type="button" disabled={session.locked} onclick={() => setLayers(addLayer(data.layers))}>+ layer</button>
+  <button
+    class="nodrag btn_ai-generated btn-sm_ai-generated btn-dashed_ai-generated"
+    type="button"
+    disabled={session.locked}
+    onclick={() => setLayers(addLayer(data.layers))}>+ layer</button
+  >
   <!-- the top row is the top layer -->
   {#each data.layers as layer, index (layer.id)}
     {@const bottom = index === data.layers.length - 1}
     <div
       class="nodrag"
       role="listitem"
-      style="position: relative; display: flex; gap: 4px; align-items: center; margin-top: 4px"
+      style="position: relative; display: flex; gap: var(--GRID-GAP-4); align-items: center"
       style:outline={over === index && dragged !== index ? "1px dashed currentColor" : "none"}
       style:opacity={dragged === index ? 0.4 : 1}
       ondragover={ondragover(index)}
       ondrop={ondrop(index)}
     >
-      <!-- the row's own input, at the node's left edge (past the fieldset padding and border) -->
-      <Handle type="target" position={Position.Left} id={layer.id} style="left: calc(-0.75em - 4px)" />
+      <!-- the row's own input, out of the node's left edge like every handle (past the frame's padding and
+           1px border, then the handle offset — app.css) -->
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={layer.id}
+        style="left: calc(-1 * var(--GRID-GAP-2) - 1px - var(--handle-offset))"
+      />
       <span
         draggable={!session.locked}
         role="button"
@@ -77,15 +88,18 @@
         ondragstart={ondragstart(index)}
         {ondragend}>⠿</span
       >
-      <input
-        type="checkbox"
-        checked={layer.visible !== false}
-        disabled={session.locked}
-        title="show / hide the layer"
-        onchange={() => setLayers(toggleLayer(data.layers, layer.id))}
-      />
+      <label class="checkbox_ai-generated">
+        <input
+          type="checkbox"
+          checked={layer.visible !== false}
+          disabled={session.locked}
+          title="show / hide the layer"
+          onchange={() => setLayers(toggleLayer(data.layers, layer.id))}
+        />
+      </label>
       {#if editing === layer.id}
         <input
+          class="input_ai-generated input-sm_ai-generated"
           style="flex: 1; min-width: 0"
           maxlength={LAYER_NAME_MAX}
           value={layerName(layer)}
@@ -105,6 +119,8 @@
       {/if}
       <!-- nothing under the bottom layer — its blend mode has no effect -->
       <select
+        class="select_ai-generated input-sm_ai-generated"
+        style="width: auto"
         value={layer.blendMode}
         disabled={session.locked || bottom}
         title={bottom ? "the bottom layer has nothing to blend with" : "blend mode"}
@@ -116,6 +132,7 @@
       </select>
       <!-- a composer keeps at least one row (contract) -->
       <button
+        class="btn_ai-generated btn-sm_ai-generated"
         type="button"
         title="remove the layer and its link"
         disabled={session.locked || data.layers.length === 1}

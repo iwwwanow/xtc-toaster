@@ -13,11 +13,11 @@
   };
 </script>
 
-<fieldset>
+<fieldset class="frame">
   <legend>input</legend>
-  <input class="nodrag" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
+  <input class="nodrag file-input" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
   {#if session.uploadError}
-    <div style="color: crimson">{session.uploadError}</div>
+    <div class="field__error_ai-generated">{session.uploadError}</div>
   {/if}
 </fieldset>
 <Handle type="source" position={Position.Right} />

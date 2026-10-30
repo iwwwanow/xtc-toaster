@@ -14,13 +14,13 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.homography}</legend>
   <!-- raw 3×3, row-major, px of the image: [x, y, 1] · H — the last row is the translation -->
-  <div style="display: grid; grid-template-columns: repeat(3, 72px); gap: 2px">
+  <div style="display: grid; grid-template-columns: repeat(3, 72px); gap: var(--GRID-GAP-4)">
     {#each data.matrix as value, index (index)}
       <input
-        class="nodrag"
+        class="nodrag input_ai-generated input-sm_ai-generated"
         type="number"
         step="any"
         {value}

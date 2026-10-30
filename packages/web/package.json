@@ -14,7 +14,8 @@
     "@xtc-toaster/contract": "workspace:*",
     "@xtc-toaster/toasts": "workspace:*",
     "@xyflow/svelte": "1.7.0",
-    "svelte": "5.57.2"
+    "svelte": "5.57.2",
+    "uiu": "github:iwwwanow/uiu#v0.3.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

@@ -67,6 +67,7 @@
     {edgeTypes}
     fitView
     fitViewOptions={{ maxZoom: 1 }}
+    connectionRadius={40}
     deleteKey={["Delete", "Backspace"]}
     {onnodecontextmenu}
     {onedgecontextmenu}
