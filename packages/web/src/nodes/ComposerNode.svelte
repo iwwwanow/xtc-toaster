@@ -71,8 +71,14 @@
       ondragover={ondragover(index)}
       ondrop={ondrop(index)}
     >
-      <!-- the row's own input, at the node's left edge (past the frame's padding and 1px border — app.css) -->
-      <Handle type="target" position={Position.Left} id={layer.id} style="left: calc(-1 * var(--GRID-GAP-2) - 1px)" />
+      <!-- the row's own input, out of the node's left edge like every handle (past the frame's padding and
+           1px border, then the handle offset — app.css) -->
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={layer.id}
+        style="left: calc(-1 * var(--GRID-GAP-2) - 1px - var(--handle-offset))"
+      />
       <span
         draggable={!session.locked}
         role="button"
