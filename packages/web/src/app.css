@@ -179,21 +179,20 @@ body {
   --handle-offset: var(--GRID-GAP-2);
 }
 
-/* TODO(uiu): hand-written — handles: a round 6px dot out of the frame (round like owo's radio — a socket),
-   caught in a square around it (the ::before); MEDIUM → DARK under the cursor / over a valid drop, same size */
+/* TODO(uiu): hand-written — handles: a 4px square out of the frame, caught in a square around it (the
+   ::before); MEDIUM → DARK under the cursor / over a valid drop, same size */
 .svelte-flow__handle {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   min-width: 0;
   min-height: 0;
   border: none;
-  border-radius: 50%;
   background-color: var(--MEDIUM);
 }
 .svelte-flow__handle::before {
   content: "";
   position: absolute;
-  inset: -8px;
+  inset: -9px;
 }
 .svelte-flow__handle:hover,
 .svelte-flow__handle.valid,
