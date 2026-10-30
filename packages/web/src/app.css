@@ -176,7 +176,7 @@ body {
 .svelte-flow {
   --xy-edge-stroke: var(--MEDIUM);
   /* a handle sits this far out of the frame — away from the fields at the frame's edge */
-  --handle-offset: var(--GRID-GAP-2);
+  --handle-offset: var(--GRID-GAP-4);
 }
 
 /* TODO(uiu): hand-written — handles: a 4px square out of the frame, caught in a square around it (the
