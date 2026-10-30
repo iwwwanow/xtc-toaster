@@ -1,0 +1,11 @@
+# Пробелы uiu, найденные при переводе web на uiu
+
+Всё, что `packages/web/src/app.css` пишет руками с пометкой `TODO(uiu)`, нужно перенести в `../iwwwanow_uiu`, выпустить новый тег и поднять его здесь. После этого локальное правило удаляется. Найдено 30.10 на uiu `v0.3.0` (ветка `feat/uiu`).
+
+- **Базовый размер текста.** owo ставит `:root { font-size: 62.5% }` и задаёт размер только для `p` / `h*`, поэтому весь остальной текст получается 10px. В uiu нужен `body { font-size: 1.4rem; line-height: 1.6rem }` — тот же масштаб, что у компонентов `_ai-generated`.
+- **reset против svg.** Правило `svg { max-width: 100%; height: auto }` в reset owo сжимает до нулевой ширины svg с `overflow: visible`, у которого размер родителя 0. Так пропадают все провода xyflow. Варианты: убрать `max-width` для `svg` в reset (оставить только для `img`) или исключить `svg[overflow]` / `svg:not([width])`.
+- **Fieldset с рамкой.** `.hr_fieldset` в owo — это разделитель, а не рамка. Нужен блок вроде `.fieldset_ai-generated`: 1px `--LIGHT`, при hover / selected `--DARK`, legend как у `.hr_fieldset` (`0 4px`, lowercase, `--MEDIUM`), паддинги `--GRID-GAP-4` / `--GRID-GAP-2`, колонка с gap `--GRID-GAP-4`, фон `--WHITE`. Здесь это `.frame`.
+- **`.range_ai-generated`.** Дорожка высотой 1px, а квадратный thumb 16px наезжает на подпись над слайдером. При `width: 100%` в узком контейнере слайдер сжимается. Лечится вертикальным отступом на половину thumb (`--GRID-GAP-2`) и `min-width`.
+- **Color input.** В uiu его нет. Нужен в размере `.input-sm_ai-generated`, свотч без рамки, рамка 1px со сменой цвета на hover. Свотч для `::-webkit-` и `::-moz-` задаётся отдельными правилами, иначе весь список селекторов отбрасывается.
+- **File input.** В uiu его нет. `::file-selector-button` нужно оформить как `.btn-sm_ai-generated`, имя файла выводить `--MEDIUM`, выключенное состояние делать пунктирной рамкой.
+- **Тема для xyflow**, пожалуй, отдельным файлом (`xyflow.css`), а не в `ai-generated.css`. В ней кнопки `Controls` как `.btn_ai-generated`, `--xy-handle-background-color: --DARK`, `--xy-edge-stroke: --MEDIUM`. Тёмной темы в uiu нет совсем, это ещё один пробел (план спринта 4, 26.10).

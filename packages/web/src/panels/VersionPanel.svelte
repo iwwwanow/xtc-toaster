@@ -6,6 +6,6 @@
 </script>
 
 <!-- above xyflow's attribution, which sits in the same corner -->
-<Panel position="bottom-right" style="margin-bottom: 24px; font-size: 12px; color: gray">
+<Panel position="bottom-right" class="field__hint_ai-generated" style="margin-bottom: 24px">
   {version === "dev" ? "dev" : `v${version}`}
 </Panel>

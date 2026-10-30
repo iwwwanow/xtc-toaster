@@ -9,7 +9,7 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.perspective}</legend>
   <Slider
     label="top-left x (%)"

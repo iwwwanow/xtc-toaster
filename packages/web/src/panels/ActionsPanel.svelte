@@ -14,12 +14,12 @@
   };
 </script>
 
-<Panel position="top-right" style="display: flex; flex-direction: column; gap: 4px">
-  <button disabled={session.locked || !session.rendered} onclick={() => session.download()}>download png</button>
-  <button onclick={() => session.exportToast()}>export toast</button>
-  <button onclick={() => fileInput.click()}>import toast</button>
+<Panel position="top-right" style="display: flex; flex-direction: column; gap: var(--GRID-GAP-4)">
+  <button class="btn_ai-generated" disabled={session.locked || !session.rendered} onclick={() => session.download()}>download png</button>
+  <button class="btn_ai-generated" onclick={() => session.exportToast()}>export toast</button>
+  <button class="btn_ai-generated" onclick={() => fileInput.click()}>import toast</button>
   <input bind:this={fileInput} type="file" accept="application/json,.json" hidden {onchange} />
   {#if session.importError}
-    <div style="color: crimson">{session.importError}</div>
+    <div class="field__error_ai-generated">{session.importError}</div>
   {/if}
 </Panel>

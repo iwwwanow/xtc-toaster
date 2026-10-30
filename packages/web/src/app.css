@@ -1,0 +1,107 @@
+/* local styles on top of uiu (owo.css + ai-generated.css) and xyflow's base.css — only what uiu has no
+   class for; each block names the gap (CLAUDE.md: uiu first) */
+
+/* TODO(uiu): hand-written — uiu has no base text size (owo sets the root to 62.5% and sizes only p / h*,
+   loose text falls to 10px); the type scale's 1.4rem, like the ai-generated components */
+body {
+  font-size: 1.4rem;
+  line-height: 1.6rem;
+}
+
+/* TODO(uiu): hand-written — owo's reset (`svg { max-width: 100% }`) squeezes xyflow's edge svg, a zero-size
+   box with overflow: visible, to 0 width — every link disappears */
+.svelte-flow svg {
+  max-width: none;
+}
+
+/* TODO(uiu): hand-written — uiu has no framed fieldset (owo's .hr_fieldset is a separator). The node frame:
+   .hr_fieldset's legend + .border's 1px LIGHT → DARK, paddings from the grid gap */
+.frame {
+  padding: var(--GRID-GAP-4) var(--GRID-GAP-2) var(--GRID-GAP-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--GRID-GAP-4);
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.frame > legend {
+  padding: 0 4px;
+  color: var(--MEDIUM);
+  text-transform: lowercase;
+}
+.svelte-flow__node:hover > .frame,
+.svelte-flow__node.selected > .frame {
+  border-color: var(--DARK);
+}
+
+/* TODO(uiu): hand-written — .range_ai-generated is a 1px track under a 16px thumb: the thumb spills over
+   the label above it; and at width: 100% a slider shrinks to a narrow node */
+.range_ai-generated {
+  min-width: 160px;
+  margin: var(--GRID-GAP-2) 0;
+}
+
+/* TODO(uiu): hand-written — uiu has no color input; sized like .input-sm_ai-generated */
+.color-input {
+  width: 48px;
+  height: 24px;
+  padding: 1px;
+  display: block;
+  cursor: pointer;
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.color-input:hover {
+  border-color: var(--DARK);
+}
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+/* separate rules: a selector list with an unknown pseudo-element is dropped whole */
+.color-input::-webkit-color-swatch {
+  border: none;
+}
+.color-input::-moz-color-swatch {
+  border: none;
+}
+
+/* TODO(uiu): hand-written — uiu has no file input; its button looks like .btn-sm_ai-generated */
+.file-input {
+  max-width: 240px;
+  font-size: 1.4rem;
+  color: var(--MEDIUM);
+}
+.file-input::file-selector-button {
+  height: 24px;
+  margin-right: var(--GRID-GAP-2);
+  padding: 0 var(--GRID-GAP-4);
+  cursor: pointer;
+  color: var(--BLACK);
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.file-input:hover::file-selector-button {
+  border-color: var(--DARK);
+}
+.file-input:disabled::file-selector-button {
+  color: var(--MEDIUM);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* TODO(uiu): hand-written — uiu has no xyflow chrome: the Controls buttons as .btn_ai-generated, handles DARK */
+.svelte-flow__controls {
+  gap: var(--GRID-GAP-4);
+}
+.svelte-flow__controls-button {
+  color: var(--BLACK);
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.svelte-flow__controls-button:hover {
+  border-color: var(--DARK);
+}
+.svelte-flow {
+  --xy-handle-background-color: var(--DARK);
+  --xy-edge-stroke: var(--MEDIUM);
+}

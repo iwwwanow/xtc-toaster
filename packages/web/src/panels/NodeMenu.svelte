@@ -9,7 +9,7 @@
 </script>
 
 <Panel position="top-left">
-  <fieldset>
+  <fieldset class="frame">
     <legend>nodes</legend>
     {#each MENU_NODE_TYPES as type (type)}
       <div draggable="true" role="listitem" style="cursor: grab" ondragstart={(event) => ondragstart(event, type)}>{NODE_LABELS[type]}</div>

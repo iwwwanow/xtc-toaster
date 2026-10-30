@@ -7,13 +7,13 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.tint}</legend>
   <!-- the color with the alpha kept — paints what a mask left; change fires when the picker closes — one render per pick, like a slider release -->
-  <label style="display: block">
-    color
+  <label class="field_ai-generated">
+    <span class="field__label_ai-generated">color</span>
     <input
-      class="nodrag"
+      class="nodrag color-input"
       type="color"
       value={data.color}
       disabled={session.locked}

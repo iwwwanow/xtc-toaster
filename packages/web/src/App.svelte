@@ -1,7 +1,10 @@
 <script lang="ts">
   import { SvelteFlowProvider } from "@xyflow/svelte";
-  // base styles only — the look is plain html (fieldset per node), no theme
+  // uiu first (tokens, reset, typography, components), xyflow's base styles over its reset
+  import "uiu/owo.css";
+  import "uiu/ai-generated.css";
   import "@xyflow/svelte/dist/base.css";
+  import "./app.css";
   import { untrack } from "svelte";
   import Editor from "./Editor.svelte";
   import { session } from "./session.svelte";

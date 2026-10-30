@@ -9,7 +9,7 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.scale}</legend>
   <Slider
     label="x"

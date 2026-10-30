@@ -11,10 +11,10 @@
 </script>
 
 <!-- release → graph change → render; no live render while dragging (next release) -->
-<label style="display: block">
-  {label}: {current.toFixed(decimals)}
+<label class="field_ai-generated">
+  <span class="field__label_ai-generated">{label}: {current.toFixed(decimals)}</span>
   <input
-    class="nodrag"
+    class="nodrag range_ai-generated"
     type="range"
     min={bounds.min}
     max={bounds.max}

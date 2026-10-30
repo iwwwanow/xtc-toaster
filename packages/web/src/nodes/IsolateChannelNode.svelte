@@ -11,12 +11,12 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset>
+<fieldset class="frame">
   <legend>{NODE_LABELS.isolateChannel}</legend>
   <!-- a pick, not a range: the change is the release — renders right away like a slider release -->
-  <label style="display: block">
-    channel
-    <select class="nodrag" value={data.channel} disabled={session.locked} {onchange}>
+  <label class="field_ai-generated">
+    <span class="field__label_ai-generated">channel</span>
+    <select class="nodrag select_ai-generated input-sm_ai-generated" value={data.channel} disabled={session.locked} {onchange}>
       {#each CHANNELS as channel (channel)}
         <option value={channel}>{channel}</option>
       {/each}
