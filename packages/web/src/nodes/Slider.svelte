@@ -76,8 +76,11 @@
 <div class="param">
   <span class="param__label field__label_ai-generated">{label}</span>
   {#if editing}
+    <!-- size 1: a text input is ~20 characters wide by itself and would widen the node's column — this way
+         it takes the field's width (min-width in app.css) -->
     <input
       class="nodrag input_ai-generated input-sm_ai-generated drag-field__input"
+      size="1"
       value={current}
       {@attach (input: HTMLInputElement) => (input.focus(), input.select())}
       onkeydown={ontypekey}
