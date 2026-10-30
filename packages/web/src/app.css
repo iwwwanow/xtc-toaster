@@ -179,12 +179,15 @@ body {
   --handle-offset: var(--GRID-GAP-2);
 }
 
-/* TODO(uiu): hand-written — handles: an 8px dot out of the frame, caught in a 24px square around it
-   (the ::before), MEDIUM → DARK and a bit bigger under the cursor / over a valid drop */
+/* TODO(uiu): hand-written — handles: a round 6px dot out of the frame (round like owo's radio — a socket),
+   caught in a square around it (the ::before); MEDIUM → DARK under the cursor / over a valid drop, same size */
 .svelte-flow__handle {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
   border: none;
+  border-radius: 50%;
   background-color: var(--MEDIUM);
 }
 .svelte-flow__handle::before {
@@ -195,8 +198,6 @@ body {
 .svelte-flow__handle:hover,
 .svelte-flow__handle.valid,
 .svelte-flow__handle.connectingfrom {
-  width: 10px;
-  height: 10px;
   background-color: var(--DARK);
 }
 .svelte-flow__handle-left {
