@@ -6,6 +6,13 @@
    - cut if behind:
      - (#4) blend-modes: normal + add only
 
+### status (2026-10-30) — uiu done, a blender-like number field, handles easier to hit; prod `RENDER_MAX_LAYERS=8`
+
+- uiu `v0.3.0` a bun git dependency (dev compose and the CI test image install it); buttons / selects / inputs / checkboxes / errors / the connection alert from its classes; what uiu lacks — `packages/web/src/app.css` with `TODO(uiu)`, the list — `docs/backlog/2026-10-30_uiu-gaps-from-web.md`. owo's reset squeezed the edge svg to 0 width (no links drawn) — fixed there
+- from the user's look the same day: range sliders → a **blender-like number field** (label right-aligned | field; drag — the field's width is the range, shift ×0.1; `‹ ›` step; a click types a value), the node menu items — uiu buttons with hover, **handles** — a 4px square 4px out of the frame, an invisible hit area around it, hover = color only, `connectionRadius={40}` (stretch 2's "hard to hit", partly). A link dropped onto a whole node → backlog `docs/backlog/2026-10-30_drop-link-onto-node.md`
+- `RENDER_MAX_LAYERS=8` in the prod compose (infra `60bc170`)
+- `feat/uiu` merged → `0.6.0`; QA section 7 (uiu, field, handles) added for sat 31.10 — `docs/diary/2026-10-30_uiu-number-field-handles.md`
+
 ### status (2026-10-29) — measured, layer name + visible, merged; QA → sat
 
 - measurement: 4 rows ~375, 7 rows ~415 of 512 MiB, no OOM; the limit is time (~1.2 s per row) → prod `RENDER_MAX_LAYERS=8` — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`
@@ -94,8 +101,8 @@ the output of a node may be linked to any number of nodes (xyflow allows several
 - [ ] dragging a row to another place changes the picture; a blend mode change re-renders; `×` removes the row and its link
 - [ ] invalid links can't be drawn: a second link into a taken handle replaces the first; a cycle / a link into input is refused; the server answers the same graph sent by hand with `render-error` on the node
 - [ ] export toast with a composer → import it back — same graph; signac and a sprint 3 export import unchanged
-- [ ] composers of 4 and 7 rows on a 2 MP picture under the prod limits (`read_only`, 512m, `cpu_shares: 256`): render time and cgroup `memory.peak` measured, peak < 512 MiB; numbers in `docs/diary/`; the prod `RENDER_MAX_LAYERS` set from them
-- [ ] uiu: the rule in `CLAUDE.md`, uiu a bun git dependency on a release tag (CI and the prod image build with it), the node frame hand-written from uiu tokens, existing buttons / selects / sliders / inputs styled from it, every hand-written style — `TODO(uiu)` + a backlog note
+- [x] composers of 4 and 7 rows on a 2 MP picture under the prod limits (`read_only`, 512m, `cpu_shares: 256`): render time and cgroup `memory.peak` measured, peak < 512 MiB; numbers in `docs/diary/`; the prod `RENDER_MAX_LAYERS` set from them — 29.10 measured, 30.10 `8` in the prod compose
+- [x] uiu: the rule in `CLAUDE.md`, uiu a bun git dependency on a release tag (CI and the prod image build with it), the node frame hand-written from uiu tokens, existing buttons / selects / sliders / inputs styled from it, every hand-written style — `TODO(uiu)` + a backlog note — 30.10 (sliders became a hand-written number field, not uiu's range)
 - [ ] `bun run typecheck` and `bun run test` green; dev docker compose works; a `feat` release (`0.5.0`) reached prod by itself
 - [ ] QA list `docs/sprints/sprint-4.qa.md` checked by hand (like sprint 3)
 
@@ -116,7 +123,7 @@ the output of a node may be linked to any number of nodes (xyflow allows several
    - the limit in px: `max ≈ 1600×1200 px, 10 MB` instead of `2 MP, 10 MB`
    - "clear graph" — back to input → output, the picture stays; no `confirm()` dialog
    - the export button says what the .json is — a toast preset
-2. **cursor lag** (the same note, item 3) — reproduce first (Windows + Chrome like hers): "thinks long, hard to hit" vs `session.locked` during a render / handle size; "the cursor turns white" — over the output picture?
+2. **cursor lag** (the same note, item 3) — handles done 30.10 (out of the frame, a hit area, `connectionRadius`); a link onto a whole node — backlog `docs/backlog/2026-10-30_drop-link-onto-node.md`. The rest — reproduce first (Windows + Chrome like hers): "thinks long, hard to hit" vs `session.locked` during a render / handle size; "the cursor turns white" — over the output picture?
 3. **degas t = 0 as a graph** — `toast-1_degas` (7 layers, `lch-hue`, value masks, tint, blur, opacity) as a static toast file: the real check of the composer and the first of the "3 toasts" of sprint 6. The golden hash of `t=0` (`packages/lib/tests/pipeline.golden.test.ts`) is the target; a mismatch from param conversions (blur radius, tolerances) — look at the numbers, a visual match is acceptable, write down why. Animation (`t`) — sprint 5. Needs `RENDER_MAX_LAYERS` ≥ 7 (the fallback is 4)
 4. friendly node names + one-line hints (the sister's items 4–6) — ui labels only (`NODE_LABELS`), contract types untouched; a hint via uiu `tooltip`
 5. **render warnings** — `rendered` gets `warnings?: [{ message, nodeIds }]`; a composer row whose chain doesn't reach the input is skipped with a warning instead of an error, the nodes highlighted yellow. ~half a day (contract 15 min, server ~1 h, web 1–2 h) — `docs/backlog/2026-10-27_render-warnings.md`
