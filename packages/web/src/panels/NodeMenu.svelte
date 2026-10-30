@@ -12,7 +12,16 @@
   <fieldset class="frame">
     <legend>nodes</legend>
     {#each MENU_NODE_TYPES as type (type)}
-      <div draggable="true" role="listitem" style="cursor: grab" ondragstart={(event) => ondragstart(event, type)}>{NODE_LABELS[type]}</div>
+      <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included -->
+      <div
+        class="btn_ai-generated btn-sm_ai-generated"
+        draggable="true"
+        role="listitem"
+        style="justify-content: flex-start; cursor: grab"
+        ondragstart={(event) => ondragstart(event, type)}
+      >
+        {NODE_LABELS[type]}
+      </div>
     {/each}
   </fieldset>
 </Panel>

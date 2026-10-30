@@ -18,11 +18,15 @@ body {
    .hr_fieldset's legend + .border's 1px LIGHT → DARK, paddings from the grid gap */
 .frame {
   padding: var(--GRID-GAP-4) var(--GRID-GAP-2) var(--GRID-GAP-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--GRID-GAP-4);
+  display: grid;
+  /* two columns for .param rows (label | control), aligned across the node; anything else spans both */
+  grid-template-columns: max-content 1fr;
+  gap: var(--GRID-GAP-4) var(--GRID-GAP-2);
   background-color: var(--WHITE);
   border: 1px solid var(--LIGHT);
+}
+.frame > * {
+  grid-column: 1 / -1;
 }
 .frame > legend {
   padding: 0 4px;
@@ -34,11 +38,79 @@ body {
   border-color: var(--DARK);
 }
 
-/* TODO(uiu): hand-written — .range_ai-generated is a 1px track under a 16px thumb: the thumb spills over
-   the label above it; and at width: 100% a slider shrinks to a narrow node */
-.range_ai-generated {
-  min-width: 160px;
-  margin: var(--GRID-GAP-2) 0;
+/* TODO(uiu): hand-written — uiu has no label | control row; blender-like: the label right-aligned */
+.param {
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+.param__label {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* TODO(uiu): hand-written — uiu has no number field (only .range_ai-generated, a 1px track under a 16px
+   thumb). Blender's: drag / ‹ › / click to type (nodes/Slider.svelte); sized like .input-sm_ai-generated,
+   the fill — where the value sits in the range */
+.drag-field,
+.drag-field__input {
+  min-width: 128px;
+}
+.drag-field {
+  height: 24px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.drag-field:hover {
+  border-color: var(--DARK);
+}
+.drag-field:focus-visible {
+  outline: none;
+  border-color: var(--BLUE);
+}
+.drag-field__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  pointer-events: none;
+  background-color: var(--LIGHT);
+}
+.drag-field__value {
+  flex: 1;
+  position: relative;
+  text-align: center;
+}
+.drag-field__arrow {
+  width: 16px;
+  height: 100%;
+  position: relative;
+  visibility: hidden;
+  color: var(--MEDIUM);
+}
+.drag-field:hover .drag-field__arrow {
+  visibility: visible;
+}
+.drag-field__arrow:hover {
+  color: var(--BLACK);
+}
+.drag-field_locked {
+  cursor: not-allowed;
+  color: var(--MEDIUM);
+  border-style: dashed;
+}
+.drag-field_locked:hover {
+  border-color: var(--LIGHT);
+}
+.drag-field_locked .drag-field__arrow {
+  visibility: hidden !important;
+}
+.drag-field__input {
+  text-align: center;
 }
 
 /* TODO(uiu): hand-written — uiu has no color input; sized like .input-sm_ai-generated */
