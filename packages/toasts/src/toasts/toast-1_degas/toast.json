@@ -1,0 +1,412 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "in",
+      "type": "input",
+      "data": {
+        "imageId": null
+      }
+    },
+    {
+      "id": "bg-fill",
+      "type": "fill",
+      "data": {
+        "color": "#a4a4a4"
+      }
+    },
+    {
+      "id": "blurred-blur",
+      "type": "blur",
+      "data": {
+        "radius": 8
+      }
+    },
+    {
+      "id": "blurred-opacity",
+      "type": "opacity",
+      "data": {
+        "opacity": 0.8
+      }
+    },
+    {
+      "id": "light-fill",
+      "type": "fill",
+      "data": {
+        "color": "#ebebeb"
+      }
+    },
+    {
+      "id": "light-opacity",
+      "type": "opacity",
+      "data": {
+        "opacity": 0.6
+      }
+    },
+    {
+      "id": "blue-fill",
+      "type": "fill",
+      "data": {
+        "color": "#00ffdd"
+      }
+    },
+    {
+      "id": "blue-opacity",
+      "type": "opacity",
+      "data": {
+        "opacity": 0.8
+      }
+    },
+    {
+      "id": "purple-selectBright",
+      "type": "selectBright",
+      "data": {
+        "value": 16,
+        "tolerance": 32
+      }
+    },
+    {
+      "id": "purple-tint",
+      "type": "tint",
+      "data": {
+        "color": "#ff00ff"
+      }
+    },
+    {
+      "id": "purple-blur",
+      "type": "blur",
+      "data": {
+        "radius": 4
+      }
+    },
+    {
+      "id": "purple-opacity",
+      "type": "opacity",
+      "data": {
+        "opacity": 0.6
+      }
+    },
+    {
+      "id": "purple-corners",
+      "type": "corners",
+      "data": {
+        "topLeftX": 0,
+        "topLeftY": 0,
+        "topRightX": 100,
+        "topRightY": 0,
+        "bottomRightX": 100,
+        "bottomRightY": 100,
+        "bottomLeftX": 0,
+        "bottomLeftY": 100
+      }
+    },
+    {
+      "id": "purple-move",
+      "type": "move",
+      "data": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "red-selectBright",
+      "type": "selectBright",
+      "data": {
+        "value": 12,
+        "tolerance": 24
+      }
+    },
+    {
+      "id": "red-tint",
+      "type": "tint",
+      "data": {
+        "color": "#ff0000"
+      }
+    },
+    {
+      "id": "red-blur",
+      "type": "blur",
+      "data": {
+        "radius": 2
+      }
+    },
+    {
+      "id": "red-opacity",
+      "type": "opacity",
+      "data": {
+        "opacity": 0.8
+      }
+    },
+    {
+      "id": "red-corners",
+      "type": "corners",
+      "data": {
+        "topLeftX": 0,
+        "topLeftY": 0,
+        "topRightX": 100,
+        "topRightY": 0,
+        "bottomRightX": 100,
+        "bottomRightY": 100,
+        "bottomLeftX": 0,
+        "bottomLeftY": 100
+      }
+    },
+    {
+      "id": "red-move",
+      "type": "move",
+      "data": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "white-selectBright",
+      "type": "selectBright",
+      "data": {
+        "value": 92,
+        "tolerance": 16
+      }
+    },
+    {
+      "id": "white-tint",
+      "type": "tint",
+      "data": {
+        "color": "#ffffff"
+      }
+    },
+    {
+      "id": "white-corners",
+      "type": "corners",
+      "data": {
+        "topLeftX": 0,
+        "topLeftY": 0,
+        "topRightX": 100,
+        "topRightY": 0,
+        "bottomRightX": 100,
+        "bottomRightY": 100,
+        "bottomLeftX": 0,
+        "bottomLeftY": 100
+      }
+    },
+    {
+      "id": "white-move",
+      "type": "move",
+      "data": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "cmp",
+      "type": "layers",
+      "data": {
+        "layers": [
+          {
+            "id": "layer-7",
+            "blendMode": "normal",
+            "name": "white"
+          },
+          {
+            "id": "layer-6",
+            "blendMode": "normal",
+            "name": "red"
+          },
+          {
+            "id": "layer-5",
+            "blendMode": "normal",
+            "name": "purple"
+          },
+          {
+            "id": "layer-4",
+            "blendMode": "lch-hue",
+            "name": "blue hue"
+          },
+          {
+            "id": "layer-3",
+            "blendMode": "normal",
+            "name": "light gray"
+          },
+          {
+            "id": "layer-2",
+            "blendMode": "normal",
+            "name": "blurred"
+          },
+          {
+            "id": "layer-1",
+            "blendMode": "normal",
+            "name": "dark gray"
+          }
+        ]
+      }
+    },
+    {
+      "id": "out",
+      "type": "output",
+      "data": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "in-bg-fill",
+      "source": "in",
+      "target": "bg-fill"
+    },
+    {
+      "id": "bg-fill-cmp-layer-1",
+      "source": "bg-fill",
+      "target": "cmp",
+      "targetHandle": "layer-1"
+    },
+    {
+      "id": "in-blurred-blur",
+      "source": "in",
+      "target": "blurred-blur"
+    },
+    {
+      "id": "blurred-blur-blurred-opacity",
+      "source": "blurred-blur",
+      "target": "blurred-opacity"
+    },
+    {
+      "id": "blurred-opacity-cmp-layer-2",
+      "source": "blurred-opacity",
+      "target": "cmp",
+      "targetHandle": "layer-2"
+    },
+    {
+      "id": "in-light-fill",
+      "source": "in",
+      "target": "light-fill"
+    },
+    {
+      "id": "light-fill-light-opacity",
+      "source": "light-fill",
+      "target": "light-opacity"
+    },
+    {
+      "id": "light-opacity-cmp-layer-3",
+      "source": "light-opacity",
+      "target": "cmp",
+      "targetHandle": "layer-3"
+    },
+    {
+      "id": "in-blue-fill",
+      "source": "in",
+      "target": "blue-fill"
+    },
+    {
+      "id": "blue-fill-blue-opacity",
+      "source": "blue-fill",
+      "target": "blue-opacity"
+    },
+    {
+      "id": "blue-opacity-cmp-layer-4",
+      "source": "blue-opacity",
+      "target": "cmp",
+      "targetHandle": "layer-4"
+    },
+    {
+      "id": "in-purple-selectBright",
+      "source": "in",
+      "target": "purple-selectBright"
+    },
+    {
+      "id": "purple-selectBright-purple-tint",
+      "source": "purple-selectBright",
+      "target": "purple-tint"
+    },
+    {
+      "id": "purple-tint-purple-blur",
+      "source": "purple-tint",
+      "target": "purple-blur"
+    },
+    {
+      "id": "purple-blur-purple-opacity",
+      "source": "purple-blur",
+      "target": "purple-opacity"
+    },
+    {
+      "id": "purple-opacity-purple-corners",
+      "source": "purple-opacity",
+      "target": "purple-corners"
+    },
+    {
+      "id": "purple-corners-purple-move",
+      "source": "purple-corners",
+      "target": "purple-move"
+    },
+    {
+      "id": "purple-move-cmp-layer-5",
+      "source": "purple-move",
+      "target": "cmp",
+      "targetHandle": "layer-5"
+    },
+    {
+      "id": "in-red-selectBright",
+      "source": "in",
+      "target": "red-selectBright"
+    },
+    {
+      "id": "red-selectBright-red-tint",
+      "source": "red-selectBright",
+      "target": "red-tint"
+    },
+    {
+      "id": "red-tint-red-blur",
+      "source": "red-tint",
+      "target": "red-blur"
+    },
+    {
+      "id": "red-blur-red-opacity",
+      "source": "red-blur",
+      "target": "red-opacity"
+    },
+    {
+      "id": "red-opacity-red-corners",
+      "source": "red-opacity",
+      "target": "red-corners"
+    },
+    {
+      "id": "red-corners-red-move",
+      "source": "red-corners",
+      "target": "red-move"
+    },
+    {
+      "id": "red-move-cmp-layer-6",
+      "source": "red-move",
+      "target": "cmp",
+      "targetHandle": "layer-6"
+    },
+    {
+      "id": "in-white-selectBright",
+      "source": "in",
+      "target": "white-selectBright"
+    },
+    {
+      "id": "white-selectBright-white-tint",
+      "source": "white-selectBright",
+      "target": "white-tint"
+    },
+    {
+      "id": "white-tint-white-corners",
+      "source": "white-tint",
+      "target": "white-corners"
+    },
+    {
+      "id": "white-corners-white-move",
+      "source": "white-corners",
+      "target": "white-move"
+    },
+    {
+      "id": "white-move-cmp-layer-7",
+      "source": "white-move",
+      "target": "cmp",
+      "targetHandle": "layer-7"
+    },
+    {
+      "id": "cmp-out",
+      "source": "cmp",
+      "target": "out"
+    }
+  ]
+}

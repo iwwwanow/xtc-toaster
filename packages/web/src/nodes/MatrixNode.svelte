@@ -3,7 +3,7 @@
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { session } from "../session.svelte";
 
-  let { id, data }: NodeProps<FlowNodeOf<"homography">> = $props();
+  let { id, data }: NodeProps<FlowNodeOf<"matrix">> = $props();
 
   // a field left empty or unparsable keeps the old number — the graph only takes finite numbers
   const onchange = (index: number, { currentTarget }: Event & { currentTarget: HTMLInputElement }) => {
@@ -15,7 +15,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.homography}</legend>
+  <legend>{NODE_LABELS.matrix}</legend>
   <!-- raw 3×3, row-major, px of the image: [x, y, 1] · H — the last row is the translation -->
   <div style="display: grid; grid-template-columns: repeat(3, 72px); gap: var(--GRID-GAP-4)">
     {#each data.matrix as value, index (index)}

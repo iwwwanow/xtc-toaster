@@ -50,17 +50,17 @@ export const hsvMask = (
   return output;
 };
 
-export const hueMask = (data: ImageRawDataArray, hue: number, tolerance = HUE_TOLERANCE): ImageRawDataArray =>
+export const selectColor = (data: ImageRawDataArray, hue: number, tolerance = HUE_TOLERANCE): ImageRawDataArray =>
   hsvMask(data, 0, hue / 360, tolerance, true);
 
-export const saturationMask = (data: ImageRawDataArray, saturation: number, tolerance = SATURATION_TOLERANCE): ImageRawDataArray =>
+export const selectVivid = (data: ImageRawDataArray, saturation: number, tolerance = SATURATION_TOLERANCE): ImageRawDataArray =>
   hsvMask(data, 1, saturation / 100, tolerance, false);
 
-export const valueMask = (data: ImageRawDataArray, value: number, tolerance = VALUE_TOLERANCE): ImageRawDataArray =>
+export const selectBright = (data: ImageRawDataArray, value: number, tolerance = VALUE_TOLERANCE): ImageRawDataArray =>
   hsvMask(data, 2, value / 100, tolerance, false);
 
 // НЕ маска: RGB заменяется на цвет-индикатор канала, значение канала уходит в alpha.
-export const isolateChannel = (data: ImageRawDataArray, channel: Channel): ImageRawDataArray => {
+export const channel = (data: ImageRawDataArray, channel: Channel): ImageRawDataArray => {
   const neededColorIndex = getChannelIndex(channel);
   const output = new Uint8ClampedArray(data.length);
 

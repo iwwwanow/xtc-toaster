@@ -9,7 +9,7 @@ export type ServerOptions = {
   hostname?: string;
   uploadsDir: string;
   uploads: UploadsLimits;
-  // linked composer rows over one render; unset — RENDER_MAX_LAYERS_DEFAULT
+  // linked layers rows over one render; unset — RENDER_MAX_LAYERS_DEFAULT
   maxLayers?: number;
   // the web build; without it (dev) the vite dev server serves the page
   staticDir?: string;

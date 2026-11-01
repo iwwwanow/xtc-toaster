@@ -3,8 +3,8 @@
   "nodes": [
     { "id": "in", "type": "input", "data": { "imageId": null } },
     { "id": "sk", "type": "skew", "data": { "x": 15, "y": 0 } },
-    { "id": "pe", "type": "perspective", "data": { "topLeftX": 10, "topLeftY": 0, "topRightX": 90, "topRightY": 0, "bottomRightX": 100, "bottomRightY": 100, "bottomLeftX": 0, "bottomLeftY": 100 } },
-    { "id": "ho", "type": "homography", "data": { "matrix": [1, 0, 0, 0, 1, 0, 0, 0, 1] } },
+    { "id": "pe", "type": "corners", "data": { "topLeftX": 10, "topLeftY": 0, "topRightX": 90, "topRightY": 0, "bottomRightX": 100, "bottomRightY": 100, "bottomLeftX": 0, "bottomLeftY": 100 } },
+    { "id": "ho", "type": "matrix", "data": { "matrix": [1, 0, 0, 0, 1, 0, 0, 0, 1] } },
     { "id": "ti", "type": "tint", "data": { "color": "#ff0000" } },
     { "id": "op", "type": "opacity", "data": { "opacity": 0.5 } },
     { "id": "out", "type": "output", "data": {} },

@@ -28,16 +28,35 @@ class Layer {
     private options: LayerOptions,
   ) {}
 
-  setBlendMode(blendMode: BlendMode) {}
-  setOpacity(opacity: Opacity) {}
-  setTransform(transform: Transform) {}
+  // flat: one method per graph node type, the same name (contract → server → lib, 01.11); every one
+  // eager — rewrites imageData at once, in call order; units are lib's (px, 0–1 tolerances)
 
-  applyEffect(effect: EffectParams) {} // eager: сразу применяется к imageData, ничего не копится
+  // select — RGB как есть, alpha = вес совпадения
+  selectColor(params: { hue: number; tolerance?: number }) {} // hue 0–360, tolerance 0–1 of the wheel
+  selectVivid(params: { saturation: number; tolerance?: number }) {} // saturation 0–100
+  selectBright(params: { value: number; tolerance?: number }) {} // value 0–100
+  channel(channel: Channel) {} // НЕ маска, отдельная операция — см. channel ниже
 
-  mask(params: MaskParams) {} // hue/saturation/value — RGB как есть, alpha = вес совпадения
-  isolateChannel(channel: Channel) {} // НЕ маска, отдельная операция — см. isolateChannel ниже
-
+  // color
   fill(color: Color) {}
+  tint(color: Color) {} // как fill, alpha сохраняется
+  colorNoise(params: { deviationCoefficient: number }) {} // Math.random
+  opacity(opacity: Opacity) {} // kept in options, baked by Composition.render()
+
+  // effect
+  blur(params: { radius: number }) {} // px
+
+  // move — backward mapping; rotate / scale / skew around the image center
+  move(params: { x: number; y: number }) {} // px
+  rotate(params: { angle: number }) {} // degrees
+  scale(params: { x: number; y: number }) {} // factors
+  skew(params: { x: number; y: number }) {} // shear factors: x leans the verticals, y the horizontals
+  turn3d(params: { angle: number; focalLength: number }) {} // degrees, px
+  corners(corners: Quad) {} // TL TR BR BL, px
+  matrix(matrix: number[]) {} // 3×3 row-major homography
+
+  // layers
+  setBlendMode(blendMode: BlendMode) {}
   // - clearLayer()
 }
 
@@ -52,27 +71,9 @@ class Color {
   get hex(): HexString {}
 }
 
-type Transform =
-  | { name: "translate"; params: { tx: number; ty: number } }
-  | { name: "rotate"; params: { alpha: number } }
-  | { name: "scale"; params: { scaleX: number; scaleY: number } }
-  | { name: "skew"; params: { tx: number; ty: number } };
-
-// isolateChannel сюда не входит — не маска, другая операция
-type MaskParams =
-  | { name: "hue"; value: number }
-  | { name: "saturation"; value: number }
-  | { name: "value"; value: number };
-
-type EffectParams = {
-  name: "hueNoise";
-  options: { deviationCoefficient: number }; // alpha всегда сохраняется (preserveAlpha удалён 2026-10-03)
-};
-
 interface LayerOptions {
   blendMode?: BlendMode;
   opacity?: Opacity;
-  transform?: Transform;
 }
 
 enum Channel {
@@ -82,7 +83,7 @@ enum Channel {
   Alpha = "alpha",
 }
 
-type BlendMode = "normal" | "add";
+type BlendMode = "normal" | "add" | "lch-hue";
 type Opacity = number; // 0-1
 
 type ImageRawDataArray = Uint8ClampedArray;
@@ -106,13 +107,13 @@ const hsvMask = (
   circular: boolean, // true только для hue — полоса замкнута в кольцо (0 и 360 соседи)
 ): ImageRawDataArray => {};
 
-const hueMask = (data: ImageRawDataArray, hue: number): ImageRawDataArray => {};
-const saturationMask = (data: ImageRawDataArray, saturation: number): ImageRawDataArray => {};
-const valueMask = (data: ImageRawDataArray, value: number): ImageRawDataArray => {};
+const selectColor = (data: ImageRawDataArray, hue: number, tolerance?: number): ImageRawDataArray => {};
+const selectVivid = (data: ImageRawDataArray, saturation: number, tolerance?: number): ImageRawDataArray => {};
+const selectBright = (data: ImageRawDataArray, value: number, tolerance?: number): ImageRawDataArray => {};
 
 // НЕ маска: RGB заменяется на цвет-индикатор канала, значение канала уходит в alpha.
 // Другое поведение чем у masker'ов — сознательно отдельная функция, не объединяем.
-const isolateChannel = (data: ImageRawDataArray, channel: Channel): ImageRawDataArray => {};
+const channel = (data: ImageRawDataArray, channel: Channel): ImageRawDataArray => {};
 
 // composers — блендинг двух слоёв
 const alphaCompose = (bgData: ImageRawDataArray, fgData: ImageRawDataArray): ImageRawDataArray => {};

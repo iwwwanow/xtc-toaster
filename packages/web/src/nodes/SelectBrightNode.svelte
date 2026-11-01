@@ -5,22 +5,22 @@
   import { session } from "../session.svelte";
   import Slider from "./Slider.svelte";
 
-  let { id, data }: NodeProps<FlowNodeOf<"hueMask">> = $props();
+  let { id, data }: NodeProps<FlowNodeOf<"selectBright">> = $props();
 </script>
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.hueMask}</legend>
+  <legend>{NODE_LABELS.selectBright}</legend>
   <Slider
-    label="hue"
-    bounds={PARAMS.hueMask.hue}
+    label="value"
+    bounds={PARAMS.selectBright.value}
     step={1}
-    value={data.hue}
-    onchange={(hue) => session.setNodeData(id, { ...data, hue })}
+    value={data.value}
+    onchange={(value) => session.setNodeData(id, { ...data, value })}
   />
   <Slider
     label="tolerance"
-    bounds={PARAMS.hueMask.tolerance}
+    bounds={PARAMS.selectBright.tolerance}
     step={1}
     value={data.tolerance}
     onchange={(tolerance) => session.setNodeData(id, { ...data, tolerance })}

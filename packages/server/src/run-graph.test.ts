@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { TOAST_GRAPH_VERSION, type BlendMode, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
-import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, perspectiveCorners, runGraph } from "./run-graph";
+import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, cornersQuad, runGraph } from "./run-graph";
 
 // runGraph reads the picture from an uploads dir: the fixture under a uuid name, like an upload
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
@@ -16,15 +16,15 @@ beforeAll(async () => {
 afterAll(() => rm(UPLOADS_DIR, { recursive: true, force: true }));
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: IMAGE_ID } };
-const hueNoise: GraphNode = { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } };
+const colorNoise: GraphNode = { id: "nz", type: "colorNoise", data: { deviationCoefficient: 0.5 } };
 const output: GraphNode = { id: "out", type: "output", data: {} };
 const fill = (id: string, color = "#ff0000"): GraphNode => ({ id, type: "fill", data: { color } });
 const tint = (id: string, color = "#0000ff"): GraphNode => ({ id, type: "tint", data: { color } });
 const opacity = (id: string, value: number): GraphNode => ({ id, type: "opacity", data: { opacity: value } });
 // rows top first, ids = handle ids
-const composer = (id: string, ...blendModes: BlendMode[]): GraphNode => ({
+const layersNode = (id: string, ...blendModes: BlendMode[]): GraphNode => ({
   id,
-  type: "composer",
+  type: "layers",
   data: { layers: blendModes.map((blendMode, row) => ({ id: `r${row}`, blendMode })) },
 });
 
@@ -41,71 +41,71 @@ const render = (nodes: GraphNode[], edges: GraphEdge[], maxLayers?: number) =>
 const hashOf = async (nodes: GraphNode[], edges: GraphEdge[], maxLayers?: number) =>
   Bun.hash((await render(nodes, edges, maxLayers)).data);
 
-const nz2: GraphNode = { ...hueNoise, id: "nz2" };
+const nz2: GraphNode = { ...colorNoise, id: "nz2" };
 const plain = () => hashOf([input, output], [edge("in", "out")]);
 
 // top row `top`, bottom row `bottom` — each a chain already linked from the input
 const twoRows = (top: string, bottom: string, ...blendModes: BlendMode[]) => ({
-  composer: composer("cmp", ...(blendModes.length ? blendModes : (["normal", "normal"] as BlendMode[]))),
+  layersNode: layersNode("cmp", ...(blendModes.length ? blendModes : (["normal", "normal"] as BlendMode[]))),
   edges: [edge(top, "cmp", "r0"), edge(bottom, "cmp", "r1"), edge("cmp", "out")],
 });
 
 describe("runGraph: structure", () => {
   test.each([
-    ["an unlinked node", [input, hueNoise, output], [edge("in", "out")]],
-    ["a dead-end fork", [input, hueNoise, output], [edge("in", "out"), edge("in", "nz")]],
-    ["an unlinked composer", [input, composer("cmp", "normal"), output], [edge("in", "out")]],
+    ["an unlinked node", [input, colorNoise, output], [edge("in", "out")]],
+    ["a dead-end fork", [input, colorNoise, output], [edge("in", "out"), edge("in", "nz")]],
+    ["an unlinked layers node", [input, layersNode("cmp", "normal"), output], [edge("in", "out")]],
   ])("ignores %s", async (_, nodes, edges) => {
     expect(await hashOf(nodes, edges)).toBe(await plain());
   });
 
   test.each([
-    ["output not linked", [input, hueNoise, output], [edge("in", "nz")], "out"],
-    ["a chain not reaching the input", [input, hueNoise, output], [edge("nz", "out")], "nz"],
+    ["output not linked", [input, colorNoise, output], [edge("in", "nz")], "out"],
+    ["a chain not reaching the input", [input, colorNoise, output], [edge("nz", "out")], "nz"],
     [
       "a row chain not reaching the input",
-      [input, hueNoise, composer("cmp", "normal", "normal"), output],
+      [input, colorNoise, layersNode("cmp", "normal", "normal"), output],
       [edge("in", "cmp", "r1"), edge("nz", "cmp", "r0"), edge("cmp", "out")],
       "nz",
     ],
-    ["a composer without a linked row", [input, composer("cmp", "normal"), output], [edge("cmp", "out")], "cmp"],
+    ["a layers node without a linked row", [input, layersNode("cmp", "normal"), output], [edge("cmp", "out")], "cmp"],
     // validateGraph — the same rules the web applies when a link is drawn
-    ["two links into one node", [input, hueNoise, output], [edge("in", "nz"), edge("nz", "out"), edge("in", "out")], "out"],
+    ["two links into one node", [input, colorNoise, output], [edge("in", "nz"), edge("nz", "out"), edge("in", "out")], "out"],
     [
       "two links into one row",
-      [input, hueNoise, composer("cmp", "normal"), output],
+      [input, colorNoise, layersNode("cmp", "normal"), output],
       [edge("in", "nz"), edge("in", "cmp", "r0"), edge("nz", "cmp", "r0"), edge("cmp", "out")],
       "cmp",
     ],
-    ["a cycle", [input, hueNoise, nz2, output], [edge("nz", "nz2"), edge("nz2", "nz"), edge("nz2", "out")], "nz"],
-    ["a link into the input", [input, hueNoise, output], [edge("in", "out"), edge("nz", "in")], "in"],
+    ["a cycle", [input, colorNoise, nz2, output], [edge("nz", "nz2"), edge("nz2", "nz"), edge("nz2", "out")], "nz"],
+    ["a link into the input", [input, colorNoise, output], [edge("in", "out"), edge("nz", "in")], "in"],
   ])("rejects %s, pointing at the node", async (_, nodes, edges, nodeId) => {
     await expect(render(nodes, edges)).rejects.toMatchObject({ nodeId });
   });
 
   test.each([
     ["two inputs", graph([input, { ...input, id: "in2" }, output], [edge("in", "out")])],
-    ["duplicate ids", graph([input, { ...hueNoise, id: "in" }, output], [edge("in", "out")])],
+    ["duplicate ids", graph([input, { ...colorNoise, id: "in" }, output], [edge("in", "out")])],
   ])("rejects %s", async (_, g) => {
     await expect(runGraph(g, UPLOADS_DIR)).rejects.toBeInstanceOf(GraphError);
   });
 });
 
-describe("runGraph: composer", () => {
+describe("runGraph: layersNode", () => {
   test("fan-out: chains don't share a buffer — fill in one leaves the other untouched", async () => {
     // the filled row on top at opacity 0, or under an opaque row — either way only the picture shows
     const hidden = twoRows("op", "in");
     expect(
-      await hashOf([input, fill("f"), opacity("op", 0), hidden.composer, output], [edge("in", "f"), edge("f", "op"), ...hidden.edges]),
+      await hashOf([input, fill("f"), opacity("op", 0), hidden.layersNode, output], [edge("in", "f"), edge("f", "op"), ...hidden.edges]),
     ).toBe(await plain());
     const under = twoRows("in", "f");
-    expect(await hashOf([input, fill("f"), under.composer, output], [edge("in", "f"), ...under.edges])).toBe(await plain());
+    expect(await hashOf([input, fill("f"), under.layersNode, output], [edge("in", "f"), ...under.edges])).toBe(await plain());
   });
 
   test("row order is layer order: swapping rows changes the picture", async () => {
     const redOnTop = twoRows("f", "in");
     const redUnder = twoRows("in", "f");
-    const nodes = [input, fill("f"), redOnTop.composer, output];
+    const nodes = [input, fill("f"), redOnTop.layersNode, output];
     const onTop = await hashOf(nodes, [edge("in", "f"), ...redOnTop.edges]);
     const under = await hashOf(nodes, [edge("in", "f"), ...redUnder.edges]);
     expect(onTop).not.toBe(under);
@@ -115,7 +115,7 @@ describe("runGraph: composer", () => {
   test("every blend mode renders, each its own picture", async () => {
     const hashes = await Promise.all(
       (["normal", "add", "lch-hue"] as const).map((mode) => {
-        const { composer: cmp, edges } = twoRows("t", "in", mode, "normal");
+        const { layersNode: cmp, edges } = twoRows("t", "in", mode, "normal");
         return hashOf([input, tint("t"), cmp, output], [edge("in", "t"), ...edges]);
       }),
     );
@@ -123,7 +123,7 @@ describe("runGraph: composer", () => {
   });
 
   test("the chain's opacity is baked into its layer", async () => {
-    const { composer: cmp, edges } = twoRows("op", "in");
+    const { layersNode: cmp, edges } = twoRows("op", "in");
     const [{ data }, { data: source }] = await Promise.all([
       render([input, fill("f", "#ffffff"), opacity("op", 0.5), cmp, output], [edge("in", "f"), edge("f", "op"), ...edges]),
       render([input, output], [edge("in", "out")]),
@@ -134,31 +134,31 @@ describe("runGraph: composer", () => {
   });
 
   test("an unlinked row is skipped", async () => {
-    const nodes = [input, composer("cmp", "add", "normal", "normal"), output];
+    const nodes = [input, layersNode("cmp", "add", "normal", "normal"), output];
     expect(await hashOf(nodes, [edge("in", "cmp", "r1"), edge("cmp", "out")])).toBe(await plain());
   });
 
   test("a hidden row is skipped like an unlinked one", async () => {
-    const { composer: cmp, edges } = twoRows("f", "in");
+    const { layersNode: cmp, edges } = twoRows("f", "in");
     const hidden = { ...cmp, data: { layers: [{ id: "r0", blendMode: "normal", visible: false }, { id: "r1", blendMode: "normal" }] } } as GraphNode;
     expect(await hashOf([input, fill("f"), hidden, output], [edge("in", "f"), ...edges])).toBe(await plain());
   });
 
-  test("all linked rows hidden → an error on the composer", async () => {
-    const hidden = { ...composer("cmp", "normal"), data: { layers: [{ id: "r0", blendMode: "normal", visible: false }] } } as GraphNode;
+  test("all linked rows hidden → an error on the layers node", async () => {
+    const hidden = { ...layersNode("cmp", "normal"), data: { layers: [{ id: "r0", blendMode: "normal", visible: false }] } } as GraphNode;
     await expect(render([input, hidden, output], [edge("in", "cmp", "r0"), edge("cmp", "out")])).rejects.toMatchObject({
       nodeId: "cmp",
       message: "show a layer",
     });
   });
 
-  test("one node into both rows of a composer", async () => {
-    const nodes = [input, composer("cmp", "normal", "normal"), output];
+  test("one node into both rows of a layers node", async () => {
+    const nodes = [input, layersNode("cmp", "normal", "normal"), output];
     expect(await hashOf(nodes, [edge("in", "cmp", "r0"), edge("in", "cmp", "r1"), edge("cmp", "out")])).toBe(await plain());
   });
 
-  test("composer into composer", async () => {
-    const nodes = [input, fill("f"), composer("inner", "normal", "normal"), composer("outer", "normal", "normal"), output];
+  test("layers into layers", async () => {
+    const nodes = [input, fill("f"), layersNode("inner", "normal", "normal"), layersNode("outer", "normal", "normal"), output];
     const edges = [
       edge("in", "f"),
       edge("in", "inner", "r0"),
@@ -173,7 +173,7 @@ describe("runGraph: composer", () => {
 
 describe("runGraph: layer cap", () => {
   const rows = (count: number) => ({
-    nodes: [input, composer("cmp", ...Array<BlendMode>(count).fill("normal")), output],
+    nodes: [input, layersNode("cmp", ...Array<BlendMode>(count).fill("normal")), output],
     edges: [...Array.from({ length: count }, (_, row) => edge("in", "cmp", `r${row}`)), edge("cmp", "out")],
   });
 
@@ -187,7 +187,7 @@ describe("runGraph: layer cap", () => {
   test("hidden rows don't count", async () => {
     const { edges } = rows(3);
     const layers = (["r0", "r1", "r2"] as const).map((id) => ({ id, blendMode: "normal" as const, ...(id === "r0" && { visible: false }) }));
-    const cmp: GraphNode = { id: "cmp", type: "composer", data: { layers } };
+    const cmp: GraphNode = { id: "cmp", type: "layers", data: { layers } };
     expect(await hashOf([input, cmp, output], edges, 2)).toBe(await plain());
   });
 
@@ -196,8 +196,8 @@ describe("runGraph: layer cap", () => {
     await expect(render(nodes, edges, 2)).rejects.toMatchObject({ nodeId: "cmp" });
   });
 
-  test("counts over all composers — nesting doesn't bypass it", async () => {
-    const nodes = [input, composer("inner", "normal", "normal"), composer("outer", "normal", "normal"), output];
+  test("counts over all layers nodes — nesting doesn't bypass it", async () => {
+    const nodes = [input, layersNode("inner", "normal", "normal"), layersNode("outer", "normal", "normal"), output];
     const edges = [
       edge("in", "inner", "r0"),
       edge("in", "inner", "r1"),
@@ -231,20 +231,20 @@ describe("percentPx", () => {
   });
 });
 
-describe("perspectiveCorners", () => {
+describe("cornersQuad", () => {
   const untouched = {
     topLeftX: 0, topLeftY: 0, topRightX: 100, topRightY: 0,
     bottomRightX: 100, bottomRightY: 100, bottomLeftX: 0, bottomLeftY: 100,
   };
 
   test("0 / 100 % land on the first / last pixel — the source corners, the identity", () => {
-    expect(perspectiveCorners(untouched, { width: 250, height: 359 })).toEqual([
+    expect(cornersQuad(untouched, { width: 250, height: 359 })).toEqual([
       { x: 0, y: 0 }, { x: 249, y: 0 }, { x: 249, y: 358 }, { x: 0, y: 358 },
     ]);
   });
 
   test("percent of the size, past the frame too", () => {
-    const [topLeft] = perspectiveCorners({ ...untouched, topLeftX: -50, topLeftY: 50 }, { width: 101, height: 201 });
+    const [topLeft] = cornersQuad({ ...untouched, topLeftX: -50, topLeftY: 50 }, { width: 101, height: 201 });
     expect(topLeft).toEqual({ x: -50, y: 100 });
   });
 });

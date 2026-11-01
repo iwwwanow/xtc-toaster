@@ -28,31 +28,34 @@ const matrixValues = (m: Matrix): number[] =>
   [0, 1, 2].flatMap((row) => [0, 1, 2].map((col) => m.getItem(col, row)));
 
 describe("applyAffineTransform", () => {
-  test("translate(0,0) is a no-op", () => {
+  test("move(0, 0) is a no-op", () => {
     // 3x1 image, single red pixel at x=0
     const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
     const result = applyAffineTransform(data, { width: 3, height: 1 }, {
-      name: "translate",
-      params: { tx: 0, ty: 0 },
+      name: "move",
+      x: 0,
+      y: 0,
     });
     expect([...result]).toEqual([...data]);
   });
 
-  test("translate shifts a pixel by (tx, ty)", () => {
+  test("move shifts a pixel by (x, y)", () => {
     const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
     const result = applyAffineTransform(data, { width: 3, height: 1 }, {
-      name: "translate",
-      params: { tx: 1, ty: 0 },
+      name: "move",
+      x: 1,
+      y: 0,
     });
     expect([...result.slice(0, 4)]).toEqual([0, 0, 0, 0]);
     expect([...result.slice(4, 8)]).toEqual([255, 0, 0, 255]);
     expect([...result.slice(8, 12)]).toEqual([0, 0, 0, 0]);
   });
 
-  test("translate on both axes, negative offsets included", () => {
+  test("move on both axes, negative offsets included", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
-      name: "translate",
-      params: { tx: -1, ty: 1 },
+      name: "move",
+      x: -1,
+      y: 1,
     });
     expect(occupied(result, 3)).toEqual(["0,1=20", "1,1=30", "0,2=50", "1,2=60"]);
   });
@@ -60,8 +63,9 @@ describe("applyAffineTransform", () => {
   test("pixels transformed out of bounds are dropped (become transparent)", () => {
     const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 0]);
     const result = applyAffineTransform(data, { width: 2, height: 1 }, {
-      name: "translate",
-      params: { tx: 5, ty: 0 },
+      name: "move",
+      x: 5,
+      y: 0,
     });
     expect([...result]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
@@ -72,7 +76,8 @@ describe("applyAffineTransform", () => {
     data.set([255, 0, 0, 255], 4);
     const result = applyAffineTransform(data, { width: 4, height: 1 }, {
       name: "scale",
-      params: { scaleX: 2, scaleY: 1 },
+      x: 2,
+      y: 1,
     });
     expect([...result]).toEqual([255, 0, 0, 255, 255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
   });
@@ -80,7 +85,8 @@ describe("applyAffineTransform", () => {
   test("scale 2 on a 3×3 grid: the center pixel spreads, no holes", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "scale",
-      params: { scaleX: 2, scaleY: 2 },
+      x: 2,
+      y: 2,
     });
     expect(occupied(result, 3)).toEqual([
       "0,0=50", "1,0=50", "2,0=60", "0,1=50", "1,1=50", "2,1=60", "0,2=80", "1,2=80", "2,2=90",
@@ -91,7 +97,8 @@ describe("applyAffineTransform", () => {
     const data = new Uint8ClampedArray(16).fill(255);
     const result = applyAffineTransform(data, { width: 4, height: 1 }, {
       name: "scale",
-      params: { scaleX: 2, scaleY: 1 },
+      x: 2,
+      y: 1,
     });
     expect([...result].filter((_, i) => i % 4 === 3)).toEqual([255, 255, 255, 255]);
   });
@@ -99,7 +106,7 @@ describe("applyAffineTransform", () => {
   test("rotate(90) turns the whole image counter-clockwise around its center", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "rotate",
-      params: { alpha: 90 },
+      angle: 90,
     });
     expect(occupied(result, 3)).toEqual([
       "0,0=30", "1,0=60", "2,0=90", "0,1=20", "1,1=50", "2,1=80", "0,2=10", "1,2=40", "2,2=70",
@@ -110,7 +117,7 @@ describe("applyAffineTransform", () => {
     const data = new Uint8ClampedArray(21 * 21 * 4).fill(255);
     const result = applyAffineTransform(data, { width: 21, height: 21 }, {
       name: "rotate",
-      params: { alpha: 15 },
+      angle: 15,
     });
     // the inscribed circle is always covered by the rotated square
     for (let y = 0; y < 21; y++) {
@@ -124,7 +131,7 @@ describe("applyAffineTransform", () => {
     const data = grid3();
     const result = applyAffineTransform(data, { width: 3, height: 3 }, {
       name: "rotate",
-      params: { alpha: 360 },
+      angle: 360,
     });
     expect([...result]).toEqual([...data]);
   });
@@ -132,43 +139,29 @@ describe("applyAffineTransform", () => {
   test("rotate(180) pivots around the image center", () => {
     const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
       name: "rotate",
-      params: { alpha: 180 },
+      angle: 180,
     });
     expect(occupied(result, 3)).toEqual([
       "0,0=90", "1,0=80", "2,0=70", "0,1=60", "1,1=50", "2,1=40", "0,2=30", "1,2=20", "2,2=10",
     ]);
   });
 
-  test("skew tx shears y by x around the center column (y' = y + tx·(x − cx))", () => {
-    const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
-      name: "skew",
-      params: { tx: 1, ty: 0 },
-    });
+  test("skew y leans the horizontals: y' = y + y·(x − cx), around the center column", () => {
+    const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, { name: "skew", x: 0, y: 1 });
     expect(occupied(result, 3)).toEqual(["0,0=40", "1,0=20", "0,1=70", "1,1=50", "2,1=30", "1,2=80", "2,2=60"]);
   });
 
-  test("skew ty shears x by y around the center row (x' = x + ty·(y − cy))", () => {
-    const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, {
-      name: "skew",
-      params: { tx: 0, ty: 1 },
-    });
+  test("skew x leans the verticals: x' = x + x·(y − cy), around the center row", () => {
+    const result = applyAffineTransform(grid3(), { width: 3, height: 3 }, { name: "skew", x: 1, y: 0 });
     expect(occupied(result, 3)).toEqual(["0,0=20", "1,0=30", "0,1=40", "1,1=50", "2,1=60", "1,2=70", "2,2=80"]);
   });
 
   test("scale 0 collapses the image and is rejected as singular", () => {
     expect(() =>
-      applyAffineTransform(grid3(), { width: 3, height: 3 }, { name: "scale", params: { scaleX: 0, scaleY: 1 } }),
+      applyAffineTransform(grid3(), { width: 3, height: 3 }, { name: "scale", x: 0, y: 1 }),
     ).toThrow();
   });
 
-  test("throws for non-affine transforms", () => {
-    expect(() =>
-      applyAffineTransform(grid3(), { width: 3, height: 3 }, {
-        name: "homography",
-        params: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
-      }),
-    ).toThrow();
-  });
 });
 
 describe("homographyFromQuad", () => {

@@ -1,39 +1,45 @@
 import { Matrix } from "../utils/matrix";
-import type { ImageRawDataArray, LayerDimensions, Quad, Transform } from "../types";
+import type { ImageRawDataArray, LayerDimensions, Quad } from "../types";
+
+// the affine ones of Layer's move methods; units as there (px, degrees, factors)
+export type AffineTransform =
+  | { name: "move"; x: number; y: number }
+  | { name: "rotate"; angle: number }
+  | { name: "scale"; x: number; y: number }
+  | { name: "skew"; x: number; y: number };
 
 // point*M convention (row-vector on the left) — translation lives in the
 // matrix's last row, not last column. Matches legacy Transformation class.
-const getLinearMatrix = (transform: Transform): Matrix => {
+const getLinearMatrix = (transform: AffineTransform): Matrix => {
   switch (transform.name) {
-    case "translate": {
-      const { tx, ty } = transform.params;
-      return new Matrix(3, 3, [1, 0, 0, 0, 1, 0, tx, ty, 1]);
+    case "move": {
+      const { x, y } = transform;
+      return new Matrix(3, 3, [1, 0, 0, 0, 1, 0, x, y, 1]);
     }
     case "rotate": {
-      const radians = (Math.PI / 180) * transform.params.alpha;
+      const radians = (Math.PI / 180) * transform.angle;
       const cos = Math.cos(radians);
       const sin = Math.sin(radians);
       return new Matrix(3, 3, [cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
     }
     case "scale": {
-      const { scaleX, scaleY } = transform.params;
-      return new Matrix(3, 3, [scaleX, 0, 0, 0, scaleY, 0, 0, 0, 1]);
+      const { x, y } = transform;
+      return new Matrix(3, 3, [x, 0, 0, 0, y, 0, 0, 0, 1]);
     }
     case "skew": {
-      const { tx, ty } = transform.params;
-      return new Matrix(3, 3, [1, tx, 0, ty, 1, 0, 0, 0, 1]);
+      // x leans the verticals (x' = x + x·dy), y the horizontals (y' = y + y·dx) — like the contract
+      const { x, y } = transform;
+      return new Matrix(3, 3, [1, y, 0, x, 1, 0, 0, 0, 1]);
     }
-    default:
-      throw new Error(`getAffineMatrix called with non-affine transform: ${(transform as Transform).name}`);
   }
 };
 
 // rotate/scale/skew pivot around the image center: T(−c) · M · T(c).
 // Pivot is fixed to the center for now; an optional `pivot: {x, y}` param on
-// Transform (defaulting to the center) is a low-priority idea in docs/backlog/2026-10-06_lib-tech-debt.md.
-const getAffineMatrix = (transform: Transform, { width, height }: LayerDimensions): Matrix => {
+// AffineTransform (defaulting to the center) is a low-priority idea in docs/backlog/2026-10-06_lib-tech-debt.md.
+const getAffineMatrix = (transform: AffineTransform, { width, height }: LayerDimensions): Matrix => {
   const linear = getLinearMatrix(transform);
-  if (transform.name === "translate") return linear;
+  if (transform.name === "move") return linear;
 
   const cx = (width - 1) / 2;
   const cy = (height - 1) / 2;
@@ -47,7 +53,7 @@ const getAffineMatrix = (transform: Transform, { width, height }: LayerDimension
 export const applyAffineTransform = (
   data: ImageRawDataArray,
   dimensions: LayerDimensions,
-  transform: Transform,
+  transform: AffineTransform,
 ): ImageRawDataArray => applyHomographyTransform(data, dimensions, getAffineMatrix(transform, dimensions));
 
 // Solve n×n system Ax=b via Gaussian elimination with partial pivoting.

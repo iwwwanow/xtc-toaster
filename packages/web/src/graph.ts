@@ -22,26 +22,57 @@ export const MENU_NODE_TYPES = [...Object.keys(PARAMS), ...Object.keys(INITIAL_D
 const hasInitialData = (type: MenuNodeType): type is keyof typeof INITIAL_DATA => type in INITIAL_DATA;
 // drag & drop from the menu onto the canvas carries the node type under this mime
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
-// ui name of a node type — the menu item and the node's legend; the type itself stays the contract key
+// ui name of a node type — the menu item and the node's legend: the contract type in words (decided 01.11 —
+// one name in web, contract, server and lib; turn3d reads «3d turn»)
 export const NODE_LABELS = {
-  hueNoise: "hue noise",
-  hueMask: "hue mask",
-  yRotation: "y-rotation",
+  selectColor: "select color",
+  selectVivid: "select vivid",
+  selectBright: "select bright",
+  channel: "channel",
+  fill: "fill",
+  tint: "tint",
+  colorNoise: "color noise",
+  opacity: "opacity",
   blur: "blur",
-  saturationMask: "saturation mask",
-  valueMask: "value mask",
-  translate: "translate",
+  move: "move",
   rotate: "rotate",
   scale: "scale",
   skew: "skew",
-  perspective: "perspective",
-  opacity: "opacity",
-  isolateChannel: "isolate channel",
-  homography: "homography",
-  fill: "fill",
-  tint: "tint",
-  composer: "composer",
+  turn3d: "3d turn",
+  corners: "corners",
+  matrix: "matrix",
+  layers: "layers",
 } as const satisfies Record<MenuNodeType, string>;
+
+// one phrase «what the node does» — a tooltip on the menu item
+export const NODE_HINTS = {
+  selectColor: "keeps pixels of one color, the rest goes transparent",
+  selectVivid: "keeps vivid (or dull) pixels",
+  selectBright: "keeps light (or dark) pixels",
+  channel: "keeps one of red / green / blue / alpha",
+  fill: "paints the whole picture one color",
+  tint: "paints what's visible, keeps transparency",
+  colorNoise: "shifts every pixel's color at random",
+  opacity: "makes the picture see-through",
+  blur: "softens the picture",
+  move: "shifts the picture",
+  rotate: "turns the picture around its center",
+  scale: "makes the picture bigger or smaller",
+  skew: "leans the picture",
+  turn3d: "turns the picture like a card",
+  corners: "drags the four corners",
+  matrix: "a raw 3×3 transform, for experts",
+  layers: "stacks pictures with blend modes",
+} as const satisfies Record<MenuNodeType, string>;
+
+// the left menu, a rule between groups; every menu type in exactly one (graph.test.ts)
+export const NODE_CATEGORIES = [
+  { name: "select", types: ["selectColor", "selectVivid", "selectBright", "channel"] },
+  { name: "color", types: ["fill", "tint", "colorNoise", "opacity"] },
+  { name: "effect", types: ["blur"] },
+  { name: "move", types: ["move", "rotate", "scale", "skew", "turn3d", "corners", "matrix"] },
+  { name: "layers", types: ["layers"] },
+] as const satisfies readonly { name: string; types: readonly MenuNodeType[] }[];
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
 const NODE_GAP_X = 400;
@@ -78,29 +109,50 @@ const toGraphEdge = ({ id, source, target, targetHandle }: Edge | GraphEdge): Gr
   ...(targetHandle && { targetHandle }),
 });
 
-// what the input reaches by columns, the rest in a row below everything
+// what the input reaches by columns, the rest in a row below everything. A node takes the row of what it
+// pulls when that cell is free — parallel chains (a layers node's rows) run straight, not crossing — else the
+// next free row below
 export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } => {
   const column = columns(graph);
-  const rows = new Map<number, number>();
-  const nextRow = (x: number) => {
-    const row = rows.get(x) ?? 0;
-    rows.set(x, row + 1);
-    return row;
-  };
-  const placed = graph.nodes.map((node) => {
-    const x = column.get(node.id);
-    return x === undefined ? null : { x: x * NODE_GAP_X, y: nextRow(x) * ROW_GAP_Y };
-  });
-  const offRow = Math.max(1, ...rows.values()) * ROW_GAP_Y;
+  const sources = new Map<NodeId, NodeId[]>();
+  for (const { source, target } of graph.edges) sources.set(target, [...(sources.get(target) ?? []), source]);
+  const taken = new Map<number, Set<number>>();
+  const row = new Map<NodeId, number>();
+  const reached = graph.nodes.filter(({ id }) => column.has(id));
+  // left to right, so a node's sources are placed before it; sort is stable — graph order within a column
+  for (const { id } of reached.toSorted((a, b) => column.get(a.id)! - column.get(b.id)!)) {
+    const x = column.get(id)!;
+    const cells = taken.get(x) ?? new Set<number>();
+    taken.set(x, cells);
+    const from = sources.get(id)?.find((source) => row.has(source));
+    let y = from === undefined ? 0 : row.get(from)!;
+    while (cells.has(y)) y++;
+    cells.add(y);
+    row.set(id, y);
+  }
+  const offRow = (Math.max(0, ...row.values()) + 1) * ROW_GAP_Y;
   let off = 0;
-  const nodes = graph.nodes.map((node, index) => {
-    const position = placed[index] ?? { x: off++ * NODE_GAP_X, y: offRow };
+  const nodes = graph.nodes.map((node) => {
+    const x = column.get(node.id);
+    const position =
+      x === undefined ? { x: off++ * NODE_GAP_X, y: offRow } : { x: x * NODE_GAP_X, y: row.get(node.id)! * ROW_GAP_Y };
     return { ...node, position, ...(isFixed(node.type) && { deletable: false }) } as FlowNode;
   });
   return { nodes, edges: graph.edges.map(toGraphEdge) };
 };
 
-export const createNode = (type: MenuNodeType, position: XYPosition): FlowNode => {
+// «clear graph»: input → output, the picture stays
+export const emptyFlow = (imageId: string | null) =>
+  toFlow({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [{ id: "in-out", source: "in", target: "out" }],
+  });
+
+export const createNode =(type: MenuNodeType, position: XYPosition): FlowNode => {
   const data = hasInitialData(type)
     ? structuredClone(INITIAL_DATA[type]) // a copy — the matrix array must not be shared between nodes
     : Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));
@@ -118,7 +170,7 @@ export const toGraph = (nodes: FlowNode[], edges: Edge[]): ToastGraph =>
 // a drawn link — xyflow's Connection or an Edge being moved
 export type Link = Pick<Edge, "source" | "target" | "targetHandle">;
 
-// drops the link already in the connection's target handle (a node's input, a composer row) — a new one
+// drops the link already in the connection's target handle (a node's input, a layers row) — a new one
 // replaces it, like blender; `keep` — the link being moved there, it stays
 export const withoutTaken = (
   edges: Edge[],

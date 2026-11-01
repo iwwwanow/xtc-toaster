@@ -3,16 +3,16 @@
   "nodes": [
     {"id": "in", "type": "input", "data": {"imageId": null}},
     {"id": "stl", "type": "scale", "data": {"x": 0.5, "y": 0.5}},
-    {"id": "ttl", "type": "translate", "data": {"x": -25, "y": -25}},
+    {"id": "ttl", "type": "move", "data": {"x": -25, "y": -25}},
     {"id": "str", "type": "scale", "data": {"x": 0.5, "y": 0.5}},
-    {"id": "ttr", "type": "translate", "data": {"x": 25, "y": -25}},
+    {"id": "ttr", "type": "move", "data": {"x": 25, "y": -25}},
     {"id": "sbl", "type": "scale", "data": {"x": 0.5, "y": 0.5}},
-    {"id": "tbl", "type": "translate", "data": {"x": -25, "y": 25}},
+    {"id": "tbl", "type": "move", "data": {"x": -25, "y": 25}},
     {"id": "sbr", "type": "scale", "data": {"x": 0.5, "y": 0.5}},
-    {"id": "tbr", "type": "translate", "data": {"x": 25, "y": 25}},
+    {"id": "tbr", "type": "move", "data": {"x": 25, "y": 25}},
     {"id": "sc", "type": "scale", "data": {"x": 0.5, "y": 0.5}},
-    {"id": "tc", "type": "translate", "data": {"x": 0, "y": 0}},
-    {"id": "cm", "type": "composer", "data": {"layers": [{"id": "layer-5", "blendMode": "normal"}, {"id": "layer-4", "blendMode": "normal"}, {"id": "layer-3", "blendMode": "normal"}, {"id": "layer-2", "blendMode": "normal"}, {"id": "layer-1", "blendMode": "normal"}]}},
+    {"id": "tc", "type": "move", "data": {"x": 0, "y": 0}},
+    {"id": "cm", "type": "layers", "data": {"layers": [{"id": "layer-5", "blendMode": "normal"}, {"id": "layer-4", "blendMode": "normal"}, {"id": "layer-3", "blendMode": "normal"}, {"id": "layer-2", "blendMode": "normal"}, {"id": "layer-1", "blendMode": "normal"}]}},
     {"id": "out", "type": "output", "data": {}}
   ],
   "edges": [

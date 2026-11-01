@@ -71,11 +71,11 @@ packages/
 
 **Оркестрация:**
 - `Composition`: `constructor`, `createLayerFromPixelData`, `createBlankLayer`, `createColorLayer`, `duplicateLayer`, `render` (dispatch по blend mode: normal/add → Skia, lch-hue → свой код)
-- `Layer`: `constructor`, `setBlendMode`, `setOpacity`, `setTransform` (dispatch affine/homography → Skia, сборка матрицы — своя), `applyEffect` (blur → Skia, hueNoise → свой), `mask` (hue/saturation/value — свой), `isolateChannel`, `fill`, `tint` (тривиальные, свои)
+- `Layer` (плоский API с 01.11, имена = типы нод): `constructor`, `setBlendMode`, `opacity`, `move` / `rotate` / `scale` / `skew` / `corners` / `matrix` / `turn3d` (affine/homography → Skia, сборка матрицы — своя), `blur` → Skia, `colorNoise` — свой, `selectColor` / `selectVivid` / `selectBright` — свои, `channel`, `fill`, `tint` (тривиальные, свои)
 
 **Своя математика:**
-- `hsvMask`/`hueMask`/`saturationMask`/`valueMask` (maskers.ts)
-- `addHueNoise` (effects.ts)
+- `hsvMask`/`selectColor`/`selectVivid`/`selectBright` (maskers.ts)
+- `colorNoise` (effects.ts)
 - `lchHueCompose` (composers.ts)
 - `getAffineMatrix`, `gaussianElimination`, `homographyFromPairs`, `homographyFromQuad` (transforms.ts)
 - `applyYRotationPerspective` — сводится к 3×3-матрице, дальше через Skia

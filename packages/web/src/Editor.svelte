@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Background, Controls, SvelteFlow, useSvelteFlow, type Connection, type Edge } from "@xyflow/svelte";
+  import { untrack } from "svelte";
   import LinkEdge from "./edges/LinkEdge.svelte";
   import { isMenuNodeType, NODE_TYPE_MIME, type FlowNode } from "./graph";
   import { nodeTypes } from "./nodes";
@@ -9,7 +10,17 @@
   import VersionPanel from "./panels/VersionPanel.svelte";
   import { session } from "./session.svelte";
 
-  const { screenToFlowPosition, deleteElements } = useSvelteFlow<FlowNode, Edge>();
+  const { screenToFlowPosition, deleteElements, fitView } = useSvelteFlow<FlowNode, Edge>();
+
+  // a replaced graph (import, ?toast=, clear) has a new layout — show all of it, like on page open
+  // (xyflow queues it until the new nodes are measured); untracked — fitView reads the nodes, the effect
+  // would rerun on every node change
+  $effect(() => {
+    if (session.replaced > 0) untrack(() => void fitView({ maxZoom: 1 }));
+  });
+
+  // xyflow's default 0.5 can't frame a big toast (degas: 26 nodes) — fitView stops at it
+  const MIN_ZOOM = 0.1;
 
   // every link is drawn by LinkEdge — it carries the grab-to-unlink anchor
   const edgeTypes = { default: LinkEdge };
@@ -67,6 +78,7 @@
     {edgeTypes}
     fitView
     fitViewOptions={{ maxZoom: 1 }}
+    minZoom={MIN_ZOOM}
     connectionRadius={40}
     deleteKey={["Delete", "Backspace"]}
     {onnodecontextmenu}
@@ -77,7 +89,8 @@
     {onbeforereconnect}
   >
     <Background />
-    <Controls />
+    <!-- bottom-right like other node editors (the sister's test) -->
+    <Controls position="bottom-right" style="margin-bottom: 24px" />
     <NodeMenu />
     <ActionsPanel />
     <ConnectionPanel />

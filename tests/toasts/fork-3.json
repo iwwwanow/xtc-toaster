@@ -2,11 +2,11 @@
   "version": 1,
   "nodes": [
     {"id": "in", "type": "input", "data": {"imageId": null}},
-    {"id": "hm", "type": "hueMask", "data": {"hue": 0, "tolerance": 30}},
-    {"id": "ic", "type": "isolateChannel", "data": {"channel": "green"}},
+    {"id": "hm", "type": "selectColor", "data": {"hue": 0, "tolerance": 30}},
+    {"id": "ic", "type": "channel", "data": {"channel": "green"}},
     {"id": "op", "type": "opacity", "data": {"opacity": 0.5}},
-    {"id": "hn", "type": "hueNoise", "data": {"deviationCoefficient": 0.5}},
-    {"id": "cm", "type": "composer", "data": {"layers": [{"id": "layer-3", "blendMode": "normal"}, {"id": "layer-2", "blendMode": "add"}, {"id": "layer-1", "blendMode": "normal"}]}},
+    {"id": "hn", "type": "colorNoise", "data": {"deviationCoefficient": 0.5}},
+    {"id": "cm", "type": "layers", "data": {"layers": [{"id": "layer-3", "blendMode": "normal"}, {"id": "layer-2", "blendMode": "add"}, {"id": "layer-1", "blendMode": "normal"}]}},
     {"id": "out", "type": "output", "data": {}}
   ],
   "edges": [

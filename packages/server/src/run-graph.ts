@@ -1,14 +1,14 @@
 import { join } from "node:path";
 import {
   validateGraph,
-  type ComposerNode,
+  type LayersNode,
   type GraphEdge,
   type GraphNode,
   type InputNode,
-  type IsolateChannelNode,
+  type ChannelNode,
   type NodeId,
   type OutputNode,
-  type PerspectiveNode,
+  type CornersNode,
   type ToastGraph,
 } from "@xtc-toaster/contract";
 import {
@@ -34,8 +34,8 @@ export class GraphError extends Error {
 
 const NO_PATH = "connect the input to the output";
 
-// a hidden composer row is skipped like an unlinked one: its chain isn't evaluated, its layer isn't counted
-const shownLinks = ({ data: { layers } }: ComposerNode, links: GraphEdge[]) =>
+// a hidden layers row is skipped like an unlinked one: its chain isn't evaluated, its layer isn't counted
+const shownLinks = ({ data: { layers } }: LayersNode, links: GraphEdge[]) =>
   links.filter(({ targetHandle }) => layers.find(({ id }) => id === targetHandle)?.visible !== false);
 
 // the layer cap when RENDER_MAX_LAYERS is unset; prod sets 8 (measured 29.10 — docs/diary/2026-10-29_sprint-4-qa-and-measurement.md)
@@ -43,7 +43,7 @@ export const RENDER_MAX_LAYERS_DEFAULT = 4;
 
 // The output's ancestry, walked back from it like blender: how many links pull each node's
 // result. Nodes off it (unlinked, dead-end forks) are ignored. Fails before any pixel work: a
-// node on the way without its link, a composer without a linked row, too many layers.
+// node on the way without its link, a layers node without a linked row, too many layers.
 const ancestry = (byId: Map<NodeId, GraphNode>, into: Map<NodeId, GraphEdge[]>, outputId: NodeId, maxLayers: number) => {
   const pulls = new Map<NodeId, number>();
   const queue = [outputId];
@@ -51,11 +51,11 @@ const ancestry = (byId: Map<NodeId, GraphNode>, into: Map<NodeId, GraphEdge[]>, 
   for (const id of queue) {
     const node = byId.get(id)!;
     const linked = into.get(id) ?? [];
-    const links = node.type === "composer" ? shownLinks(node, linked) : linked;
-    if (node.type === "composer") {
+    const links = node.type === "layers" ? shownLinks(node, linked) : linked;
+    if (node.type === "layers") {
       if (linked.length === 0) throw new GraphError("link a layer", id);
       if (links.length === 0) throw new GraphError("show a layer", id);
-      // over all composers of the render — a per-composer cap is bypassed by nesting
+      // over all layers nodes of the render — a per-node cap is bypassed by nesting
       layers += links.length;
       if (layers > maxLayers) throw new GraphError(`over ${maxLayers} layers in one render`, id);
     } else if (node.type !== "input" && links.length === 0) throw new GraphError(NO_PATH, id);
@@ -80,7 +80,7 @@ const tanDeg = (degrees: number) => Math.tan((Math.PI / 180) * degrees);
 
 // contract percent of the image → lib px, TL TR BR BL; 0 / 100 % are the first / last pixel,
 // so the untouched corners give exactly the identity (lib maps the source corners the same way)
-export const perspectiveCorners = (corners: PerspectiveNode["data"], { width, height }: LayerDimensions): Quad => {
+export const cornersQuad = (corners: CornersNode["data"], { width, height }: LayerDimensions): Quad => {
   const at = (x: number, y: number) => ({ x: (x / 100) * (width - 1), y: (y / 100) * (height - 1) });
   return [
     at(corners.topLeftX, corners.topLeftY),
@@ -90,7 +90,7 @@ export const perspectiveCorners = (corners: PerspectiveNode["data"], { width, he
   ];
 };
 
-const CHANNEL: Record<IsolateChannelNode["data"]["channel"], Channel> = {
+const CHANNEL: Record<ChannelNode["data"]["channel"], Channel> = {
   red: Channel.Red,
   green: Channel.Green,
   blue: Channel.Blue,
@@ -105,61 +105,55 @@ const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: strin
   return imageFileToRawData(path);
 };
 
-type Applied = { node: Exclude<GraphNode, InputNode | ComposerNode | OutputNode>; layer: Layer } & LayerDimensions;
+type Applied = { node: Exclude<GraphNode, InputNode | LayersNode | OutputNode>; layer: Layer } & LayerDimensions;
 
 // one node onto the layer; opacity is returned, not applied — lib keeps one opacity per layer and
 // bakes it at render, so the chain multiplies its opacity nodes here
 const applyNode = ({ node, layer, width, height }: Applied, opacity: number): number => {
   switch (node.type) {
-    case "hueNoise":
-      layer.applyEffect({ name: "hueNoise", options: { deviationCoefficient: node.data.deviationCoefficient } });
+    case "colorNoise":
+      layer.colorNoise({ deviationCoefficient: node.data.deviationCoefficient });
       break;
-    case "hueMask":
+    case "selectColor":
       // lib takes the tolerance normalized to the wheel
-      layer.mask({ name: "hue", value: node.data.hue, tolerance: node.data.tolerance / 360 });
+      layer.selectColor({ hue: node.data.hue, tolerance: node.data.tolerance / 360 });
       break;
-    case "yRotation":
+    case "turn3d":
       // contract has mm, lib takes px of the image
-      layer.setTransform({
-        name: "yRotation",
-        params: { angle: node.data.angle, focalLength: focalLengthPx(node.data.focalLength, { width, height }) },
-      });
+      layer.turn3d({ angle: node.data.angle, focalLength: focalLengthPx(node.data.focalLength, { width, height }) });
       break;
     case "blur":
-      layer.applyEffect({ name: "blur", options: { radius: node.data.radius } });
+      layer.blur({ radius: node.data.radius });
       break;
-    case "saturationMask":
+    case "selectVivid":
       // contract has percent for both, lib takes the tolerance normalized
-      layer.mask({ name: "saturation", value: node.data.saturation, tolerance: node.data.tolerance / 100 });
+      layer.selectVivid({ saturation: node.data.saturation, tolerance: node.data.tolerance / 100 });
       break;
-    case "valueMask":
-      layer.mask({ name: "value", value: node.data.value, tolerance: node.data.tolerance / 100 });
+    case "selectBright":
+      layer.selectBright({ value: node.data.value, tolerance: node.data.tolerance / 100 });
       break;
-    case "isolateChannel":
-      layer.isolateChannel(CHANNEL[node.data.channel]);
+    case "channel":
+      layer.channel(CHANNEL[node.data.channel]);
       break;
-    case "translate":
+    case "move":
       // contract has percent of the image size, lib takes px
-      layer.setTransform({
-        name: "translate",
-        params: { tx: percentPx(node.data.x, width), ty: percentPx(node.data.y, height) },
-      });
+      layer.move({ x: percentPx(node.data.x, width), y: percentPx(node.data.y, height) });
       break;
     case "rotate":
-      layer.setTransform({ name: "rotate", params: { alpha: node.data.angle } });
+      layer.rotate({ angle: node.data.angle });
       break;
     case "scale":
-      layer.setTransform({ name: "scale", params: { scaleX: node.data.x, scaleY: node.data.y } });
+      layer.scale({ x: node.data.x, y: node.data.y });
       break;
     case "skew":
-      // contract has degrees, lib takes the shear factor; lib's ty leans the verticals, tx the horizontals
-      layer.setTransform({ name: "skew", params: { tx: tanDeg(node.data.y), ty: tanDeg(node.data.x) } });
+      // contract has degrees, lib takes the shear factor
+      layer.skew({ x: tanDeg(node.data.x), y: tanDeg(node.data.y) });
       break;
-    case "perspective":
-      layer.setTransform({ name: "perspective", params: { corners: perspectiveCorners(node.data, { width, height }) } });
+    case "corners":
+      layer.corners(cornersQuad(node.data, { width, height }));
       break;
-    case "homography":
-      layer.setTransform({ name: "homography", params: { matrix: node.data.matrix } });
+    case "matrix":
+      layer.matrix(node.data.matrix);
       break;
     case "fill":
       layer.fill(Color.fromHex(node.data.color));
@@ -173,7 +167,7 @@ const applyNode = ({ node, layer, width, height }: Applied, opacity: number): nu
   return opacity;
 };
 
-// what flows along an edge: pixels + the chain's opacity, baked into the layer at a composer / the output
+// what flows along an edge: pixels + the chain's opacity, baked into the layer at a layers node / the output
 type Flow = { data: ImageRawDataArray; opacity: number };
 
 // Evaluation pulled from the output, each node once per render. A node pulled by several links
@@ -209,14 +203,14 @@ export const runGraph = async (
   };
 
   // linked shown rows bottom → top; the bottom row's blend mode has nothing under it
-  const compose = ({ data: { layers } }: ComposerNode, links: GraphEdge[]): Flow => {
+  const compose = ({ data: { layers } }: LayersNode, links: GraphEdge[]): Flow => {
     const composition = new Composition(width, height);
     for (const { id, blendMode, visible } of [...layers].reverse()) {
       const link = links.find(({ targetHandle }) => targetHandle === id);
       if (!link || visible === false) continue;
       const flow = pull(link.source);
       const layer = composition.createLayerFromPixelData(flow.data);
-      if (flow.opacity < 1) layer.setOpacity(flow.opacity);
+      if (flow.opacity < 1) layer.opacity(flow.opacity);
       layer.setBlendMode(blendMode);
     }
     return { data: composition.render(), opacity: 1 };
@@ -226,7 +220,7 @@ export const runGraph = async (
   const evaluate = (node: GraphNode): Flow => {
     if (node.type === "input") return { data, opacity: 1 };
     const links = into.get(node.id)!;
-    if (node.type === "composer") return compose(node, links);
+    if (node.type === "layers") return compose(node, links);
 
     const flow = pull(links[0]!.source);
     if (node.type === "output") return flow;
@@ -243,6 +237,6 @@ export const runGraph = async (
   const composition = new Composition(width, height);
   const { data: result, opacity } = evaluate(output);
   const layer = composition.createLayerFromPixelData(result);
-  if (opacity < 1) layer.setOpacity(opacity);
+  if (opacity < 1) layer.opacity(opacity);
   return { data: composition.render(), width, height };
 };

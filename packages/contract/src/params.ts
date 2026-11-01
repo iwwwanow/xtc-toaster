@@ -3,18 +3,18 @@
 export type ParamBounds = { readonly min: number; readonly max: number; readonly initial: number };
 
 export const PARAMS = {
-  hueNoise: {
+  colorNoise: {
     deviationCoefficient: { min: 0, max: 1, initial: 0.5 },
   },
   // both in degrees; tolerance is the half-width of the band around hue (180 = the whole wheel)
-  hueMask: {
+  selectColor: {
     hue: { min: 0, max: 360, initial: 0 },
     tolerance: { min: 0, max: 180, initial: 30 },
   },
   // angle in degrees, ±90 is edge-on (the plane vanishes) — stop short of it;
   // focalLength in mm, 35 mm equivalent (36 mm across the larger side, like a blender camera):
   // smaller = stronger perspective
-  yRotation: {
+  turn3d: {
     angle: { min: -85, max: 85, initial: 30 },
     focalLength: { min: 10, max: 300, initial: 50 },
   },
@@ -23,16 +23,16 @@ export const PARAMS = {
     radius: { min: 0, max: 20, initial: 4 },
   },
   // percent; tolerance is the half-width of the band (100 = the whole range)
-  saturationMask: {
+  selectVivid: {
     saturation: { min: 0, max: 100, initial: 100 },
     tolerance: { min: 0, max: 100, initial: 30 },
   },
-  valueMask: {
+  selectBright: {
     value: { min: 0, max: 100, initial: 100 },
     tolerance: { min: 0, max: 100, initial: 30 },
   },
   // percent of the image width / height — a toast shifts any picture alike, like focalLength in mm
-  translate: {
+  move: {
     x: { min: -100, max: 100, initial: 10 },
     y: { min: -100, max: 100, initial: 0 },
   },
@@ -52,7 +52,7 @@ export const PARAMS = {
   },
   // where the picture's corners land, percent of the image width / height; may go past the frame.
   // initial — a slight keystone (the top narrower) so a dropped node shows something
-  perspective: {
+  corners: {
     topLeftX: { min: -50, max: 150, initial: 10 },
     topLeftY: { min: -50, max: 150, initial: 0 },
     topRightX: { min: -50, max: 150, initial: 90 },
@@ -68,23 +68,23 @@ export const PARAMS = {
   },
 } as const satisfies Record<string, Record<string, ParamBounds>>;
 
-// isolateChannel picks one of these — not a range: the ui shows a select
+// channel picks one of these — not a range: the ui shows a select
 export const CHANNELS = ["red", "green", "blue", "alpha"] as const;
 
-// how a composer row lays its layer onto the ones below — lib's BlendMode, duplicated for now
+// how a layers row lays its layer onto the ones below — lib's BlendMode, duplicated for now
 // (docs/backlog/2026-10-27_contract-lib-shared-types.md)
 export const BLEND_MODES = ["normal", "add", "lch-hue"] as const;
 
 // nodes whose params are not ranges — what a node dropped from the menu starts with
 export const INITIAL_DATA = {
-  isolateChannel: { channel: "red" },
+  channel: { channel: "red" },
   // identity — a raw matrix has no meaningful "something visible" start
-  homography: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
+  matrix: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] },
   fill: { color: "#a4a4a4" },
   tint: { color: "#ff0000" },
   // top first; ids are handle ids, unique within the node, counted from the bottom — a row added on top
   // continues them, and the shown name comes from the id
-  composer: {
+  layers: {
     layers: [
       { id: "layer-2", blendMode: "normal" },
       { id: "layer-1", blendMode: "normal" },

@@ -5,7 +5,7 @@
   const version = import.meta.env.APP_VERSION ?? "dev";
 </script>
 
-<!-- above xyflow's attribution, which sits in the same corner -->
-<Panel position="bottom-right" class="field__hint_ai-generated" style="margin-bottom: 24px">
+<!-- the bottom-right corner is Controls' (over xyflow's attribution) -->
+<Panel position="bottom-left" class="field__hint_ai-generated">
   {version === "dev" ? "dev" : `v${version}`}
 </Panel>

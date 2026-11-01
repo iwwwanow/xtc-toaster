@@ -1,23 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { INITIAL_DATA, type ComposerLayer } from "@xtc-toaster/contract";
-import { addLayer, layerName, moveLayer, removeLayer, removeLayerEdges, renameLayer, setBlendMode, toggleLayer } from "./composer";
+import { INITIAL_DATA, type LayerRow } from "@xtc-toaster/contract";
+import { addLayer, layerName, moveLayer, removeLayer, removeLayerEdges, renameLayer, setBlendMode, toggleLayer } from "./layers";
 
-const layers = (): ComposerLayer[] => [
+const layers = (): LayerRow[] => [
   { id: "a", blendMode: "add" },
   { id: "b", blendMode: "normal" },
   { id: "c", blendMode: "lch-hue" },
 ];
-const ids = (list: ComposerLayer[]) => list.map(({ id }) => id);
+const ids = (list: LayerRow[]) => list.map(({ id }) => id);
 
-describe("composer rows", () => {
+describe("layers rows", () => {
   test("a new row goes on top, normal, with an id not in use", () => {
-    const added = addLayer(INITIAL_DATA.composer.layers);
+    const added = addLayer(INITIAL_DATA.layers.layers);
     expect(added[0]).toEqual({ id: "layer-3", blendMode: "normal" });
     expect(ids(added.slice(1))).toEqual(["layer-2", "layer-1"]);
   });
 
   test("a removed row's id is not handed out again while a later one lives", () => {
-    const [, ...rest] = addLayer(addLayer(INITIAL_DATA.composer.layers)); // layer-4 on top, then layer-3
+    const [, ...rest] = addLayer(addLayer(INITIAL_DATA.layers.layers)); // layer-4 on top, then layer-3
     const added = addLayer(rest.filter(({ id }) => id !== "layer-1"));
     expect(new Set(ids(added)).size).toBe(added.length);
   });

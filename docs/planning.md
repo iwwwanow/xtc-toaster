@@ -34,7 +34,7 @@
   15. perspective: перспективное искажение по 4 углам.
   16. yRotation: перспективный поворот вокруг оси Y (angle в градусах, focalLength в px) — подключён к Layer 15.10, нода y-rotation в ui.
 - [ ] project renders animation
-- [ ] 3 toasts available for usage (ready, portfolio works too)
+- [ ] 3 toasts available for usage (ready, portfolio works too) — 01.11: 2 of 3 as graphs: `toast-2_signac` (default) and `toast-1_degas` at t = 0 (bit for bit with the script); degas animated — sprint 5
 
 ## sprints:
 
@@ -95,7 +95,7 @@
    - [ ] manual review + refactoring (server → contract → web → lib) — moved to the end of the sprint 24.10; 26.10 → sprint 7, the last week (the server's `run-graph` is rewritten in sprint 4 anyway)
    - 24.10 decided: no Renovate on this repo for now — infra is enough
    - details — `docs/diary/2026-10-21_sprint-3-ci-cd-and-server-prod.md`, `docs/diary/2026-10-23_sprint-3-public-link-renovate-rollback.md`, `docs/diary/2026-10-24_favicon-and-app-version.md` (+ infra: `iwwwanow_infrastructure/docs/diary/2026-10-23_xtc-toaster-stack-renovate-rbw.md`)
-4. [ ] 26.10-01.11. two-layers toast — spec `docs/sprints/sprint-4.spec.md`, diagram `docs/sprints/sprint-4.diagram.d2`; planned 26.10, work starts 27.10 — `docs/diary/2026-10-26_sprint-4-planning.md`
+4. [x] 26.10-01.11. two-layers toast — closed 01.11 (QA 2.4–7 not passed by hand → sprint 6); spec `docs/sprints/sprint-4.spec.md`, diagram `docs/sprints/sprint-4.diagram.d2`; planned 26.10, work starts 27.10 — `docs/diary/2026-10-26_sprint-4-planning.md`
    - 1 week
    - ~~layer composing on output node~~ → a separate **composer** node: layer rows (handle, blend mode select, drag to reorder, `+` / `×`), the top row is the top layer; chains stay outside it. Composer as a group of nodes — `docs/backlog/2026-10-26_composer-as-node-group.md`
    - the graph is a DAG: one output → many links (fan-out), edges carry `targetHandle`; the server evaluates from the output with a memo per node
@@ -110,6 +110,13 @@
      - composer layer **name** — fixed to the layer (moves with the row, not `layer N` by position), renamable in the row
      - composer layer **`visible: boolean`** — an eye toggle in the row; a hidden row is skipped like an unlinked one (not evaluated, not counted in `RENDER_MAX_LAYERS`)
    - stretch: the sister's quick fixes → cursor lag → degas t = 0 as a graph → friendly node names
+     - [x] 01.11 the sister's quick fixes (`feat/sister-quick-fixes`): the editor survives a reload (`localStorage`), `clear graph` (two clicks), `Controls` bottom-right, the upload limit in MB only (`≈ 1 MB`), tooltips on export / import / clear (500 ms delay, pure css)
+     - [ ] cursor lag — not reproduced, needs Windows + Chrome like hers → the next user test (sprint 6)
+     - [x] 01.11 degas t = 0 as a graph — `toast-1_degas/toast.json` (7 rows, 26 nodes); with the script's blur radii and corners put back = the lib golden hash bit for bit (`packages/server/tests/degas.test.ts`); `?toast=<preset>` in dev, list — `tests/toasts/README.md`; auto layout runs chains straight, fit view on import / clear
+     - [x] 01.11 friendly node names — beyond the plan (ui labels only): **one name in web / contract / server / lib** (`selectColor`, `selectVivid`, `selectBright`, `channel`, `colorNoise`, `move`, `turn3d`, `corners`, `matrix`, `layers`), lib `Layer` flat (one method per node type), the menu grouped (select / color / effect / move / layers, labeled rules) with a one-phrase hint per node; no migration — pre-release
+     - [ ] render warnings — later, after 1.0 (decided 01.11) — `docs/backlog/2026-10-27_render-warnings.md`
+   - 01.11 decided — versions (`CLAUDE.md`): app semver 0.x until 28.11, no `feat!` / `BREAKING CHANGE` before it (the default analyzer would ship `1.0.0`); `TOAST_GRAPH_VERSION` stays 1 and breaks freely until 1.0, frozen after; packages `0.0.0`, versioned with the app
+   - 01.11 decided — QA: the open items of `sprint-*.qa.md` aren't run each sprint (the user uses the app regularly), they pile up and run all at once in sprint 6
    - not here: preview node + export settings — after 1.0, `docs/backlog/2026-10-26_preview-node-and-export-settings.md`
    - cut if behind:
      - uiu → only the rule + tokens (goes first)
@@ -127,12 +134,13 @@
 6. [ ] 16.11-22.11. result testing
    - 1 week
    - 3 toasts
-   - new user test
+   - new user test (+ the sister's cursor lag: Windows + Chrome)
+   - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11
    - final fixes
    - cut if behind:
      - (#5) 2 toasts instead of 3
 7. [ ] 23.11-29.11. free buffer
-   - manual review + refactoring of the vibe-coded code — by the user, Claude helps (moved from sprint 3 on 26.10): `server` → `contract` → `web` → `lib`, no behaviour change, tests green before and after, one package = one branch, `refactor:` commits; findings that don't fit → `docs/backlog/`. Already written down: `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
+   - manual review + refactoring of the vibe-coded code — by the user, Claude helps (moved from sprint 3 on 26.10): `server` → `contract` → `web` → `lib`, no behaviour change, tests green before and after, one package = one branch, `refactor:` commits; findings that don't fit → `docs/backlog/`. Already written down: `docs/backlog/2026-11-01_validate-graph-into-zod.md`, `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
    - before the release 28.11 — the buffer first goes to whatever slipped from sprints 4–6
 
 ## cut-list

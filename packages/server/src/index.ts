@@ -20,7 +20,7 @@ const server = await createServer({
     ttlMs: positive("UPLOADS_TTL_HOURS", 24) * 3_600_000,
     maxTotalBytes: positive("UPLOADS_MAX_TOTAL_MB", 512) * 1024 * 1024,
   },
-  // per render, over all composers; the prod value comes from the memory measurement (sprint 4)
+  // per render, over all layers nodes; the prod value comes from the memory measurement (sprint 4)
   maxLayers: positive("RENDER_MAX_LAYERS", RENDER_MAX_LAYERS_DEFAULT),
   staticDir: env.STATIC_DIR || undefined,
 });

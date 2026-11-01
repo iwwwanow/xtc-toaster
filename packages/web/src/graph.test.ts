@@ -6,8 +6,10 @@ import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaste
 import {
   canConnect,
   createNode,
+  emptyFlow,
   fromToastFile,
   MENU_NODE_TYPES,
+  NODE_CATEGORIES,
   toFlow,
   toGraph,
   toToastFile,
@@ -15,13 +17,13 @@ import {
   withoutTaken,
 } from "./graph";
 
-// input fans out: one row straight, one through hue noise; the composer into the output
+// input fans out: one row straight, one through hue noise; the layers node into the output
 const fanOut = () => ({
   version: TOAST_GRAPH_VERSION,
   nodes: [
     { id: "in", type: "input", data: { imageId: null } },
-    { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
-    { id: "cmp", type: "composer", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
+    { id: "nz", type: "colorNoise", data: { deviationCoefficient: 0.5 } },
+    { id: "cmp", type: "layers", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
     { id: "out", type: "output", data: {} },
   ] as GraphNode[],
   edges: [
@@ -58,7 +60,7 @@ describe("toFlow", () => {
 
   test("two nodes at one depth stack in one column", () => {
     const graph = fanOut();
-    graph.nodes.splice(2, 0, { id: "nz2", type: "hueNoise", data: { deviationCoefficient: 0.1 } });
+    graph.nodes.splice(2, 0, { id: "nz2", type: "colorNoise", data: { deviationCoefficient: 0.1 } });
     graph.edges.push({ id: "in-nz2", source: "in", target: "nz2" });
     const position = Object.fromEntries(toFlow(graph).nodes.map(({ id, position }) => [id, position]));
     expect(position.nz2!.x).toBe(position.nz!.x);
@@ -85,26 +87,26 @@ describe("toFlow", () => {
 
 describe("createNode", () => {
   test("a uuid, the drop position and the initial params", () => {
-    const node = createNode("hueNoise", { x: 10, y: 20 });
+    const node = createNode("colorNoise", { x: 10, y: 20 });
     expect(node.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(node.position).toEqual({ x: 10, y: 20 });
-    expect(node.data).toEqual({ deviationCoefficient: PARAMS.hueNoise.deviationCoefficient.initial });
+    expect(node.data).toEqual({ deviationCoefficient: PARAMS.colorNoise.deviationCoefficient.initial });
   });
 
   test("a hue mask starts with every param at its initial", () => {
-    const { data } = createNode("hueMask", { x: 0, y: 0 });
-    expect(data).toEqual({ hue: PARAMS.hueMask.hue.initial, tolerance: PARAMS.hueMask.tolerance.initial });
+    const { data } = createNode("selectColor", { x: 0, y: 0 });
+    expect(data).toEqual({ hue: PARAMS.selectColor.hue.initial, tolerance: PARAMS.selectColor.tolerance.initial });
   });
 
   test("a y-rotation starts with every param at its initial", () => {
-    const { data } = createNode("yRotation", { x: 0, y: 0 });
+    const { data } = createNode("turn3d", { x: 0, y: 0 });
     expect(data).toEqual({
-      angle: PARAMS.yRotation.angle.initial,
-      focalLength: PARAMS.yRotation.focalLength.initial,
+      angle: PARAMS.turn3d.angle.initial,
+      focalLength: PARAMS.turn3d.focalLength.initial,
     });
   });
 
-  test.each(["blur", "saturationMask", "valueMask", "translate", "rotate", "scale", "skew", "perspective", "opacity"] as const)(
+  test.each(["blur", "selectVivid", "selectBright", "move", "rotate", "scale", "skew", "corners", "opacity"] as const)(
     "%s starts with every param at its initial",
     (type) => {
       const initials = Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));
@@ -113,16 +115,16 @@ describe("createNode", () => {
   );
 
   test("an isolate channel starts on red", () => {
-    expect(createNode("isolateChannel", { x: 0, y: 0 }).data).toEqual({ channel: "red" });
+    expect(createNode("channel", { x: 0, y: 0 }).data).toEqual({ channel: "red" });
   });
 
-  test.each(["homography", "fill", "tint"] as const)("%s starts with its INITIAL_DATA", (type) => {
+  test.each(["matrix", "fill", "tint"] as const)("%s starts with its INITIAL_DATA", (type) => {
     expect<unknown>(createNode(type, { x: 0, y: 0 }).data).toEqual(INITIAL_DATA[type]);
   });
 
   test("two homographies don't share one matrix array", () => {
-    const a = createNode("homography", { x: 0, y: 0 });
-    const b = createNode("homography", { x: 0, y: 0 });
+    const a = createNode("matrix", { x: 0, y: 0 });
+    const b = createNode("matrix", { x: 0, y: 0 });
     expect((a.data as { matrix: number[] }).matrix).not.toBe((b.data as { matrix: number[] }).matrix);
   });
 
@@ -148,7 +150,7 @@ describe("toGraph", () => {
   });
 });
 
-describe("composer graph", () => {
+describe("layersNode graph", () => {
   test("round-trips through the flow", () => {
     const { nodes, edges } = toFlow(fanOut());
     expect<unknown>(toGraph(nodes, edges)).toEqual(fanOut());
@@ -178,7 +180,7 @@ describe("drawing links", () => {
     ["a cycle", link("cmp", "nz")],
     ["a link into the input", link("nz", "in")],
     ["a link to itself", link("nz", "nz")],
-    ["a composer link without a row", link("nz", "cmp")],
+    ["a layers link without a row", link("nz", "cmp")],
   ])("refuses %s", (_, connection) => {
     const { nodes, edges } = flow();
     expect(canConnect(nodes, edges, connection)).toBe(false);
@@ -228,13 +230,42 @@ describe("toast file", () => {
   test.each([
     ["not json", "{", "not a json file"],
     ["another json", JSON.stringify({ hello: "world" }), "not a toast file"],
-    ["a param out of range", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "hueNoise" ? { ...node, data: { deviationCoefficient: 2 } } : node)) }), "not a toast file"],
+    ["a param out of range", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "colorNoise" ? { ...node, data: { deviationCoefficient: 2 } } : node)) }), "not a toast file"],
     ["a newer version", JSON.stringify({ ...toast2signac, version: 2 }), "not a toast file"],
     ["no output", JSON.stringify({ ...toast2signac, nodes: onlyInput, edges: [] }), "a toast needs exactly one input and one output"],
     ["two inputs", JSON.stringify({ ...toast2signac, nodes: [...toast2signac.nodes, { ...onlyInput[0], id: "in2" }] }), "a toast needs exactly one input and one output"],
     ["a cycle", JSON.stringify({ ...fanOut(), edges: [...fanOut().edges.slice(1), { id: "cmp-nz", source: "cmp", target: "nz" }] }), "the graph loops"],
-    ["duplicate ids", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "hueMask" ? { ...node, id: "nz" } : node)) }), "duplicate node id"],
+    ["duplicate ids", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "selectColor" ? { ...node, id: "nz" } : node)) }), "duplicate node id"],
   ])("import rejects %s with a message for the ui", (_, text, message) => {
     expect(() => fromToastFile(text, null)).toThrow(new ToastFileError(message));
+  });
+});
+
+describe("emptyFlow", () => {
+  test("input → output, the picture kept, both undeletable", () => {
+    const { nodes, edges } = emptyFlow("img-1");
+    expect(nodes.map(({ type, data, deletable }) => ({ type, data, deletable }))).toEqual([
+      { type: "input", data: { imageId: "img-1" }, deletable: false },
+      { type: "output", data: {}, deletable: false },
+    ]);
+    expect(edges).toEqual([{ id: "in-out", source: "in", target: "out" }]);
+  });
+});
+
+describe("toFlow rows", () => {
+  test("parallel chains of different length run straight — a node in the row of what it pulls", async () => {
+    const { toast1degas } = await import("@xtc-toaster/toasts");
+    const { nodes, edges } = toFlow(toast1degas);
+    const y = Object.fromEntries(nodes.map(({ id, position }) => [id, position.y]));
+    // every link between two chain nodes is horizontal; only the links out of the input and into the layers node bend
+    const bent = edges.filter(({ source, target }) => source !== "in" && target !== "cmp" && y[source] !== y[target]);
+    expect(bent).toEqual([]);
+  });
+});
+
+describe("NODE_CATEGORIES", () => {
+  test("every menu type in exactly one category", () => {
+    const listed = NODE_CATEGORIES.flatMap(({ types }) => types as readonly string[]);
+    expect(listed.toSorted()).toEqual([...MENU_NODE_TYPES].toSorted());
   });
 });

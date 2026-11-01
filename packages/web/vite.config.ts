@@ -11,9 +11,11 @@ const SERVER = process.env.SERVER_HOST ?? "localhost:3000";
 const DEBUG_IMAGE = process.env.DEBUG_IMAGE || null;
 const DEBUG_IMAGE_URL = "/debug-image";
 
-// debug: ?toast=<name> → the page imports tests/toasts/<name>.json on open (dev server only) —
-// test graphs without building them by hand
+// debug: ?toast=<name> → the page imports a toast on open (dev server only) — test graphs without building
+// them by hand: tests/toasts/<name>.json, or a preset by its directory name — packages/toasts/src/toasts/<name>/toast.json
+// (?toast=toast-1_degas). The list — tests/toasts/README.md
 const TOASTS_DIR = resolve(import.meta.dirname, "../../tests/toasts");
+const PRESETS_DIR = resolve(import.meta.dirname, "../toasts/src/toasts");
 const DEBUG_TOAST_URL = "/debug-toast";
 
 // the release version, shown in the ui: the docker job passes the semantic-release tag (Dockerfile ARG); anything else — "dev"
@@ -37,7 +39,11 @@ const debugToasts = (): Plugin => ({
   configureServer(server) {
     server.middlewares.use(DEBUG_TOAST_URL, async (req, res) => {
       const name = req.url?.slice(1) ?? "";
-      const file = /^[\w-]+$/.test(name) ? await readFile(resolve(TOASTS_DIR, `${name}.json`)).catch(() => null) : null;
+      const file = /^[\w-]+$/.test(name)
+        ? await readFile(resolve(TOASTS_DIR, `${name}.json`))
+            .catch(() => readFile(resolve(PRESETS_DIR, name, "toast.json")))
+            .catch(() => null)
+        : null;
       if (file) return res.end(file);
       res.statusCode = 404;
       res.end();

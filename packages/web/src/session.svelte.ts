@@ -1,16 +1,16 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
-  UPLOAD_MAX_BYTES,
   UPLOAD_MAX_MEGAPIXELS,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { removeLayer, removeLayerEdges } from "./composer";
+import { removeLayer, removeLayerEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
   canConnect,
   createNode,
+  emptyFlow,
   fromToastFile,
   toFlow,
   toGraph,
@@ -22,15 +22,19 @@ import {
   type Link,
   type MenuNodeType,
 } from "./graph";
+import { fromSaved, loadSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
 // toast directory name — prefix of downloaded files
 const TOAST = "toast-2_signac";
-const initial = toFlow(toast2signac);
+// the editor as it was before the reload, else the default toast
+const initial = fromSaved(loadSaved()) ?? toFlow(toast2signac);
 
 const UPLOAD_ERRORS: Record<string, string> = {
-  "too-large": `too large: max ${UPLOAD_MAX_MEGAPIXELS} MP, ${UPLOAD_MAX_BYTES / 1024 / 1024} MB`,
+  // the server checks megapixels and bytes; MP read like MB (the sister's test), so one number in MB: a photo
+  // jpeg is ≈ 0.5 MB per MP — the pixel limit binds first. Approximate: a png of the same size passes at several MB
+  "too-large": `too large: max ≈ ${UPLOAD_MAX_MEGAPIXELS * 0.5} MB`,
   "unsupported-format": "png or jpeg only",
 };
 
@@ -52,6 +56,9 @@ class Session {
   uploadError = $state<string | null>(null);
   // shown in the right panel under the import button
   importError = $state<string | null>(null);
+
+  // bumped when the graph is replaced as a whole (import, clear) — Editor fits the view to the new layout
+  replaced = $state(0);
 
   locked = $derived(!this.connected || this.uploading || this.rendering);
   imageId = $derived(
@@ -107,9 +114,9 @@ class Session {
     this.nodes = this.nodes.map((node) => (node.id === id ? ({ ...node, data } as FlowNode) : node));
   }
 
-  // a composer row goes away with its link
-  removeComposerLayer(nodeId: string, layerId: string) {
-    const node = this.nodes.find((node): node is FlowNodeOf<"composer"> => node.id === nodeId && node.type === "composer");
+  // a layers row goes away with its link
+  removeLayerRow(nodeId: string, layerId: string) {
+    const node = this.nodes.find((node): node is FlowNodeOf<"layers"> => node.id === nodeId && node.type === "layers");
     if (!node) return;
     this.edges = removeLayerEdges(this.edges, nodeId, layerId);
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
@@ -139,12 +146,21 @@ class Session {
     saveBlob(new Blob([toToastFile(this.nodes, this.edges)], { type: "application/json" }), outputFileName(TOAST, "json"));
   }
 
+  // input → output, the picture stays
+  clearGraph() {
+    const { nodes, edges } = emptyFlow(this.imageId);
+    this.nodes = nodes;
+    this.edges = edges;
+    this.replaced++;
+  }
+
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
   async importToast(file: File): Promise<boolean> {
     try {
       const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.replaced++;
       this.importError = null;
       return true;
     } catch (error) {

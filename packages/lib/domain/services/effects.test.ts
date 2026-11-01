@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { addHueNoise, boxBlur } from "./effects";
+import { colorNoise, boxBlur } from "./effects";
 
 const px = (...values: number[]) => new Uint8ClampedArray(values);
 
@@ -55,53 +55,53 @@ describe("boxBlur", () => {
   });
 });
 
-describe("addHueNoise", () => {
+describe("colorNoise", () => {
   afterEach(() => {
     (Math.random as unknown as { mockRestore?: () => void }).mockRestore?.();
   });
 
   test("rejects deviationCoefficient outside 0..1", () => {
     const data = px(255, 0, 0, 255);
-    expect(() => addHueNoise(data, { deviationCoefficient: -0.1 })).toThrow();
-    expect(() => addHueNoise(data, { deviationCoefficient: 1.1 })).toThrow();
+    expect(() => colorNoise(data, { deviationCoefficient: -0.1 })).toThrow();
+    expect(() => colorNoise(data, { deviationCoefficient: 1.1 })).toThrow();
   });
 
   test("deviation 0 is an identity for colors, grays and partial alpha", () => {
     const data = px(255, 0, 0, 255, 12, 200, 99, 128, 128, 128, 128, 255, 0, 0, 0, 0);
-    const result = addHueNoise(data, { deviationCoefficient: 0 });
+    const result = colorNoise(data, { deviationCoefficient: 0 });
     expect([...result]).toEqual([...data]);
   });
 
   test("shifts hue by +deviation when random() is at its max", () => {
     spyOn(Math, "random").mockReturnValue(1);
     // red (hue 0) + 1/3 turn → green
-    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
+    const result = colorNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
     expect([...result]).toEqual([0, 255, 0, 255]);
   });
 
   test("wraps negative hue shifts around the circle", () => {
     spyOn(Math, "random").mockReturnValue(0);
     // red (hue 0) − 1/3 turn → hue 2/3 → blue
-    const result = addHueNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
+    const result = colorNoise(px(255, 0, 0, 255), { deviationCoefficient: 1 / 3 });
     expect([...result]).toEqual([0, 0, 255, 255]);
   });
 
   test("grays have no hue to shift and stay gray", () => {
     spyOn(Math, "random").mockReturnValue(1);
-    const result = addHueNoise(px(77, 77, 77, 255), { deviationCoefficient: 0.5 });
+    const result = colorNoise(px(77, 77, 77, 255), { deviationCoefficient: 0.5 });
     expect([...result]).toEqual([77, 77, 77, 255]);
   });
 
   test("returns a new buffer and keeps the input intact", () => {
     const data = px(255, 0, 0, 255);
-    const result = addHueNoise(data, { deviationCoefficient: 0.2 });
+    const result = colorNoise(data, { deviationCoefficient: 0.2 });
     expect(result).not.toBe(data);
     expect([...data]).toEqual([255, 0, 0, 255]);
   });
 
   test("alpha is always preserved", () => {
     spyOn(Math, "random").mockReturnValue(1);
-    const result = addHueNoise(px(255, 0, 0, 100), { deviationCoefficient: 1 / 3 });
+    const result = colorNoise(px(255, 0, 0, 100), { deviationCoefficient: 1 / 3 });
     expect(result[3]).toBe(100);
   });
 });

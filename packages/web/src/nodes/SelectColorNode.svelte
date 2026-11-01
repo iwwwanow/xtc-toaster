@@ -5,25 +5,25 @@
   import { session } from "../session.svelte";
   import Slider from "./Slider.svelte";
 
-  let { id, data }: NodeProps<FlowNodeOf<"translate">> = $props();
+  let { id, data }: NodeProps<FlowNodeOf<"selectColor">> = $props();
 </script>
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.translate}</legend>
+  <legend>{NODE_LABELS.selectColor}</legend>
   <Slider
-    label="x (% of width)"
-    bounds={PARAMS.translate.x}
+    label="hue"
+    bounds={PARAMS.selectColor.hue}
     step={1}
-    value={data.x}
-    onchange={(x) => session.setNodeData(id, { ...data, x })}
+    value={data.hue}
+    onchange={(hue) => session.setNodeData(id, { ...data, hue })}
   />
   <Slider
-    label="y (% of height)"
-    bounds={PARAMS.translate.y}
+    label="tolerance"
+    bounds={PARAMS.selectColor.tolerance}
     step={1}
-    value={data.y}
-    onchange={(y) => session.setNodeData(id, { ...data, y })}
+    value={data.tolerance}
+    onchange={(tolerance) => session.setNodeData(id, { ...data, tolerance })}
   />
 </fieldset>
 <Handle type="source" position={Position.Right} />

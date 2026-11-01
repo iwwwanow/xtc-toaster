@@ -22,7 +22,13 @@ cp .env.example .env && docker compose up -d   # dev stack: install → server +
 
 Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. `DEBUG_IMAGE` (path from the repo root, compose default `poppies.jpg`, empty — off) — the page uploads that picture on open; vite dev server only (`vite.config.ts`). A new package in `packages/*` needs its own node_modules volume there.
 
-Prod: `Dockerfile` (multi-stage) — `docker build --target test .` is what CI runs (typecheck + `bun run test` of every package, ffmpeg 7.1 from debian trixie — not the desktop's 8), `docker build .` is the runtime image: one bun process serves the web build (`STATIC_DIR`) + `/api` + `/ws` + `/healthz`. Server env: `PORT`, `HOST` (default `0.0.0.0`), `UPLOADS_DIR`, `UPLOADS_TTL_HOURS` (24), `UPLOADS_MAX_TOTAL_MB` (512), `RENDER_MAX_LAYERS` (4 — linked composer rows over one render), `STATIC_DIR` (unset in dev — vite serves the page). CI — `.github/workflows/release.yml`: any branch → test, `master` → semantic-release (tags + GitHub Releases, `feat` → minor, `fix` → patch while `0.x`) → `ghcr.io/iwwwanow/xtc-toaster:<version>`.
+Prod: `Dockerfile` (multi-stage) — `docker build --target test .` is what CI runs (typecheck + `bun run test` of every package, ffmpeg 7.1 from debian trixie — not the desktop's 8), `docker build .` is the runtime image: one bun process serves the web build (`STATIC_DIR`) + `/api` + `/ws` + `/healthz`. Server env: `PORT`, `HOST` (default `0.0.0.0`), `UPLOADS_DIR`, `UPLOADS_TTL_HOURS` (24), `UPLOADS_MAX_TOTAL_MB` (512), `RENDER_MAX_LAYERS` (4 — linked `layers` node rows over one render), `STATIC_DIR` (unset in dev — vite serves the page). CI — `.github/workflows/release.yml`: any branch → test, `master` → semantic-release (tags + GitHub Releases, `feat` → minor, `fix` → patch while `0.x`) → `ghcr.io/iwwwanow/xtc-toaster:<version>`.
+
+Versions (decided 01.11):
+
+- **app** — the semantic-release tag, the only version users see (ui corner, image tag). `0.x` until the release 28.11: never `feat!` / a `BREAKING CHANGE` footer — the default commit-analyzer makes it a major even on `0.x` and ships `1.0.0` early; a breaking change before 1.0 is a plain `feat` / `fix` / `refactor`. `1.0.0` — one deliberate `BREAKING CHANGE` commit on release day
+- **toast format** (`TOAST_GRAPH_VERSION`) — stays `1` until 1.0, the format breaks freely without migrations (an old file → «not a toast file», a saved editor → the default graph). From 1.0 it is frozen: an optional field keeps the version, a breaking change is `+1` with a migration
+- **packages** — private, all `0.0.0`, versioned together with the app (one image, one deploy); contract gets its own semver only if web and server ever deploy apart (`docs/backlog/2026-10-19_split-web-server-contract.md`)
 
 Tests: `bun test` in `packages/lib` — unit tests sit next to the code (`*.test.ts`), integration/visual tests in `packages/lib/tests/`. The visual run writes every filter applied to `tests/fixtures/poppies.jpg` into `tests/output/` (gitignored, overwritten each run; `filters/_contact-sheet.png` shows all of them). Golden hashes of the toast-1 pipeline live in `tests/__snapshots__/` — update with `bun test --update-snapshots` only after an intentional change. `packages/server`: unit tests next to the code, integration in `tests/server.test.ts` (real `Bun.serve` on a random port, uploads into `tests/output/uploads`). No linting tools are configured.
 
@@ -34,8 +40,8 @@ Bun workspace, packages in `packages/*`:
 
 - `lib` (`@xtc-toaster/lib`) — pixel processing, DDD-lite: `domain/` (entities, services, utils), `infrastructure/` (image I/O via `canvas`, ffmpeg video assembly), `application/` (`Toast` — stub). Not compiled: `main.ts` exports `.ts` source directly
 - `contract` (`@xtc-toaster/contract`) — shared zod schemas / types: toast graph, ws messages, upload (unit tests next to the code)
-- `toasts` (`@xtc-toaster/toasts`) — toasts. Graph toasts are exported from the root barrel (`toast2signac`). `toast-1_degas` is a CLI script on top of lib (runs on import — never import it from other packages, never put it into the barrel)
-- `server` (`@xtc-toaster/server`) — `Bun.serve`: `POST /api/images` (upload into `assets/uploads/<imageId>`), `/ws` (render a `ToastGraph`, per-connection latest-wins queue). `run-graph.ts` evaluates the graph (a DAG pulled from the output, composer rows → lib layers) on top of lib; `codec.ts` is the only place touching `canvas` directly (temporary, moves into lib). The whole render (`runGraph` + png encoding) runs in **one** worker thread (`render.ts` → `render-worker.ts`) so ws messages reach the queue during a render — never a second worker that uses `canvas`: bun crashes (NAPI fatal error)
+- `toasts` (`@xtc-toaster/toasts`) — toasts. Graph toasts are exported from the root barrel (`toast1degas`, `toast2signac`) — each a `toast.json` in its directory. `toast-1_degas/index.ts` is a CLI script on top of lib (runs on import — never import it from other packages, never put it into the barrel); its graph is `toast-1_degas/graph.ts`
+- `server` (`@xtc-toaster/server`) — `Bun.serve`: `POST /api/images` (upload into `assets/uploads/<imageId>`), `/ws` (render a `ToastGraph`, per-connection latest-wins queue). `run-graph.ts` evaluates the graph (a DAG pulled from the output, `layers` rows → lib layers; one node type → one lib `Layer` method) on top of lib; `codec.ts` is the only place touching `canvas` directly (temporary, moves into lib). The whole render (`runGraph` + png encoding) runs in **one** worker thread (`render.ts` → `render-worker.ts`) so ws messages reach the queue during a render — never a second worker that uses `canvas`: bun crashes (NAPI fatal error)
 
 - `web` (`@xtc-toaster/web`) — Svelte + Vite SPA on `@xyflow/svelte`: fixed graph from `toast2signac`, upload, ws render, png download. Logic in plain `.ts` (`graph`, `session.svelte`, `socket`, `upload`, `files`), one component per node type in `src/nodes/`. Never imports `lib`. Favicon: the source is `favicon/favicon.svg` (Inkscape, two opaque pages labeled `light` / `dark`); the plugin in `favicon/favicon.ts` generates ico / svg (theme via `prefers-color-scheme`) / apple-touch / manifest pngs (light page) on every dev start and build — nothing generated is committed
 
@@ -60,7 +66,7 @@ Zero-DOM: everything works on raw `Uint8ClampedArray` RGBA (`ImageRawDataArray`)
 
 1. `imageFileToRawData(path, scale)` → pixels + dimensions
 2. `Composition(width, height)` creates layers: `createLayerFromPixelData`, `createBlankLayer`, `createColorLayer`, `duplicateLayer`
-3. `Layer` — pixel data + options: `mask` (hue / saturation / value with falloff), `isolateChannel`, `fill`, `tint`, `applyEffect` (`hueNoise`, `blur`), `setTransform` (translate / rotate / scale / skew / homography / perspective), `setBlendMode`, `setOpacity`
+3. `Layer` — pixel data + options, **flat: one method per graph node type, the same name in web / contract / server / lib** (01.11): select — `selectColor` / `selectVivid` / `selectBright` (falloff) / `channel`; color — `fill` / `tint` / `colorNoise` / `opacity`; effect — `blur`; move — `move` / `rotate` / `scale` / `skew` / `turn3d` / `corners` / `matrix`; `setBlendMode` (a `layers` row). Units stay lib's (px, 0–1 tolerances) — the server converts the contract's percent / mm
 4. `Composition.render()` reduces layers in creation order through composers: `normal` (alpha), `add`, `lch-hue`
 5. `rawDataToImageFile` / `assembleVideo` / `loopVideoTo` — export
 
@@ -70,7 +76,7 @@ Public surface is `domain/entities` + `domain/types`; services and utils are int
 
 - colors normalized to `0–1` internally, `0–255` in storage
 - HSL is `0–1` for all components; HSV is H in degrees (0–360), S/V in percent (0–100) — inherited from legacy, kept for 1:1 parity
-- `hueNoise` uses `Math.random` — rendering a graph with it is not deterministic
+- `colorNoise` uses `Math.random` — rendering a graph with it is not deterministic
 - `canvas` can't decode webp and ignores EXIF orientation
 
 ## Docs

@@ -2,11 +2,11 @@ import { readNormalizedPixel } from "../utils/pixel-io";
 import { rgbToHsl, hslToRgb } from "../utils/color-space";
 import type { ImageRawDataArray } from "../types";
 
-type HueNoiseOptions = { deviationCoefficient: number };
+type ColorNoiseOptions = { deviationCoefficient: number };
 
-export const addHueNoise = (
+export const colorNoise = (
   data: ImageRawDataArray,
-  options: HueNoiseOptions,
+  options: ColorNoiseOptions,
 ): ImageRawDataArray => {
   const { deviationCoefficient } = options;
 

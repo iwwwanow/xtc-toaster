@@ -1,21 +1,21 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { BLEND_MODES, LAYER_NAME_MAX, type BlendMode } from "@xtc-toaster/contract";
-  import { addLayer, layerName, moveLayer, renameLayer, setBlendMode, toggleLayer } from "../composer";
+  import { addLayer, layerName, moveLayer, renameLayer, setBlendMode, toggleLayer } from "../layers";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { session } from "../session.svelte";
 
-  let { id, data }: NodeProps<FlowNodeOf<"composer">> = $props();
+  let { id, data }: NodeProps<FlowNodeOf<"layers">> = $props();
 
   // the handles are inside the rows — xyflow re-measures them once the rows change
   const updateNodeInternals = useUpdateNodeInternals();
-  const setLayers = (layers: FlowNodeOf<"composer">["data"]["layers"]) => {
+  const setLayers = (layers: FlowNodeOf<"layers">["data"]["layers"]) => {
     session.setNodeData(id, { layers });
     queueMicrotask(() => updateNodeInternals(id));
   };
 
   // row drag & drop inside the node: the dragged row's index; a menu drop onto the canvas uses another mime
-  const ROW_MIME = "application/x-xtc-composer-row";
+  const ROW_MIME = "application/x-xtc-layers-row";
   let dragged = $state<number | null>(null);
   let over = $state<number | null>(null);
 
@@ -52,7 +52,7 @@
 </script>
 
 <fieldset class="frame">
-  <legend>{NODE_LABELS.composer}</legend>
+  <legend>{NODE_LABELS.layers}</legend>
   <button
     class="nodrag btn_ai-generated btn-sm_ai-generated btn-dashed_ai-generated"
     type="button"
@@ -130,14 +130,14 @@
           <option value={mode}>{mode}</option>
         {/each}
       </select>
-      <!-- a composer keeps at least one row (contract) -->
+      <!-- a layers node keeps at least one row (contract) -->
       <button
         class="btn_ai-generated btn-sm_ai-generated"
         type="button"
         title="remove the layer and its link"
         disabled={session.locked || data.layers.length === 1}
         onclick={() => {
-          session.removeComposerLayer(id, layer.id);
+          session.removeLayerRow(id, layer.id);
           queueMicrotask(() => updateNodeInternals(id));
         }}>×</button
       >
