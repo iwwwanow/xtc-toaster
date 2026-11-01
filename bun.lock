@@ -31,6 +31,9 @@
         "@xtc-toaster/lib": "workspace:*",
         "canvas": "3.2.3",
       },
+      "devDependencies": {
+        "@xtc-toaster/toasts": "workspace:*",
+      },
     },
     "packages/toasts": {
       "name": "@xtc-toaster/toasts",
