@@ -250,3 +250,14 @@ describe("emptyFlow", () => {
     expect(edges).toEqual([{ id: "in-out", source: "in", target: "out" }]);
   });
 });
+
+describe("toFlow rows", () => {
+  test("parallel chains of different length run straight — a node in the row of what it pulls", async () => {
+    const { toast1degas } = await import("@xtc-toaster/toasts");
+    const { nodes, edges } = toFlow(toast1degas);
+    const y = Object.fromEntries(nodes.map(({ id, position }) => [id, position.y]));
+    // every link between two chain nodes is horizontal; only the links out of the input and into the composer bend
+    const bent = edges.filter(({ source, target }) => source !== "in" && target !== "cmp" && y[source] !== y[target]);
+    expect(bent).toEqual([]);
+  });
+});

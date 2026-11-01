@@ -206,8 +206,9 @@ body {
   right: calc(-1 * var(--handle-offset));
 }
 
-/* TODO(uiu): hand-written — uiu's tooltip opens up and to the right only; the right panel needs it to the
-   left of the button (else it runs off the screen); the wrapper stretches so the buttons keep one width */
+/* TODO(uiu): hand-written — uiu's tooltip opens up and to the right only and at once; the right panel needs it
+   to the left of the button (else it runs off the screen), after a short hover (a pass of the mouse doesn't
+   flash it), gone at once; the wrapper stretches so the buttons keep one width */
 .tooltip-left {
   display: flex;
 }
@@ -220,4 +221,7 @@ body {
   bottom: auto;
   left: auto;
   transform: translateY(-50%);
+}
+.tooltip-left:hover > .tooltip__content_ai-generated {
+  transition: visibility 0s 500ms;
 }

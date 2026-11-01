@@ -57,6 +57,9 @@ class Session {
   // shown in the right panel under the import button
   importError = $state<string | null>(null);
 
+  // bumped when the graph is replaced as a whole (import, clear) — Editor fits the view to the new layout
+  replaced = $state(0);
+
   locked = $derived(!this.connected || this.uploading || this.rendering);
   imageId = $derived(
     this.nodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
@@ -148,6 +151,7 @@ class Session {
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
+    this.replaced++;
   }
 
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
@@ -156,6 +160,7 @@ class Session {
       const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.replaced++;
       this.importError = null;
       return true;
     } catch (error) {

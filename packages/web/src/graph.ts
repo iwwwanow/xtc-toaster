@@ -78,23 +78,33 @@ const toGraphEdge = ({ id, source, target, targetHandle }: Edge | GraphEdge): Gr
   ...(targetHandle && { targetHandle }),
 });
 
-// what the input reaches by columns, the rest in a row below everything
+// what the input reaches by columns, the rest in a row below everything. A node takes the row of what it
+// pulls when that cell is free — parallel chains (a composer's rows) run straight, not crossing — else the
+// next free row below
 export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } => {
   const column = columns(graph);
-  const rows = new Map<number, number>();
-  const nextRow = (x: number) => {
-    const row = rows.get(x) ?? 0;
-    rows.set(x, row + 1);
-    return row;
-  };
-  const placed = graph.nodes.map((node) => {
-    const x = column.get(node.id);
-    return x === undefined ? null : { x: x * NODE_GAP_X, y: nextRow(x) * ROW_GAP_Y };
-  });
-  const offRow = Math.max(1, ...rows.values()) * ROW_GAP_Y;
+  const sources = new Map<NodeId, NodeId[]>();
+  for (const { source, target } of graph.edges) sources.set(target, [...(sources.get(target) ?? []), source]);
+  const taken = new Map<number, Set<number>>();
+  const row = new Map<NodeId, number>();
+  const reached = graph.nodes.filter(({ id }) => column.has(id));
+  // left to right, so a node's sources are placed before it; sort is stable — graph order within a column
+  for (const { id } of reached.toSorted((a, b) => column.get(a.id)! - column.get(b.id)!)) {
+    const x = column.get(id)!;
+    const cells = taken.get(x) ?? new Set<number>();
+    taken.set(x, cells);
+    const from = sources.get(id)?.find((source) => row.has(source));
+    let y = from === undefined ? 0 : row.get(from)!;
+    while (cells.has(y)) y++;
+    cells.add(y);
+    row.set(id, y);
+  }
+  const offRow = (Math.max(0, ...row.values()) + 1) * ROW_GAP_Y;
   let off = 0;
-  const nodes = graph.nodes.map((node, index) => {
-    const position = placed[index] ?? { x: off++ * NODE_GAP_X, y: offRow };
+  const nodes = graph.nodes.map((node) => {
+    const x = column.get(node.id);
+    const position =
+      x === undefined ? { x: off++ * NODE_GAP_X, y: offRow } : { x: x * NODE_GAP_X, y: row.get(node.id)! * ROW_GAP_Y };
     return { ...node, position, ...(isFixed(node.type) && { deletable: false }) } as FlowNode;
   });
   return { nodes, edges: graph.edges.map(toGraphEdge) };

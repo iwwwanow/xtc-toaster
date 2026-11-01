@@ -1,17 +1,15 @@
 <script lang="ts">
-  import { Panel, useSvelteFlow } from "@xyflow/svelte";
+  import { Panel } from "@xyflow/svelte";
   import { onDestroy } from "svelte";
   import { session } from "../session.svelte";
 
-  const { fitView } = useSvelteFlow();
   let fileInput: HTMLInputElement;
 
   const onchange = async ({ currentTarget }: Event & { currentTarget: HTMLInputElement }) => {
     const file = currentTarget.files?.[0];
     // the same file can be picked again (after editing it, or after an error)
     currentTarget.value = "";
-    // the layout is rebuilt — show all of it, like on page open
-    if (file && (await session.importToast(file))) void fitView({ maxZoom: 1 });
+    if (file) await session.importToast(file);
   };
 
   // «clear graph» takes two clicks — no confirm(): the first arms it for a moment, the second clears
@@ -27,7 +25,6 @@
     }
     armed = false;
     session.clearGraph();
-    void fitView({ maxZoom: 1 });
   };
   onDestroy(() => clearTimeout(disarm));
 </script>
