@@ -6,6 +6,16 @@
    - cut if behind:
      - (#4) blend-modes: normal + add only
 
+### status (2026-11-01) — sprint closed; stretch 1, 3, 4 done, QA → sprint 6
+
+- stretch 1 (the sister's quick fixes) — done: the editor survives a reload, `clear graph`, `Controls` bottom-right, the limit in MB, tooltips
+- stretch 2 (cursor lag) — not reproduced here → the next user test, sprint 6
+- stretch 3 (degas t = 0) — done, bit for bit with the script's golden hash once its blur radii and corners are put back (the two differences are what the toast stores: blur in px, the script's corners stretch by w / (w − 1))
+- stretch 4 (friendly names) — done wider than planned: one name across web / contract / server / lib, lib `Layer` flat, the menu grouped with hints; `TOAST_GRAPH_VERSION` stays 1, no migration (pre-release)
+- stretch 5 (render warnings) — later, after 1.0
+- QA sections 2.4–7 not run by hand → all open QA at once in sprint 6
+- details — `docs/diary/2026-11-01_sister-fixes-degas-node-names.md`
+
 ### status (2026-10-30) — uiu done, a blender-like number field, handles easier to hit; prod `RENDER_MAX_LAYERS=8`
 
 - uiu `v0.3.0` a bun git dependency (dev compose and the CI test image install it); buttons / selects / inputs / checkboxes / errors / the connection alert from its classes; what uiu lacks — `packages/web/src/app.css` with `TODO(uiu)`, the list — `docs/backlog/2026-10-30_uiu-gaps-from-web.md`. owo's reset squeezed the edge svg to 0 width (no links drawn) — fixed there
