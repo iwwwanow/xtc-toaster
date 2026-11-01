@@ -213,7 +213,8 @@ export const GraphEdgeSchema = z.object({
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 
-// also the toast file format (presets, export / import)
+// also the toast file format (presets, export / import). The link rules are validateGraph, called apart —
+// TODO: into a superRefine here, docs/backlog/2026-11-01_validate-graph-into-zod.md
 export const ToastGraphSchema = z.object({
   version: z.literal(TOAST_GRAPH_VERSION),
   nodes: z.array(GraphNodeSchema),

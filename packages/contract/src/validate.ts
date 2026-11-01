@@ -7,6 +7,8 @@ export type GraphIssue = { message: string; nodeId?: NodeId };
 // no cycles / self-links, nothing into the input or out of the output, exactly one input and
 // output. The whole graph, dead branches too — web and server judge a graph the same way.
 // The first issue found or null.
+// TODO: call it from ToastGraphSchema.superRefine — one entry point, fromToastFile's own checks go; stays a
+// plain function for web canConnect, nodeId must reach the issue — docs/backlog/2026-11-01_validate-graph-into-zod.md
 export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null => {
   const byId = new Map<NodeId, GraphNode>();
   for (const node of nodes) {

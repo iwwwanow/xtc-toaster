@@ -11,8 +11,9 @@
 <Panel position="top-left">
   <fieldset class="frame">
     <legend>nodes</legend>
-    {#each NODE_CATEGORIES as { name, types }, index (name)}
-      {#if index > 0}<hr />{/if}
+    {#each NODE_CATEGORIES as { name, types } (name)}
+      <!-- a labeled rule (uiu) over each group, the first included -->
+      <fieldset class="hr_fieldset"><legend>{name}</legend></fieldset>
       {#each types as type (type)}
         <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included -->
         <span class="tooltip_ai-generated tooltip-right">
