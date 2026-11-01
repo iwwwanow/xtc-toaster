@@ -12,7 +12,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.channel}</legend>
+  <legend><h6>{NODE_LABELS.channel}</h6></legend>
   <!-- a pick, not a range: the change is the release — renders right away like a slider release -->
   <label class="field_ai-generated">
     <span class="field__label_ai-generated">channel</span>

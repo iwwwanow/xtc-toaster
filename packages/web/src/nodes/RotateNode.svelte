@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.rotate}</legend>
+  <legend><h6>{NODE_LABELS.rotate}</h6></legend>
   <Slider
     label="angle"
     bounds={PARAMS.rotate.angle}

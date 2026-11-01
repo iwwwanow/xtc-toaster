@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.selectColor}</legend>
+  <legend><h6>{NODE_LABELS.selectColor}</h6></legend>
   <Slider
     label="hue"
     bounds={PARAMS.selectColor.hue}

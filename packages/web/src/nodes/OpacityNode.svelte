@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.opacity}</legend>
+  <legend><h6>{NODE_LABELS.opacity}</h6></legend>
   <Slider
     label="opacity"
     bounds={PARAMS.opacity.opacity}

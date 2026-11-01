@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.turn3d}</legend>
+  <legend><h6>{NODE_LABELS.turn3d}</h6></legend>
   <Slider
     label="angle"
     bounds={PARAMS.turn3d.angle}

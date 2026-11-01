@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.blur}</legend>
+  <legend><h6>{NODE_LABELS.blur}</h6></legend>
   <Slider
     label="radius (px)"
     bounds={PARAMS.blur.radius}

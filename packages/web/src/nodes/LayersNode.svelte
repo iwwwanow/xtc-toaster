@@ -52,7 +52,7 @@
 </script>
 
 <fieldset class="frame">
-  <legend>{NODE_LABELS.layers}</legend>
+  <legend><h6>{NODE_LABELS.layers}</h6></legend>
   <button
     class="nodrag btn_ai-generated btn-sm_ai-generated btn-dashed_ai-generated"
     type="button"

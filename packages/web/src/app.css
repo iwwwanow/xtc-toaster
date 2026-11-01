@@ -7,6 +7,11 @@ body {
   font-size: 1.4rem;
   line-height: 1.6rem;
 }
+/* uiu sizes a legend's h6 by em (1.4em) off its own 10px root; with the body at 1.4rem it would grow to
+   ~20px — a legend goes back to the root size, so <legend><h6> is 1.4rem as in uiu */
+legend {
+  font-size: 1rem;
+}
 
 /* TODO(uiu): hand-written — owo's reset (`svg { max-width: 100% }`) squeezes xyflow's edge svg, a zero-size
    box with overflow: visible, to 0 width — every link disappears */
@@ -32,6 +37,13 @@ body {
   padding: 0 4px;
   color: var(--MEDIUM);
   text-transform: lowercase;
+}
+/* the node menu: one column of items, scrolls when the window is short; the legend stays on the frame */
+.node-menu {
+  max-height: calc(100dvh - 2 * 15px - 40px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--LIGHT) transparent;
 }
 .svelte-flow__node:hover > .frame,
 .svelte-flow__node.selected > .frame {
@@ -206,32 +218,35 @@ body {
   right: calc(-1 * var(--handle-offset));
 }
 
-/* TODO(uiu): hand-written — uiu's tooltip opens up and to the right only and at once; the side panels need it
-   beside the item — to the left in the right panel, to the right in the node menu (else it runs off the screen
-   or covers the next item), after a short hover (a pass of the mouse doesn't flash it), gone at once; the
-   wrapper stretches so the items keep one width */
-.tooltip-left,
-.tooltip-right {
+/* TODO(uiu): hand-written — uiu's tooltip opens up and to the right only and at once; the right panel needs
+   it to the left of the button (else it runs off the screen), after a short hover (a pass of the mouse doesn't
+   flash it), gone at once; the wrapper stretches so the buttons keep one width */
+.tooltip-left {
   display: flex;
 }
-.tooltip-left > .btn_ai-generated,
-.tooltip-right > .btn_ai-generated {
+.tooltip-left > .btn_ai-generated {
   flex: 1;
 }
-.tooltip-left > .tooltip__content_ai-generated,
-.tooltip-right > .tooltip__content_ai-generated {
+.tooltip-left > .tooltip__content_ai-generated {
   top: 50%;
+  right: calc(100% + var(--GRID-GAP-4));
   bottom: auto;
+  left: auto;
   transform: translateY(-50%);
 }
-.tooltip-left > .tooltip__content_ai-generated {
-  right: calc(100% + var(--GRID-GAP-4));
-  left: auto;
-}
-.tooltip-right > .tooltip__content_ai-generated {
-  left: calc(100% + var(--GRID-GAP-4));
-}
-.tooltip-left:hover > .tooltip__content_ai-generated,
-.tooltip-right:hover > .tooltip__content_ai-generated {
+.tooltip-left:hover > .tooltip__content_ai-generated {
   transition: visibility 0s 500ms;
+}
+/* the node menu's hint: uiu's tooltip look, placed by NodeMenu (fixed — the scrolling menu would clip it),
+   shown after the same 500 ms */
+.fixed-hint {
+  position: fixed;
+  bottom: auto;
+  transform: translateY(-50%);
+  animation: fixed-hint-show 0s 500ms forwards;
+}
+@keyframes fixed-hint-show {
+  to {
+    visibility: visible;
+  }
 }

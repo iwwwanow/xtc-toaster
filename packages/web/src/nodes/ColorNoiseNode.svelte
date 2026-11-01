@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.colorNoise}</legend>
+  <legend><h6>{NODE_LABELS.colorNoise}</h6></legend>
   <Slider
     label="deviationCoefficient"
     bounds={PARAMS.colorNoise.deviationCoefficient}

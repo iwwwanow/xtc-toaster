@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.corners}</legend>
+  <legend><h6>{NODE_LABELS.corners}</h6></legend>
   <Slider
     label="top-left x (%)"
     bounds={PARAMS.corners.topLeftX}

@@ -10,7 +10,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.move}</legend>
+  <legend><h6>{NODE_LABELS.move}</h6></legend>
   <Slider
     label="x (% of width)"
     bounds={PARAMS.move.x}

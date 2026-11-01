@@ -8,7 +8,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.tint}</legend>
+  <legend><h6>{NODE_LABELS.tint}</h6></legend>
   <!-- the color with the alpha kept — paints what a mask left; change fires when the picker closes — one render per pick, like a slider release -->
   <label class="field_ai-generated">
     <span class="field__label_ai-generated">color</span>

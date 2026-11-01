@@ -12,7 +12,7 @@
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>output</legend>
+  <legend><h6>output</h6></legend>
   {#if session.imageId === null}
     <div class="field__hint_ai-generated">upload an image</div>
   {:else if session.renderError}

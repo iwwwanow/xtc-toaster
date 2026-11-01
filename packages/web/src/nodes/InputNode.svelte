@@ -14,7 +14,7 @@
 </script>
 
 <fieldset class="frame">
-  <legend>input</legend>
+  <legend><h6>input</h6></legend>
   <input class="nodrag file-input" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
   {#if session.uploadError}
     <div class="field__error_ai-generated">{session.uploadError}</div>
