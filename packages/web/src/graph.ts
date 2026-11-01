@@ -100,7 +100,18 @@ export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } 
   return { nodes, edges: graph.edges.map(toGraphEdge) };
 };
 
-export const createNode = (type: MenuNodeType, position: XYPosition): FlowNode => {
+// «clear graph»: input → output, the picture stays
+export const emptyFlow = (imageId: string | null) =>
+  toFlow({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId } },
+      { id: "out", type: "output", data: {} },
+    ],
+    edges: [{ id: "in-out", source: "in", target: "out" }],
+  });
+
+export const createNode =(type: MenuNodeType, position: XYPosition): FlowNode => {
   const data = hasInitialData(type)
     ? structuredClone(INITIAL_DATA[type]) // a copy — the matrix array must not be shared between nodes
     : Object.fromEntries(Object.entries(PARAMS[type]).map(([name, { initial }]) => [name, initial]));

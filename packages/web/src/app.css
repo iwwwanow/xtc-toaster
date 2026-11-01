@@ -205,3 +205,19 @@ body {
 .svelte-flow__handle-right {
   right: calc(-1 * var(--handle-offset));
 }
+
+/* TODO(uiu): hand-written — uiu's tooltip opens up and to the right only; the right panel needs it to the
+   left of the button (else it runs off the screen); the wrapper stretches so the buttons keep one width */
+.tooltip-left {
+  display: flex;
+}
+.tooltip-left > .btn_ai-generated {
+  flex: 1;
+}
+.tooltip-left > .tooltip__content_ai-generated {
+  top: 50%;
+  right: calc(100% + var(--GRID-GAP-4));
+  bottom: auto;
+  left: auto;
+  transform: translateY(-50%);
+}

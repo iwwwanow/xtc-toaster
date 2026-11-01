@@ -77,7 +77,8 @@
     {onbeforereconnect}
   >
     <Background />
-    <Controls />
+    <!-- bottom-right like other node editors (the sister's test) -->
+    <Controls position="bottom-right" style="margin-bottom: 24px" />
     <NodeMenu />
     <ActionsPanel />
     <ConnectionPanel />

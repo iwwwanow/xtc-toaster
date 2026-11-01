@@ -6,6 +6,7 @@ import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaste
 import {
   canConnect,
   createNode,
+  emptyFlow,
   fromToastFile,
   MENU_NODE_TYPES,
   toFlow,
@@ -236,5 +237,16 @@ describe("toast file", () => {
     ["duplicate ids", JSON.stringify({ ...toast2signac, nodes: toast2signac.nodes.map((node) => (node.type === "hueMask" ? { ...node, id: "nz" } : node)) }), "duplicate node id"],
   ])("import rejects %s with a message for the ui", (_, text, message) => {
     expect(() => fromToastFile(text, null)).toThrow(new ToastFileError(message));
+  });
+});
+
+describe("emptyFlow", () => {
+  test("input → output, the picture kept, both undeletable", () => {
+    const { nodes, edges } = emptyFlow("img-1");
+    expect(nodes.map(({ type, data, deletable }) => ({ type, data, deletable }))).toEqual([
+      { type: "input", data: { imageId: "img-1" }, deletable: false },
+      { type: "output", data: {}, deletable: false },
+    ]);
+    expect(edges).toEqual([{ id: "in-out", source: "in", target: "out" }]);
   });
 });

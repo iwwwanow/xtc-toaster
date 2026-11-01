@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Panel, useSvelteFlow } from "@xyflow/svelte";
+  import { onDestroy } from "svelte";
   import { session } from "../session.svelte";
 
   const { fitView } = useSvelteFlow();
@@ -12,14 +13,42 @@
     // the layout is rebuilt — show all of it, like on page open
     if (file && (await session.importToast(file))) void fitView({ maxZoom: 1 });
   };
+
+  // «clear graph» takes two clicks — no confirm(): the first arms it for a moment, the second clears
+  const ARMED_MS = 3000;
+  let armed = $state(false);
+  let disarm: ReturnType<typeof setTimeout> | undefined;
+  const onclear = () => {
+    clearTimeout(disarm);
+    if (!armed) {
+      armed = true;
+      disarm = setTimeout(() => (armed = false), ARMED_MS);
+      return;
+    }
+    armed = false;
+    session.clearGraph();
+    void fitView({ maxZoom: 1 });
+  };
+  onDestroy(() => clearTimeout(disarm));
 </script>
 
-<Panel position="top-right" style="display: flex; flex-direction: column; gap: var(--GRID-GAP-4)">
+<Panel position="top-right" style="display: flex; flex-direction: column; align-items: stretch; gap: var(--GRID-GAP-4)">
   <button class="btn_ai-generated" disabled={session.locked || !session.rendered} onclick={() => session.download()}>download png</button>
-  <button class="btn_ai-generated" onclick={() => session.exportToast()}>export toast</button>
-  <button class="btn_ai-generated" onclick={() => fileInput.click()}>import toast</button>
+  <!-- the sister asked what the .json is — a hint, the button label stays short -->
+  <span class="tooltip_ai-generated tooltip-left">
+    <button class="btn_ai-generated" onclick={() => session.exportToast()}>export toast</button>
+    <span class="tooltip__content_ai-generated">the node graph as .json, no picture</span>
+  </span>
+  <span class="tooltip_ai-generated tooltip-left">
+    <button class="btn_ai-generated" onclick={() => fileInput.click()}>import toast</button>
+    <span class="tooltip__content_ai-generated">a .json from export toast</span>
+  </span>
   <input bind:this={fileInput} type="file" accept="application/json,.json" hidden {onchange} />
   {#if session.importError}
     <div class="field__error_ai-generated">{session.importError}</div>
   {/if}
+  <span class="tooltip_ai-generated tooltip-left">
+    <button class="btn_ai-generated" onclick={onclear}>{armed ? "sure? click again" : "clear graph"}</button>
+    <span class="tooltip__content_ai-generated">input → output only, the picture stays</span>
+  </span>
 </Panel>

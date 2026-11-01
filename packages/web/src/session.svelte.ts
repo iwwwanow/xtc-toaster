@@ -1,6 +1,5 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
-  UPLOAD_MAX_BYTES,
   UPLOAD_MAX_MEGAPIXELS,
   type RenderErrorMessage,
   type ServerMessage,
@@ -11,6 +10,7 @@ import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
   canConnect,
   createNode,
+  emptyFlow,
   fromToastFile,
   toFlow,
   toGraph,
@@ -22,15 +22,19 @@ import {
   type Link,
   type MenuNodeType,
 } from "./graph";
+import { fromSaved, loadSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
 // toast directory name — prefix of downloaded files
 const TOAST = "toast-2_signac";
-const initial = toFlow(toast2signac);
+// the editor as it was before the reload, else the default toast
+const initial = fromSaved(loadSaved()) ?? toFlow(toast2signac);
 
 const UPLOAD_ERRORS: Record<string, string> = {
-  "too-large": `too large: max ${UPLOAD_MAX_MEGAPIXELS} MP, ${UPLOAD_MAX_BYTES / 1024 / 1024} MB`,
+  // the server checks megapixels and bytes; MP read like MB (the sister's test), so one number in MB: a photo
+  // jpeg is ≈ 0.5 MB per MP — the pixel limit binds first. Approximate: a png of the same size passes at several MB
+  "too-large": `too large: max ≈ ${UPLOAD_MAX_MEGAPIXELS * 0.5} MB`,
   "unsupported-format": "png or jpeg only",
 };
 
@@ -137,6 +141,13 @@ class Session {
 
   exportToast() {
     saveBlob(new Blob([toToastFile(this.nodes, this.edges)], { type: "application/json" }), outputFileName(TOAST, "json"));
+  }
+
+  // input → output, the picture stays
+  clearGraph() {
+    const { nodes, edges } = emptyFlow(this.imageId);
+    this.nodes = nodes;
+    this.edges = edges;
   }
 
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
