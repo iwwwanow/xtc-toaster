@@ -38,7 +38,7 @@ const graph = (imageId: string | null, deviationCoefficient = 0.5) => ({
   version: TOAST_GRAPH_VERSION,
   nodes: [
     { id: "in", type: "input", data: { imageId } },
-    { id: "nz", type: "hueNoise", data: { deviationCoefficient } },
+    { id: "nz", type: "colorNoise", data: { deviationCoefficient } },
     { id: "out", type: "output", data: {} },
   ],
   edges: [
@@ -133,14 +133,14 @@ describe("ws render", () => {
   });
 });
 
-describe("ws render: composer", () => {
+describe("ws render: layersNode", () => {
   // input fans out: one row straight, one through hue noise
   const composed = (imageId: string, extra: object[] = []) => ({
     version: TOAST_GRAPH_VERSION,
     nodes: [
       { id: "in", type: "input", data: { imageId } },
-      { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
-      { id: "cmp", type: "composer", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
+      { id: "nz", type: "colorNoise", data: { deviationCoefficient: 0.5 } },
+      { id: "cmp", type: "layers", data: { layers: [{ id: "top", blendMode: "add" }, { id: "bottom", blendMode: "normal" }] } },
       { id: "out", type: "output", data: {} },
     ],
     edges: [
@@ -152,7 +152,7 @@ describe("ws render: composer", () => {
     ],
   });
 
-  test("renders a fan-out through a composer", async () => {
+  test("renders a fan-out through a layers node", async () => {
     send({ type: "render", requestId: 11, graph: composed(imageId) });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
@@ -166,11 +166,11 @@ describe("ws render: composer", () => {
 });
 
 describe("ws render: hue mask", () => {
-  const hueMask = (hue: number, tolerance: number) => ({
+  const selectColor = (hue: number, tolerance: number) => ({
     version: TOAST_GRAPH_VERSION,
     nodes: [
       { id: "in", type: "input", data: { imageId } },
-      { id: "hm", type: "hueMask", data: { hue, tolerance } },
+      { id: "hm", type: "selectColor", data: { hue, tolerance } },
       { id: "out", type: "output", data: {} },
     ],
     edges: [
@@ -190,24 +190,24 @@ describe("ws render: hue mask", () => {
 
   // poppies: red flowers on green — red is partly kept, the rest goes transparent
   test("red keeps the poppies, the rest goes transparent", async () => {
-    send({ type: "render", requestId: 9, graph: hueMask(0, 30) });
+    send({ type: "render", requestId: 9, graph: selectColor(0, 30) });
     const alpha = await alphaOf(await nextMessage());
     expect(alpha.some((a) => a === 0)).toBe(true);
     expect(alpha.some((a) => a > 128)).toBe(true);
   });
 
   test("tolerance out of range → render-error on that node", async () => {
-    send({ type: "render", requestId: 10, graph: hueMask(0, 200) });
+    send({ type: "render", requestId: 10, graph: selectColor(0, 200) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 10, nodeId: "hm" });
   });
 });
 
 describe("ws render: y-rotation", () => {
-  const yRotation = (angle: number, focalLength: number) => ({
+  const turn3d = (angle: number, focalLength: number) => ({
     version: TOAST_GRAPH_VERSION,
     nodes: [
       { id: "in", type: "input", data: { imageId } },
-      { id: "yr", type: "yRotation", data: { angle, focalLength } },
+      { id: "yr", type: "turn3d", data: { angle, focalLength } },
       { id: "out", type: "output", data: {} },
     ],
     edges: [
@@ -218,7 +218,7 @@ describe("ws render: y-rotation", () => {
 
   // middle row alpha at x = 0, the middle and the right edge
   const renderRowAlpha = async (requestId: number, angle: number, focalLength: number) => {
-    send({ type: "render", requestId, graph: yRotation(angle, focalLength) });
+    send({ type: "render", requestId, graph: turn3d(angle, focalLength) });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
     const png = await loadImage(Buffer.from(message.png, "base64"));
@@ -245,13 +245,13 @@ describe("ws render: y-rotation", () => {
   });
 
   test("angle out of range → render-error on that node", async () => {
-    send({ type: "render", requestId: 12, graph: yRotation(90, 50) });
+    send({ type: "render", requestId: 12, graph: turn3d(90, 50) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 12, nodeId: "yr" });
   });
 
   // mm, not px: 800 was a valid px focal length, as mm it's past the 300 mm bound
   test("focalLength out of range → render-error on that node", async () => {
-    send({ type: "render", requestId: 13, graph: yRotation(30, 800) });
+    send({ type: "render", requestId: 13, graph: turn3d(30, 800) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 13, nodeId: "yr" });
   });
 });
@@ -301,8 +301,8 @@ describe("ws render: single-layer nodes", () => {
 
   // poppies: saturated red flowers and greens, a pale sky — the masks keep part, drop part
   test.each([
-    ["saturationMask", { saturation: 100, tolerance: 30 }],
-    ["valueMask", { value: 100, tolerance: 30 }],
+    ["selectVivid", { saturation: 100, tolerance: 30 }],
+    ["selectBright", { value: 100, tolerance: 30 }],
   ])("%s keeps part of the picture, the rest goes transparent", async (type, data) => {
     const alpha = alphas((await render(type, data)).pixels);
     expect(alpha.some((a) => a === 0)).toBe(true);
@@ -313,21 +313,21 @@ describe("ws render: single-layer nodes", () => {
     ["red", [255, 0, 0]],
     ["green", [0, 255, 0]],
     ["blue", [0, 0, 255]],
-  ])("isolateChannel %s: every pixel turns the channel color, its value goes to alpha", async (channel, rgb) => {
-    const { pixels, at } = await render("isolateChannel", { channel });
+  ])("channel %s: every pixel turns the channel color, its value goes to alpha", async (channel, rgb) => {
+    const { pixels, at } = await render("channel", { channel });
     expect(at(0, 0).slice(0, 3)).toEqual(rgb);
     expect(new Set(alphas(pixels)).size).toBeGreaterThan(1);
   });
 
   // poppies is 250 × 359: 50 % of the width moves the picture 125 px right
   test("translate x 50 %: the left half goes transparent, the right half stays", async () => {
-    const { at, height } = await render("translate", { x: 50, y: 0 });
+    const { at, height } = await render("move", { x: 50, y: 0 });
     const row = Math.floor(height / 2);
     expect([at(0, row)[3], at(124, row)[3], at(125, row)[3], at(249, row)[3]]).toEqual([0, 0, 255, 255]);
   });
 
   test("translate y -50 %: the picture moves up, the bottom goes transparent", async () => {
-    const { at } = await render("translate", { x: 0, y: -50 });
+    const { at } = await render("move", { x: 0, y: -50 });
     expect([at(125, 0)[3], at(125, 358)[3]]).toEqual([255, 0]);
   });
 
@@ -361,24 +361,24 @@ describe("ws render: single-layer nodes", () => {
 
   test("perspective with the corners untouched — the picture as is", async () => {
     const plain = await render("blur", { radius: 0 });
-    const same = await render("perspective", corners);
+    const same = await render("corners", corners);
     expect([...same.pixels]).toEqual([...plain.pixels]);
   });
 
   test("perspective keystone (the top 25 % narrower each side): the top corners go transparent, the bottom stays", async () => {
-    const { at, width, height } = await render("perspective", { ...corners, topLeftX: 25, topRightX: 75 });
+    const { at, width, height } = await render("corners", { ...corners, topLeftX: 25, topRightX: 75 });
     expect([at(0, 0)[3], at(width - 1, 0)[3], at(0, height - 1)[3], at(width - 1, height - 1)[3]]).toEqual([0, 0, 255, 255]);
   });
 
   test("homography identity — the picture as is", async () => {
     const plain = await render("blur", { radius: 0 });
-    const same = await render("homography", { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] });
+    const same = await render("matrix", { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] });
     expect([...same.pixels]).toEqual([...plain.pixels]);
   });
 
   // translation is the last row ([x, y, 1] · H): 125 px right — like translate x 50 %
   test("homography with a translation row moves the picture", async () => {
-    const { at, height } = await render("homography", { matrix: [1, 0, 0, 0, 1, 0, 125, 0, 1] });
+    const { at, height } = await render("matrix", { matrix: [1, 0, 0, 0, 1, 0, 125, 0, 1] });
     const row = Math.floor(height / 2);
     expect([at(0, row)[3], at(249, row)[3]]).toEqual([0, 255]);
   });
@@ -395,7 +395,7 @@ describe("ws render: single-layer nodes", () => {
       version: TOAST_GRAPH_VERSION,
       nodes: [
         { id: "in", type: "input", data: { imageId } },
-        { id: "hm", type: "hueMask", data: { hue: 0, tolerance: 30 } },
+        { id: "hm", type: "selectColor", data: { hue: 0, tolerance: 30 } },
         { id: "t", type: "tint", data: { color: "#00ff00" } },
         { id: "out", type: "output", data: {} },
       ],
@@ -449,8 +449,8 @@ describe("ws render: single-layer nodes", () => {
   });
 
   test.each([
-    ["a singular homography", "homography", { matrix: [0, 0, 0, 0, 0, 0, 0, 0, 1] }],
-    ["a perspective with every corner in one point", "perspective", Object.fromEntries(Object.keys(corners).map((k) => [k, 50]))],
+    ["a singular homography", "matrix", { matrix: [0, 0, 0, 0, 0, 0, 0, 0, 1] }],
+    ["a perspective with every corner in one point", "corners", Object.fromEntries(Object.keys(corners).map((k) => [k, 50]))],
   ])("%s → render-error on that node, not a crash", async (_, type, data) => {
     send({ type: "render", requestId: ++requestId, graph: single(type, data) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId, nodeId: "n" });
@@ -458,10 +458,10 @@ describe("ws render: single-layer nodes", () => {
 
   test.each([
     ["blur", { radius: 50 }],
-    ["isolateChannel", { channel: "cyan" }],
+    ["channel", { channel: "cyan" }],
     ["scale", { x: 0, y: 1 }],
     ["fill", { color: "red" }],
-    ["homography", { matrix: [1, 0, 0] }],
+    ["matrix", { matrix: [1, 0, 0] }],
   ])("%s out of range → render-error on that node", async (type, data) => {
     send({ type: "render", requestId: ++requestId, graph: single(type, data) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId, nodeId: "n" });

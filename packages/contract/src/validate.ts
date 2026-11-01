@@ -3,7 +3,7 @@ import type { GraphNode, NodeId, ToastGraph } from "./graph";
 // what is wrong and where — server sends it as render-error, web refuses the link
 export type GraphIssue = { message: string; nodeId?: NodeId };
 
-// The link rules zod can't check: one link per target handle, handles only on composer rows,
+// The link rules zod can't check: one link per target handle, handles only on layers rows,
 // no cycles / self-links, nothing into the input or out of the output, exactly one input and
 // output. The whole graph, dead branches too — web and server judge a graph the same way.
 // The first issue found or null.
@@ -29,11 +29,11 @@ export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null =
     if (to.type === "input") return { message: "nothing links into the input", nodeId: target };
     if (from.type === "output") return { message: "nothing links out of the output", nodeId: source };
 
-    if (to.type === "composer") {
+    if (to.type === "layers") {
       if (!to.data.layers.some(({ id }) => id === targetHandle)) return { message: "link a layer row", nodeId: target };
-    } else if (targetHandle !== undefined) return { message: "only composer rows take a handle", nodeId: target };
+    } else if (targetHandle !== undefined) return { message: "only layers rows take a handle", nodeId: target };
 
-    // a node's input and each composer row take one link
+    // a node's input and each layers row take one link
     const handle = `${target}\0${targetHandle ?? ""}`;
     if (taken.has(handle)) return { message: "one link per input", nodeId: target };
     taken.add(handle);

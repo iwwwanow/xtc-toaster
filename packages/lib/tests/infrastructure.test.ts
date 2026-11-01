@@ -12,7 +12,7 @@ import {
   rawDataToImageFile,
   speedUpVideo,
 } from "../infrastructure";
-import { addHueNoise } from "../domain/services";
+import { colorNoise } from "../domain/services";
 import type { ImageRawDataArray } from "../domain/types";
 import { FIXTURE_PATH, alphaChannel, resetOutputDir } from "./helpers";
 
@@ -106,7 +106,7 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     width = fixture.width;
     height = fixture.height;
     frames = Array.from({ length: 6 }, (_, i) =>
-      addHueNoise(fixture.data, { deviationCoefficient: i * 0.05 }),
+      colorNoise(fixture.data, { deviationCoefficient: i * 0.05 }),
     );
   });
 

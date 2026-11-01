@@ -5,15 +5,15 @@
   import { session } from "../session.svelte";
   import Slider from "./Slider.svelte";
 
-  let { id, data }: NodeProps<FlowNodeOf<"hueNoise">> = $props();
+  let { id, data }: NodeProps<FlowNodeOf<"colorNoise">> = $props();
 </script>
 
 <Handle type="target" position={Position.Left} />
 <fieldset class="frame">
-  <legend>{NODE_LABELS.hueNoise}</legend>
+  <legend>{NODE_LABELS.colorNoise}</legend>
   <Slider
     label="deviationCoefficient"
-    bounds={PARAMS.hueNoise.deviationCoefficient}
+    bounds={PARAMS.colorNoise.deviationCoefficient}
     step={0.01}
     value={data.deviationCoefficient}
     onchange={(deviationCoefficient) => session.setNodeData(id, { deviationCoefficient })}

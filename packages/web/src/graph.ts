@@ -22,26 +22,57 @@ export const MENU_NODE_TYPES = [...Object.keys(PARAMS), ...Object.keys(INITIAL_D
 const hasInitialData = (type: MenuNodeType): type is keyof typeof INITIAL_DATA => type in INITIAL_DATA;
 // drag & drop from the menu onto the canvas carries the node type under this mime
 export const NODE_TYPE_MIME = "application/x-xtc-node-type";
-// ui name of a node type — the menu item and the node's legend; the type itself stays the contract key
+// ui name of a node type — the menu item and the node's legend: the contract type in words (decided 01.11 —
+// one name in web, contract, server and lib; turn3d reads «3d turn»)
 export const NODE_LABELS = {
-  hueNoise: "hue noise",
-  hueMask: "hue mask",
-  yRotation: "y-rotation",
+  selectColor: "select color",
+  selectVivid: "select vivid",
+  selectBright: "select bright",
+  channel: "channel",
+  fill: "fill",
+  tint: "tint",
+  colorNoise: "color noise",
+  opacity: "opacity",
   blur: "blur",
-  saturationMask: "saturation mask",
-  valueMask: "value mask",
-  translate: "translate",
+  move: "move",
   rotate: "rotate",
   scale: "scale",
   skew: "skew",
-  perspective: "perspective",
-  opacity: "opacity",
-  isolateChannel: "isolate channel",
-  homography: "homography",
-  fill: "fill",
-  tint: "tint",
-  composer: "composer",
+  turn3d: "3d turn",
+  corners: "corners",
+  matrix: "matrix",
+  layers: "layers",
 } as const satisfies Record<MenuNodeType, string>;
+
+// one phrase «what the node does» — a tooltip on the menu item
+export const NODE_HINTS = {
+  selectColor: "keeps pixels of one color, the rest goes transparent",
+  selectVivid: "keeps vivid (or dull) pixels",
+  selectBright: "keeps light (or dark) pixels",
+  channel: "keeps one of red / green / blue / alpha",
+  fill: "paints the whole picture one color",
+  tint: "paints what's visible, keeps transparency",
+  colorNoise: "shifts every pixel's color at random",
+  opacity: "makes the picture see-through",
+  blur: "softens the picture",
+  move: "shifts the picture",
+  rotate: "turns the picture around its center",
+  scale: "makes the picture bigger or smaller",
+  skew: "leans the picture",
+  turn3d: "turns the picture like a card",
+  corners: "drags the four corners",
+  matrix: "a raw 3×3 transform, for experts",
+  layers: "stacks pictures with blend modes",
+} as const satisfies Record<MenuNodeType, string>;
+
+// the left menu, a rule between groups; every menu type in exactly one (graph.test.ts)
+export const NODE_CATEGORIES = [
+  { name: "select", types: ["selectColor", "selectVivid", "selectBright", "channel"] },
+  { name: "color", types: ["fill", "tint", "colorNoise", "opacity"] },
+  { name: "effect", types: ["blur"] },
+  { name: "move", types: ["move", "rotate", "scale", "skew", "turn3d", "corners", "matrix"] },
+  { name: "layers", types: ["layers"] },
+] as const satisfies readonly { name: string; types: readonly MenuNodeType[] }[];
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
 const NODE_GAP_X = 400;
@@ -79,7 +110,7 @@ const toGraphEdge = ({ id, source, target, targetHandle }: Edge | GraphEdge): Gr
 });
 
 // what the input reaches by columns, the rest in a row below everything. A node takes the row of what it
-// pulls when that cell is free — parallel chains (a composer's rows) run straight, not crossing — else the
+// pulls when that cell is free — parallel chains (a layers node's rows) run straight, not crossing — else the
 // next free row below
 export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } => {
   const column = columns(graph);
@@ -139,7 +170,7 @@ export const toGraph = (nodes: FlowNode[], edges: Edge[]): ToastGraph =>
 // a drawn link — xyflow's Connection or an Edge being moved
 export type Link = Pick<Edge, "source" | "target" | "targetHandle">;
 
-// drops the link already in the connection's target handle (a node's input, a composer row) — a new one
+// drops the link already in the connection's target handle (a node's input, a layers row) — a new one
 // replaces it, like blender; `keep` — the link being moved there, it stays
 export const withoutTaken = (
   edges: Edge[],

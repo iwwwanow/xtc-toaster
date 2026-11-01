@@ -9,7 +9,7 @@ const validGraph = () => ({
   version: TOAST_GRAPH_VERSION,
   nodes: [
     { id: "in", type: "input", data: { imageId: IMAGE_ID } },
-    { id: "nz", type: "hueNoise", data: { deviationCoefficient: 0.5 } },
+    { id: "nz", type: "colorNoise", data: { deviationCoefficient: 0.5 } },
     { id: "out", type: "output", data: {} },
   ],
   edges: [
@@ -69,7 +69,7 @@ describe("parseToastGraph", () => {
 
   test("accepts a hue mask at its bounds", () => {
     const graph = validGraph();
-    graph.nodes[1] = { id: "hm", type: "hueMask", data: { hue: 360, tolerance: 0 } } as never;
+    graph.nodes[1] = { id: "hm", type: "selectColor", data: { hue: 360, tolerance: 0 } } as never;
     expect(() => parseToastGraph(graph)).not.toThrow();
   });
 
@@ -80,7 +80,7 @@ describe("parseToastGraph", () => {
     ["tolerance", 181],
   ])("rejects hue mask %s %p", (param, value) => {
     const graph = validGraph();
-    graph.nodes[1] = { id: "hm", type: "hueMask", data: { hue: 0, tolerance: 30, [param]: value } } as never;
+    graph.nodes[1] = { id: "hm", type: "selectColor", data: { hue: 0, tolerance: 30, [param]: value } } as never;
     expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", param]);
   });
 
@@ -89,7 +89,7 @@ describe("parseToastGraph", () => {
     [85, 300],
   ])("accepts a y-rotation at its bounds: angle %p, focalLength %p", (angle, focalLength) => {
     const graph = validGraph();
-    graph.nodes[1] = { id: "yr", type: "yRotation", data: { angle, focalLength } } as never;
+    graph.nodes[1] = { id: "yr", type: "turn3d", data: { angle, focalLength } } as never;
     expect(() => parseToastGraph(graph)).not.toThrow();
   });
 
@@ -100,7 +100,7 @@ describe("parseToastGraph", () => {
     ["focalLength", 301],
   ])("rejects y-rotation %s %p", (param, value) => {
     const graph = validGraph();
-    graph.nodes[1] = { id: "yr", type: "yRotation", data: { angle: 30, focalLength: 50, [param]: value } } as never;
+    graph.nodes[1] = { id: "yr", type: "turn3d", data: { angle: 30, focalLength: 50, [param]: value } } as never;
     expect(issuesOf(graph)[0]!.path).toEqual(["nodes", 1, "data", param]);
   });
 
@@ -121,14 +121,14 @@ describe("parseToastGraph", () => {
 
   test.each([
     ["blur", { radius: 0 }, { radius: 20 }],
-    ["saturationMask", { saturation: 0, tolerance: 0 }, { saturation: 100, tolerance: 100 }],
-    ["valueMask", { value: 0, tolerance: 0 }, { value: 100, tolerance: 100 }],
-    ["translate", { x: -100, y: -100 }, { x: 100, y: 100 }],
+    ["selectVivid", { saturation: 0, tolerance: 0 }, { saturation: 100, tolerance: 100 }],
+    ["selectBright", { value: 0, tolerance: 0 }, { value: 100, tolerance: 100 }],
+    ["move", { x: -100, y: -100 }, { x: 100, y: 100 }],
     ["rotate", { angle: -180 }, { angle: 180 }],
     ["scale", { x: 0.1, y: 0.1 }, { x: 3, y: 3 }],
     ["skew", { x: -60, y: -60 }, { x: 60, y: 60 }],
     ["opacity", { opacity: 0 }, { opacity: 1 }],
-    ["perspective", corners(-50), corners(150)],
+    ["corners", corners(-50), corners(150)],
   ])("accepts %s at its bounds", (type, min, max) => {
     expect(() => parseToastGraph(nodeAt(type, min))).not.toThrow();
     expect(() => parseToastGraph(nodeAt(type, max))).not.toThrow();
@@ -137,29 +137,29 @@ describe("parseToastGraph", () => {
   test.each([
     ["blur", { radius: 4 }, "radius", -1],
     ["blur", { radius: 4 }, "radius", 21],
-    ["saturationMask", { saturation: 100, tolerance: 30 }, "saturation", 101],
-    ["saturationMask", { saturation: 100, tolerance: 30 }, "tolerance", -1],
-    ["valueMask", { value: 100, tolerance: 30 }, "value", -1],
-    ["valueMask", { value: 100, tolerance: 30 }, "tolerance", 101],
-    ["translate", { x: 10, y: 0 }, "x", 101],
-    ["translate", { x: 10, y: 0 }, "y", -101],
+    ["selectVivid", { saturation: 100, tolerance: 30 }, "saturation", 101],
+    ["selectVivid", { saturation: 100, tolerance: 30 }, "tolerance", -1],
+    ["selectBright", { value: 100, tolerance: 30 }, "value", -1],
+    ["selectBright", { value: 100, tolerance: 30 }, "tolerance", 101],
+    ["move", { x: 10, y: 0 }, "x", 101],
+    ["move", { x: 10, y: 0 }, "y", -101],
     ["rotate", { angle: 15 }, "angle", 181],
     ["scale", { x: 0.75, y: 0.75 }, "x", 0],
     ["scale", { x: 0.75, y: 0.75 }, "y", 3.1],
     ["skew", { x: 15, y: 0 }, "x", 61],
     ["opacity", { opacity: 0.5 }, "opacity", 1.1],
-    ["perspective", corners(0), "bottomLeftY", 151],
-    ["perspective", corners(0), "topRightX", -51],
+    ["corners", corners(0), "bottomLeftY", 151],
+    ["corners", corners(0), "topRightX", -51],
   ])("rejects %s with %s → %s %p", (type, data, param, value) => {
     expect(issuesOf(nodeAt(type, { ...data, [param]: value }))[0]!.path).toEqual(["nodes", 1, "data", param]);
   });
 
-  test.each(["red", "green", "blue", "alpha"])("accepts isolateChannel %s", (channel) => {
-    expect(() => parseToastGraph(nodeAt("isolateChannel", { channel }))).not.toThrow();
+  test.each(["red", "green", "blue", "alpha"])("accepts channel %s", (channel) => {
+    expect(() => parseToastGraph(nodeAt("channel", { channel }))).not.toThrow();
   });
 
   test("accepts a homography: any 9 finite numbers", () => {
-    expect(() => parseToastGraph(nodeAt("homography", { matrix: [1, 0.2, 0, -0.1, 1, 0.001, 30, -20, 1] }))).not.toThrow();
+    expect(() => parseToastGraph(nodeAt("matrix", { matrix: [1, 0.2, 0, -0.1, 1, 0.001, 30, -20, 1] }))).not.toThrow();
   });
 
   test.each([
@@ -167,7 +167,7 @@ describe("parseToastGraph", () => {
     ["10 numbers", [1, 0, 0, 0, 1, 0, 0, 0, 1, 0]],
     ["a string inside", [1, 0, 0, 0, "1", 0, 0, 0, 1]],
   ])("rejects a homography of %s", (_, matrix) => {
-    expect(issuesOf(nodeAt("homography", { matrix }))[0]!.path.slice(0, 4)).toEqual(["nodes", 1, "data", "matrix"]);
+    expect(issuesOf(nodeAt("matrix", { matrix }))[0]!.path.slice(0, 4)).toEqual(["nodes", 1, "data", "matrix"]);
   });
 
   test.each(["fill", "tint"])("%s takes a #rrggbb color, any case", (type) => {
@@ -179,7 +179,7 @@ describe("parseToastGraph", () => {
   });
 
   test("rejects an unknown channel", () => {
-    expect(issuesOf(nodeAt("isolateChannel", { channel: "cyan" }))[0]!.path).toEqual(["nodes", 1, "data", "channel"]);
+    expect(issuesOf(nodeAt("channel", { channel: "cyan" }))[0]!.path).toEqual(["nodes", 1, "data", "channel"]);
   });
 
   test("rejects an unknown node type", () => {

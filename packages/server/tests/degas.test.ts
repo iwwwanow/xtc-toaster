@@ -34,7 +34,7 @@ const hash = async (graph: ToastGraph) =>
     .digest("hex");
 
 describe("toast-1 degas as a graph", () => {
-  test("7 composer rows — renders under RENDER_MAX_LAYERS 7", async () => {
+  test("7 layers rows — renders under RENDER_MAX_LAYERS 7", async () => {
     const { width, height } = await runGraph(withPicture(toast1degas), UPLOADS_DIR, 7);
     expect([width, height]).toEqual([WIDTH, HEIGHT]);
   });
@@ -49,7 +49,7 @@ describe("toast-1 degas as a graph", () => {
     const [x, y] = [(100 * WIDTH) / (WIDTH - 1), (100 * HEIGHT) / (HEIGHT - 1)];
     const graph = withPicture(toast1degas, (node) => {
       if (node.type === "blur") return { ...node, data: { radius: radius[node.id]! } };
-      if (node.type === "perspective") {
+      if (node.type === "corners") {
         return { ...node, data: { ...node.data, topRightX: x, bottomRightX: x, bottomRightY: y, bottomLeftY: y } };
       }
       return node;

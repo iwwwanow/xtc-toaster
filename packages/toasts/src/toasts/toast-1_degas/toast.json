@@ -58,8 +58,8 @@
       }
     },
     {
-      "id": "purple-valueMask",
-      "type": "valueMask",
+      "id": "purple-selectBright",
+      "type": "selectBright",
       "data": {
         "value": 16,
         "tolerance": 32
@@ -87,8 +87,8 @@
       }
     },
     {
-      "id": "purple-perspective",
-      "type": "perspective",
+      "id": "purple-corners",
+      "type": "corners",
       "data": {
         "topLeftX": 0,
         "topLeftY": 0,
@@ -101,16 +101,16 @@
       }
     },
     {
-      "id": "purple-translate",
-      "type": "translate",
+      "id": "purple-move",
+      "type": "move",
       "data": {
         "x": 0,
         "y": 0
       }
     },
     {
-      "id": "red-valueMask",
-      "type": "valueMask",
+      "id": "red-selectBright",
+      "type": "selectBright",
       "data": {
         "value": 12,
         "tolerance": 24
@@ -138,8 +138,8 @@
       }
     },
     {
-      "id": "red-perspective",
-      "type": "perspective",
+      "id": "red-corners",
+      "type": "corners",
       "data": {
         "topLeftX": 0,
         "topLeftY": 0,
@@ -152,16 +152,16 @@
       }
     },
     {
-      "id": "red-translate",
-      "type": "translate",
+      "id": "red-move",
+      "type": "move",
       "data": {
         "x": 0,
         "y": 0
       }
     },
     {
-      "id": "white-valueMask",
-      "type": "valueMask",
+      "id": "white-selectBright",
+      "type": "selectBright",
       "data": {
         "value": 92,
         "tolerance": 16
@@ -175,8 +175,8 @@
       }
     },
     {
-      "id": "white-perspective",
-      "type": "perspective",
+      "id": "white-corners",
+      "type": "corners",
       "data": {
         "topLeftX": 0,
         "topLeftY": 0,
@@ -189,8 +189,8 @@
       }
     },
     {
-      "id": "white-translate",
-      "type": "translate",
+      "id": "white-move",
+      "type": "move",
       "data": {
         "x": 0,
         "y": 0
@@ -198,7 +198,7 @@
     },
     {
       "id": "cmp",
-      "type": "composer",
+      "type": "layers",
       "data": {
         "layers": [
           {
@@ -306,13 +306,13 @@
       "targetHandle": "layer-4"
     },
     {
-      "id": "in-purple-valueMask",
+      "id": "in-purple-selectBright",
       "source": "in",
-      "target": "purple-valueMask"
+      "target": "purple-selectBright"
     },
     {
-      "id": "purple-valueMask-purple-tint",
-      "source": "purple-valueMask",
+      "id": "purple-selectBright-purple-tint",
+      "source": "purple-selectBright",
       "target": "purple-tint"
     },
     {
@@ -326,29 +326,29 @@
       "target": "purple-opacity"
     },
     {
-      "id": "purple-opacity-purple-perspective",
+      "id": "purple-opacity-purple-corners",
       "source": "purple-opacity",
-      "target": "purple-perspective"
+      "target": "purple-corners"
     },
     {
-      "id": "purple-perspective-purple-translate",
-      "source": "purple-perspective",
-      "target": "purple-translate"
+      "id": "purple-corners-purple-move",
+      "source": "purple-corners",
+      "target": "purple-move"
     },
     {
-      "id": "purple-translate-cmp-layer-5",
-      "source": "purple-translate",
+      "id": "purple-move-cmp-layer-5",
+      "source": "purple-move",
       "target": "cmp",
       "targetHandle": "layer-5"
     },
     {
-      "id": "in-red-valueMask",
+      "id": "in-red-selectBright",
       "source": "in",
-      "target": "red-valueMask"
+      "target": "red-selectBright"
     },
     {
-      "id": "red-valueMask-red-tint",
-      "source": "red-valueMask",
+      "id": "red-selectBright-red-tint",
+      "source": "red-selectBright",
       "target": "red-tint"
     },
     {
@@ -362,44 +362,44 @@
       "target": "red-opacity"
     },
     {
-      "id": "red-opacity-red-perspective",
+      "id": "red-opacity-red-corners",
       "source": "red-opacity",
-      "target": "red-perspective"
+      "target": "red-corners"
     },
     {
-      "id": "red-perspective-red-translate",
-      "source": "red-perspective",
-      "target": "red-translate"
+      "id": "red-corners-red-move",
+      "source": "red-corners",
+      "target": "red-move"
     },
     {
-      "id": "red-translate-cmp-layer-6",
-      "source": "red-translate",
+      "id": "red-move-cmp-layer-6",
+      "source": "red-move",
       "target": "cmp",
       "targetHandle": "layer-6"
     },
     {
-      "id": "in-white-valueMask",
+      "id": "in-white-selectBright",
       "source": "in",
-      "target": "white-valueMask"
+      "target": "white-selectBright"
     },
     {
-      "id": "white-valueMask-white-tint",
-      "source": "white-valueMask",
+      "id": "white-selectBright-white-tint",
+      "source": "white-selectBright",
       "target": "white-tint"
     },
     {
-      "id": "white-tint-white-perspective",
+      "id": "white-tint-white-corners",
       "source": "white-tint",
-      "target": "white-perspective"
+      "target": "white-corners"
     },
     {
-      "id": "white-perspective-white-translate",
-      "source": "white-perspective",
-      "target": "white-translate"
+      "id": "white-corners-white-move",
+      "source": "white-corners",
+      "target": "white-move"
     },
     {
-      "id": "white-translate-cmp-layer-7",
-      "source": "white-translate",
+      "id": "white-move-cmp-layer-7",
+      "source": "white-move",
       "target": "cmp",
       "targetHandle": "layer-7"
     },

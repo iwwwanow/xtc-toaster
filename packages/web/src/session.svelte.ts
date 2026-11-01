@@ -5,7 +5,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { removeLayer, removeLayerEdges } from "./composer";
+import { removeLayer, removeLayerEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
   canConnect,
@@ -114,9 +114,9 @@ class Session {
     this.nodes = this.nodes.map((node) => (node.id === id ? ({ ...node, data } as FlowNode) : node));
   }
 
-  // a composer row goes away with its link
-  removeComposerLayer(nodeId: string, layerId: string) {
-    const node = this.nodes.find((node): node is FlowNodeOf<"composer"> => node.id === nodeId && node.type === "composer");
+  // a layers row goes away with its link
+  removeLayerRow(nodeId: string, layerId: string) {
+    const node = this.nodes.find((node): node is FlowNodeOf<"layers"> => node.id === nodeId && node.type === "layers");
     if (!node) return;
     this.edges = removeLayerEdges(this.edges, nodeId, layerId);
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });

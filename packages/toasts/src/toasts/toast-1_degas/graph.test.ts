@@ -14,8 +14,8 @@ describe("toast-1_degas graph", () => {
   });
 
   test("the script's 7 layers, top first, lch-hue on the blue one", () => {
-    const composer = toast1degas.nodes.find((node) => node.type === "composer");
-    expect(composer?.type === "composer" && composer.data.layers.map(({ name, blendMode }) => [name, blendMode])).toEqual([
+    const layersNode = toast1degas.nodes.find((node) => node.type === "layers");
+    expect(layersNode?.type === "layers" && layersNode.data.layers.map(({ name, blendMode }) => [name, blendMode])).toEqual([
       ["white", "normal"],
       ["red", "normal"],
       ["purple", "normal"],

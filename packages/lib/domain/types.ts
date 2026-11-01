@@ -27,27 +27,7 @@ export interface LayerDimensions {
 export type Point2D = { x: number; y: number };
 export type Quad = [Point2D, Point2D, Point2D, Point2D];
 
-export type Transform =
-  | { name: "translate"; params: { tx: number; ty: number } }
-  | { name: "rotate"; params: { alpha: number } }
-  | { name: "scale"; params: { scaleX: number; scaleY: number } }
-  | { name: "skew"; params: { tx: number; ty: number } }
-  | { name: "homography"; params: { matrix: number[] } }    // 9 elements, row-major 3×3
-  | { name: "perspective"; params: { corners: Quad } }      // TL TR BR BL in output space
-  | { name: "yRotation"; params: { angle: number; focalLength: number } }; // angle in degrees, focalLength in px
-
-// isolateChannel сюда не входит — не маска, другая операция
-export type MaskParams =
-  | { name: "hue"; value: number; tolerance?: number }
-  | { name: "saturation"; value: number; tolerance?: number }
-  | { name: "value"; value: number; tolerance?: number };
-
-export type EffectParams =
-  | { name: "hueNoise"; options: { deviationCoefficient: number } }
-  | { name: "blur"; options: { radius: number } };
-
 export interface LayerOptions {
   blendMode?: BlendMode;
   opacity?: Opacity;
-  transform?: Transform;
 }

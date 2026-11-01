@@ -18,12 +18,12 @@ describe("Composition factory methods", () => {
   test("duplicateLayer copies the buffer and top-level options; edits don't leak back", () => {
     const composition = new Composition(1, 1);
     const original = composition.createColorLayer(Color.fromRgb([9, 9, 9]));
-    original.setOpacity(0.5);
+    original.opacity(0.5);
 
     const duplicate = composition.duplicateLayer(original);
     duplicate.fill(Color.fromRgb([0, 0, 0]));
 
-    duplicate.setOpacity(0.1);
+    duplicate.opacity(0.1);
 
     expect([...original.imageData]).toEqual([9, 9, 9, 255]);
     expect(original.options).toEqual({ opacity: 0.5 });
@@ -54,7 +54,7 @@ describe("Composition.render", () => {
     const composition = new Composition(1, 1);
     composition.createColorLayer(Color.fromRgb([0, 0, 0]));
     const fg = composition.createColorLayer(Color.fromRgb([255, 255, 255]));
-    fg.setOpacity(0.5);
+    fg.opacity(0.5);
 
     // alpha 255·0.5 = 127.5 → 128 in Uint8ClampedArray, then 255·128/255 = 128
     expect([...composition.render()]).toEqual([128, 128, 128, 255]);
@@ -78,7 +78,7 @@ describe("Composition.render", () => {
   test("opacity does not modify the layer's own buffer", () => {
     const composition = new Composition(1, 1);
     const layer = composition.createColorLayer(Color.fromRgb([1, 2, 3]));
-    layer.setOpacity(0.5);
+    layer.opacity(0.5);
     composition.render();
     expect([...layer.imageData]).toEqual([1, 2, 3, 255]);
   });

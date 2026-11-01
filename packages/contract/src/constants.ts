@@ -1,6 +1,6 @@
 export const TOAST_GRAPH_VERSION = 1 as const;
 
-// a composer layer name the user typed
+// a layers node layer name the user typed
 export const LAYER_NAME_MAX = 40;
 
 export const UPLOAD_MAX_MEGAPIXELS = 2;

@@ -1,43 +1,43 @@
 import type { NodeTypes } from "@xyflow/svelte";
 import BlurNode from "./BlurNode.svelte";
-import ComposerNode from "./ComposerNode.svelte";
+import ChannelNode from "./ChannelNode.svelte";
+import ColorNoiseNode from "./ColorNoiseNode.svelte";
+import CornersNode from "./CornersNode.svelte";
 import FillNode from "./FillNode.svelte";
-import HomographyNode from "./HomographyNode.svelte";
-import HueMaskNode from "./HueMaskNode.svelte";
 import InputNode from "./InputNode.svelte";
-import HueNoiseNode from "./HueNoiseNode.svelte";
-import IsolateChannelNode from "./IsolateChannelNode.svelte";
+import LayersNode from "./LayersNode.svelte";
+import MatrixNode from "./MatrixNode.svelte";
+import MoveNode from "./MoveNode.svelte";
 import OpacityNode from "./OpacityNode.svelte";
 import OutputNode from "./OutputNode.svelte";
-import PerspectiveNode from "./PerspectiveNode.svelte";
 import RotateNode from "./RotateNode.svelte";
-import SaturationMaskNode from "./SaturationMaskNode.svelte";
 import ScaleNode from "./ScaleNode.svelte";
+import SelectBrightNode from "./SelectBrightNode.svelte";
+import SelectColorNode from "./SelectColorNode.svelte";
+import SelectVividNode from "./SelectVividNode.svelte";
 import SkewNode from "./SkewNode.svelte";
 import TintNode from "./TintNode.svelte";
-import TranslateNode from "./TranslateNode.svelte";
-import ValueMaskNode from "./ValueMaskNode.svelte";
-import YRotationNode from "./YRotationNode.svelte";
+import Turn3dNode from "./Turn3dNode.svelte";
 
 // one component per contract node type
 export const nodeTypes = {
   input: InputNode,
-  hueNoise: HueNoiseNode,
-  hueMask: HueMaskNode,
-  yRotation: YRotationNode,
+  selectColor: SelectColorNode,
+  selectVivid: SelectVividNode,
+  selectBright: SelectBrightNode,
+  channel: ChannelNode,
+  fill: FillNode,
+  tint: TintNode,
+  colorNoise: ColorNoiseNode,
+  opacity: OpacityNode,
   blur: BlurNode,
-  saturationMask: SaturationMaskNode,
-  valueMask: ValueMaskNode,
-  isolateChannel: IsolateChannelNode,
-  translate: TranslateNode,
+  move: MoveNode,
   rotate: RotateNode,
   scale: ScaleNode,
   skew: SkewNode,
-  perspective: PerspectiveNode,
-  homography: HomographyNode,
-  fill: FillNode,
-  tint: TintNode,
-  opacity: OpacityNode,
-  composer: ComposerNode,
+  turn3d: Turn3dNode,
+  corners: CornersNode,
+  matrix: MatrixNode,
+  layers: LayersNode,
   output: OutputNode,
 } satisfies NodeTypes;
