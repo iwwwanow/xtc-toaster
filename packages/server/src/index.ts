@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { RENDER_MAX_LAYERS_DEFAULT } from "./run-graph";
-import { createServer } from "./server";
+import { RENDER_MAX_LAYERS_DEFAULT } from "./application/run-graph";
+import { createServer } from "./infrastructure/presentation/server";
 
 const env = process.env;
 

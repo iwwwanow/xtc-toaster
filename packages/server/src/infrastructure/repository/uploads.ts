@@ -1,5 +1,6 @@
-import { readdir, rm, stat } from "node:fs/promises";
+import { readFile, readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { decodePixels } from "@xtc-toaster/lib";
 
 // A public upload fills the disk without these; docker can't cap a bind mount's size,
 // so the app does it. An expired / evicted picture → the usual `image not found`.
@@ -33,7 +34,7 @@ export const removeExpired = async (dir: string, ttlMs: number, now = Date.now()
 };
 
 // before saving `incomingBytes`: the oldest files go until the new one fits
-export const makeRoom = async (dir: string, incomingBytes: number, maxTotalBytes: number) => {
+const makeRoom = async (dir: string, incomingBytes: number, maxTotalBytes: number) => {
   const files = await listFiles(dir);
   let total = files.reduce((sum, { size }) => sum + size, 0) + incomingBytes;
   const evicted: StoredFile[] = [];
@@ -44,4 +45,27 @@ export const makeRoom = async (dir: string, incomingBytes: number, maxTotalBytes
   }
   await remove(evicted);
   return evicted.length;
+};
+
+// one save at a time: two concurrent uploads must not count the same free space
+let saving: Promise<unknown> = Promise.resolve();
+
+export const saveUpload = (uploadsDir: string, imageId: string, bytes: Buffer, maxTotalBytes: number) => {
+  const run = saving.then(async () => {
+    await makeRoom(uploadsDir, bytes.length, maxTotalBytes);
+    await Bun.write(join(uploadsDir, imageId), bytes);
+  });
+  saving = run.catch(() => {});
+  return run;
+};
+
+// null when the file is gone (expired / evicted) — the caller turns it into its error. No exists() before
+// the read: the main thread removes files while the render worker reads them, ENOENT is the only honest answer.
+// imageId must be a uuid (contract validates it) — it builds the path: docs/backlog/2026-11-02_image-id-path-safety.md
+export const loadUpload = async (uploadsDir: string, imageId: string) => {
+  const bytes = await readFile(join(uploadsDir, imageId)).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  return bytes && decodePixels(bytes);
 };

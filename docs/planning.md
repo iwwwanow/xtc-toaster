@@ -141,6 +141,7 @@
      - (#5) 2 toasts instead of 3
 7. [ ] 23.11-29.11. free buffer
    - manual review + refactoring of the vibe-coded code — by the user, Claude helps (moved from sprint 3 on 26.10): `server` → `contract` → `web` → `lib`, no behaviour change, tests green before and after, one package = one branch, `refactor:` commits; findings that don't fit → `docs/backlog/`. Already written down: `docs/backlog/2026-11-01_validate-graph-into-zod.md`, `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
+     - [x] 02.11 server: application / infrastructure layers, application depends on a `LoadImage` port; review fixes — a dead render worker no longer blocks the queue, `loadUpload` without the `exists()` race — `docs/diary/2026-11-02_server-layers-review-fixes.md`
    - before the release 28.11 — the buffer first goes to whatever slipped from sprints 4–6
 
 ## cut-list
