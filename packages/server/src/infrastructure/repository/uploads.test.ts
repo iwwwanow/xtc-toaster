@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { removeExpired, saveUpload } from "./uploads";
+import { loadUpload, removeExpired, saveUpload } from "./uploads";
 
-const DIR = resolve(import.meta.dirname, "../../../tests/output/uploads");
+// its own dir: beforeEach wipes it, tests/server.test.ts keeps its pictures in output/uploads
+const DIR = resolve(import.meta.dirname, "../../../tests/output/uploads-repository");
+const FIXTURE_PATH = resolve(import.meta.dirname, "../../../../lib/tests/fixtures/poppies.jpg");
 const HOUR = 3_600_000;
 const NOW = Date.now();
 
@@ -32,6 +34,24 @@ describe("removeExpired", () => {
 
   test("empty dir — nothing to do", async () => {
     expect(await removeExpired(DIR, HOUR, NOW)).toBe(0);
+  });
+});
+
+describe("loadUpload", () => {
+  test("decodes the stored picture", async () => {
+    await saveUpload(DIR, "picture", Buffer.from(await Bun.file(FIXTURE_PATH).arrayBuffer()), 1_000_000);
+    const { data, width, height } = (await loadUpload(DIR, "picture"))!;
+    expect([width, height]).toEqual([250, 359]);
+    expect(data.length).toBe(250 * 359 * 4);
+  });
+
+  test("a file that is gone — null, not an error", async () => {
+    expect(await loadUpload(DIR, "gone")).toBeNull();
+  });
+
+  test("a broken file is still an error", async () => {
+    await put("broken", 10, 1);
+    await expect(loadUpload(DIR, "broken")).rejects.toThrow();
   });
 });
 

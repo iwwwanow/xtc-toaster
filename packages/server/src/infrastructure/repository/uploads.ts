@@ -1,6 +1,6 @@
-import { readdir, rm, stat } from "node:fs/promises";
+import { readFile, readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { imageFileToRawData } from "@xtc-toaster/lib";
+import { decodePixels } from "@xtc-toaster/lib";
 
 // A public upload fills the disk without these; docker can't cap a bind mount's size,
 // so the app does it. An expired / evicted picture → the usual `image not found`.
@@ -59,9 +59,13 @@ export const saveUpload = (uploadsDir: string, imageId: string, bytes: Buffer, m
   return run;
 };
 
-// null when the file is gone (expired / evicted) — the caller turns it into its error
+// null when the file is gone (expired / evicted) — the caller turns it into its error. No exists() before
+// the read: the main thread removes files while the render worker reads them, ENOENT is the only honest answer.
+// imageId must be a uuid (contract validates it) — it builds the path: docs/backlog/2026-11-02_image-id-path-safety.md
 export const loadUpload = async (uploadsDir: string, imageId: string) => {
-  const path = join(uploadsDir, imageId);
-  if (!(await Bun.file(path).exists())) return null;
-  return imageFileToRawData(path);
+  const bytes = await readFile(join(uploadsDir, imageId)).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  return bytes && decodePixels(bytes);
 };
