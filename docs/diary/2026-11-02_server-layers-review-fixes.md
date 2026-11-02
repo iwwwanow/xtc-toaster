@@ -19,12 +19,10 @@
 
 `docker build --target test .` (то, что запускает CI, на чистой установке) прошёл: typecheck и тесты всех пакетов, у сервера 107 pass.
 
+После merge в `master` CI прошёл целиком (тесты, semantic-release, образ), вышел `v0.7.2`. Выкатку на прод и работу в браузере не проверяли.
+
 ## Остаток
 
 - `imageId` строит путь, а репозиторий его не проверяет; как делать, пока не решили — `docs/backlog/2026-11-02_image-id-path-safety.md`.
-- Находки ревью, которые не брали в работу:
-  - `docs/sprints/sprint-1.spec.md` и заметки backlog всё ещё описывают старые пути сервера (`src/run-graph.ts`, `src/render.ts`), а спека по `CLAUDE.md` главнее него;
-  - `rawDataToImageFile` дублирует `encodePng`;
-  - `return evicted.length` в `makeRoom` никто не читает;
-  - у `application/` нет barrel `index.ts`.
+- Остальные находки ревью и сомнения в самих правках собраны для разбора одним заходом — `docs/backlog/2026-11-02_server-layers-open-points.md`.
 - `docs/sprints/sprint-5.refactor-planning.md` — черновик пользователя про раскладку слоёв, в коммиты не входит.
