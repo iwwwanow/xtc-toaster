@@ -1,0 +1,3 @@
+# imageId строит путь в репозитории uploads, но репозиторий его не проверяет
+
+`loadUpload` и `saveUpload` (`packages/server/src/infrastructure/repository/uploads.ts`) делают `join(uploadsDir, imageId)` с любой строкой. Безопасность держится на вызывающем коде: `loadUpload` получает uuid, проверенный схемой contract, а `saveUpload` — `crypto.randomUUID()`. Новый вызывающий код, например эндпоинт `GET /api/images/:id`, сможет передать `../../etc/passwd` и выйти за пределы `uploadsDir`. Сейчас уязвимости нет, это риск на будущее. Варианты — брендированный тип `ImageId` из contract или проверка uuid внутри репозитория; как именно делать, пока не решено (02.11).
