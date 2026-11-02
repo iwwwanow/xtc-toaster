@@ -7,6 +7,8 @@ import { resolve } from "node:path";
 import {
   assembleGif,
   assembleVideo,
+  decodePixels,
+  encodePng,
   imageFileToRawData,
   loopVideoTo,
   rawDataToImageFile,
@@ -62,6 +64,25 @@ describe("imageFileToRawData", () => {
 
   test("a missing file rejects", async () => {
     expect(imageFileToRawData(resolve(outDir, "nope.jpg"))).rejects.toThrow();
+  });
+});
+
+describe("decodePixels", () => {
+  test("gives the same pixels as reading the file", async () => {
+    const decoded = await decodePixels(Buffer.from(await Bun.file(FIXTURE_PATH).arrayBuffer()));
+    const fromFile = await imageFileToRawData(FIXTURE_PATH);
+    expect([decoded.width, decoded.height]).toEqual([fromFile.width, fromFile.height]);
+    expect(Bun.hash(decoded.data)).toBe(Bun.hash(fromFile.data));
+  });
+
+  test("reads back what encodePng wrote", async () => {
+    const data = new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 255]);
+    const decoded = await decodePixels(encodePng(data, { width: 2, height: 1 }));
+    expect([...decoded.data]).toEqual([...data]);
+  });
+
+  test("not an image rejects", async () => {
+    await expect(decodePixels(Buffer.from("not an image"))).rejects.toThrow();
   });
 });
 

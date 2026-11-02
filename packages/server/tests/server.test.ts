@@ -3,13 +3,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
-import { createCanvas, loadImage } from "canvas";
 import {
   ServerMessageSchema,
   TOAST_GRAPH_VERSION,
   UploadResponseSchema,
   type ServerMessage,
 } from "@xtc-toaster/contract";
+import { decodePixels } from "@xtc-toaster/lib";
 import { createServer } from "../src/infrastructure/presentation/server";
 
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
@@ -33,6 +33,10 @@ const upload = (file: Blob, name: string) => {
   form.append("file", file, name);
   return fetch(new URL("/api/images", server.url), { method: "POST", body: form });
 };
+
+// a rendered message's png → RGBA
+const pixelsOf = (message: Extract<ServerMessage, { type: "rendered" }>) =>
+  decodePixels(Buffer.from(message.png, "base64"));
 
 const graph = (imageId: string | null, deviationCoefficient = 0.5) => ({
   version: TOAST_GRAPH_VERSION,
@@ -93,8 +97,8 @@ describe("ws render", () => {
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
     expect(message).toMatchObject({ requestId: 1, width: 250, height: 359 });
 
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    expect([png.width, png.height]).toEqual([250, 359]);
+    const { width, height } = await pixelsOf(message);
+    expect([width, height]).toEqual([250, 359]);
   });
 
   test("invalid json → render-error with requestId: null", async () => {
@@ -181,10 +185,7 @@ describe("ws render: hue mask", () => {
 
   const alphaOf = async (message: ServerMessage) => {
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    const context = createCanvas(png.width, png.height).getContext("2d");
-    context.drawImage(png, 0, 0);
-    const { data } = context.getImageData(0, 0, png.width, png.height);
+    const { data } = await pixelsOf(message);
     return data.filter((_, i) => i % 4 === 3);
   };
 
@@ -221,12 +222,10 @@ describe("ws render: y-rotation", () => {
     send({ type: "render", requestId, graph: turn3d(angle, focalLength) });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    const context = createCanvas(png.width, png.height).getContext("2d");
-    context.drawImage(png, 0, 0);
-    const row = Math.floor(png.height / 2);
-    const alphaAt = (x: number) => context.getImageData(x, row, 1, 1).data[3];
-    return [alphaAt(0), alphaAt(Math.floor(png.width / 2)), alphaAt(png.width - 1)];
+    const { data, width, height } = await pixelsOf(message);
+    const row = Math.floor(height / 2);
+    const alphaAt = (x: number) => data[(row * width + x) * 4 + 3];
+    return [alphaAt(0), alphaAt(Math.floor(width / 2)), alphaAt(width - 1)];
   };
 
   // poppies is opaque, 250 × 359 (portrait): an edge sampling outside the source goes transparent.
@@ -275,10 +274,7 @@ describe("ws render: single-layer nodes", () => {
     send({ type: "render", requestId: ++requestId, graph: single(type, data) });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(`expected rendered, got ${JSON.stringify(message)}`);
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    const context = createCanvas(png.width, png.height).getContext("2d");
-    context.drawImage(png, 0, 0);
-    const { data: pixels, width, height } = context.getImageData(0, 0, png.width, png.height);
+    const { data: pixels, width, height } = await pixelsOf(message);
     const at = (x: number, y: number) => [...pixels.slice((y * width + x) * 4, (y * width + x) * 4 + 4)];
     return { pixels, width, height, at };
   };
@@ -408,10 +404,7 @@ describe("ws render: single-layer nodes", () => {
     send({ type: "render", requestId: ++requestId, graph });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(JSON.stringify(message));
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    const context = createCanvas(png.width, png.height).getContext("2d");
-    context.drawImage(png, 0, 0);
-    const { data } = context.getImageData(0, 0, png.width, png.height);
+    const { data } = await pixelsOf(message);
     const opaque = [...Array(data.length / 4).keys()].map((i) => [...data.slice(i * 4, i * 4 + 4)]).filter((p) => p[3] === 255);
     expect(opaque.length).toBeGreaterThan(0);
     expect(opaque.every(([r, g, b]) => r === 0 && g === 255 && b === 0)).toBe(true);
@@ -442,10 +435,7 @@ describe("ws render: single-layer nodes", () => {
     send({ type: "render", requestId: ++requestId, graph });
     const message = await nextMessage();
     if (message.type !== "rendered") throw new Error(JSON.stringify(message));
-    const png = await loadImage(Buffer.from(message.png, "base64"));
-    const context = createCanvas(png.width, png.height).getContext("2d");
-    context.drawImage(png, 0, 0);
-    expect(new Set(alphas(context.getImageData(0, 0, png.width, png.height).data))).toEqual(new Set([64]));
+    expect(new Set(alphas((await pixelsOf(message)).data))).toEqual(new Set([64]));
   });
 
   test.each([

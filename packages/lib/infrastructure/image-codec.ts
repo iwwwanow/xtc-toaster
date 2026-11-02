@@ -20,6 +20,16 @@ export const decodeImage = async (bytes: Buffer): Promise<LayerDimensions> => {
   return { width: image.width, height: image.height };
 };
 
+// png / jpeg bytes → RGBA; throws if the bytes are not a decodable image
+export const decodePixels = async (bytes: Buffer): Promise<{ data: ImageRawDataArray } & LayerDimensions> => {
+  const image = await loadImage(bytes);
+  const { width, height } = image;
+  const ctx = createCanvas(width, height).getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  const { data } = ctx.getImageData(0, 0, width, height);
+  return { data: data as ImageRawDataArray, width, height };
+};
+
 export const encodePng = (data: ImageRawDataArray, { width, height }: LayerDimensions): Buffer => {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
