@@ -2,6 +2,7 @@
 import type { NodeId, ToastGraph } from "@xtc-toaster/contract";
 import { render } from "../../application/render";
 import { GraphError } from "../../application/run-graph";
+import { loadUpload } from "../repository/uploads";
 
 export type RenderRequest = { graph: ToastGraph; uploadsDir: string; maxLayers?: number };
 export type RenderReply =
@@ -13,7 +14,7 @@ declare const self: Worker;
 self.onmessage = async ({ data: { graph, uploadsDir, maxLayers } }: MessageEvent<RenderRequest>) => {
   let reply: RenderReply;
   try {
-    const { png, width, height } = await render(graph, uploadsDir, maxLayers);
+    const { png, width, height } = await render(graph, (imageId) => loadUpload(uploadsDir, imageId), maxLayers);
     reply = { width, height, png: png.toString("base64") };
   } catch (e) {
     const nodeId = e instanceof GraphError ? e.nodeId : undefined;

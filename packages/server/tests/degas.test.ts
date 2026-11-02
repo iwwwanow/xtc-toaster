@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { GraphNode, ToastGraph } from "@xtc-toaster/contract";
+import { imageFileToRawData } from "@xtc-toaster/lib";
 import { toast1degas } from "@xtc-toaster/toasts";
 import { runGraph } from "../src/application/run-graph";
 
@@ -12,15 +12,10 @@ import { runGraph } from "../src/application/run-graph";
 const GOLDEN_T0 = "3a0027536a75ae018be57d480cd53684974560d36b981c339dc86b10b1eb12a3";
 
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
-const UPLOADS_DIR = resolve(import.meta.dirname, "output/degas");
 const IMAGE_ID = "6a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 const [WIDTH, HEIGHT] = [250, 359]; // poppies.jpg — the lib golden test pins it
 
-beforeAll(async () => {
-  await mkdir(UPLOADS_DIR, { recursive: true });
-  await copyFile(FIXTURE_PATH, resolve(UPLOADS_DIR, IMAGE_ID));
-});
-afterAll(() => rm(UPLOADS_DIR, { recursive: true, force: true }));
+const loadImage = () => imageFileToRawData(FIXTURE_PATH);
 
 // the toast as it is, the picture put into the input
 const withPicture = (graph: ToastGraph, patch: (node: GraphNode) => GraphNode = (node) => node): ToastGraph => ({
@@ -30,12 +25,12 @@ const withPicture = (graph: ToastGraph, patch: (node: GraphNode) => GraphNode = 
 
 const hash = async (graph: ToastGraph) =>
   createHash("sha256")
-    .update((await runGraph(graph, UPLOADS_DIR, 7)).data)
+    .update((await runGraph(graph, loadImage, 7)).data)
     .digest("hex");
 
 describe("toast-1 degas as a graph", () => {
   test("7 layers rows — renders under RENDER_MAX_LAYERS 7", async () => {
-    const { width, height } = await runGraph(withPicture(toast1degas), UPLOADS_DIR, 7);
+    const { width, height } = await runGraph(withPicture(toast1degas), loadImage, 7);
     expect([width, height]).toEqual([WIDTH, HEIGHT]);
   });
 

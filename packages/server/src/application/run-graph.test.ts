@@ -1,19 +1,12 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { TOAST_GRAPH_VERSION, type BlendMode, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
+import { imageFileToRawData } from "@xtc-toaster/lib";
 import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, cornersQuad, runGraph } from "./run-graph";
 
-// runGraph reads the picture from an uploads dir: the fixture under a uuid name, like an upload
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../../lib/tests/fixtures/poppies.jpg");
-const UPLOADS_DIR = resolve(import.meta.dirname, "../../tests/output/run-graph");
 const IMAGE_ID = "3f6c1a52-8e0b-4c1d-9a7e-2b5f4d6e8a90";
-
-beforeAll(async () => {
-  await mkdir(UPLOADS_DIR, { recursive: true });
-  await copyFile(FIXTURE_PATH, resolve(UPLOADS_DIR, IMAGE_ID));
-});
-afterAll(() => rm(UPLOADS_DIR, { recursive: true, force: true }));
+const loadImage = () => imageFileToRawData(FIXTURE_PATH);
 
 const input: GraphNode = { id: "in", type: "input", data: { imageId: IMAGE_ID } };
 const colorNoise: GraphNode = { id: "nz", type: "colorNoise", data: { deviationCoefficient: 0.5 } };
@@ -37,7 +30,7 @@ const edge = (source: string, target: string, targetHandle?: string): GraphEdge 
 const graph = (nodes: GraphNode[], edges: GraphEdge[]) => ({ version: TOAST_GRAPH_VERSION, nodes, edges });
 
 const render = (nodes: GraphNode[], edges: GraphEdge[], maxLayers?: number) =>
-  runGraph(graph(nodes, edges), UPLOADS_DIR, maxLayers);
+  runGraph(graph(nodes, edges), loadImage, maxLayers);
 const hashOf = async (nodes: GraphNode[], edges: GraphEdge[], maxLayers?: number) =>
   Bun.hash((await render(nodes, edges, maxLayers)).data);
 
@@ -87,7 +80,26 @@ describe("runGraph: structure", () => {
     ["two inputs", graph([input, { ...input, id: "in2" }, output], [edge("in", "out")])],
     ["duplicate ids", graph([input, { ...colorNoise, id: "in" }, output], [edge("in", "out")])],
   ])("rejects %s", async (_, g) => {
-    await expect(runGraph(g, UPLOADS_DIR)).rejects.toBeInstanceOf(GraphError);
+    await expect(runGraph(g, loadImage)).rejects.toBeInstanceOf(GraphError);
+  });
+});
+
+describe("runGraph: the picture", () => {
+  const plainGraph = graph([input, output], [edge("in", "out")]);
+
+  test("asks the port for the input's imageId", async () => {
+    const asked: string[] = [];
+    await runGraph(plainGraph, (imageId) => {
+      asked.push(imageId);
+      return loadImage();
+    });
+    expect(asked).toEqual([IMAGE_ID]);
+  });
+
+  test("the port has no such picture → image not found on the input", async () => {
+    const rendering = runGraph(plainGraph, async () => null);
+    await expect(rendering).rejects.toBeInstanceOf(GraphError);
+    await expect(rendering).rejects.toMatchObject({ message: "image not found", nodeId: "in" });
   });
 });
 

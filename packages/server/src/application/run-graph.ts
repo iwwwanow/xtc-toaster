@@ -19,7 +19,9 @@ import {
   type LayerDimensions,
   type Quad,
 } from "@xtc-toaster/lib";
-import { loadUpload } from "../infrastructure/repository/uploads";
+
+// The port to where pictures live, the adapter comes from outside (render-worker.ts); null — no such picture
+export type LoadImage = (imageId: string) => Promise<({ data: ImageRawDataArray } & LayerDimensions) | null>;
 
 // becomes render-error; nodeId points the client at the node to highlight
 export class GraphError extends Error {
@@ -96,10 +98,9 @@ const CHANNEL: Record<ChannelNode["data"]["channel"], Channel> = {
   alpha: Channel.Alpha,
 };
 
-const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: string) => {
+const loadInput = async ({ id, data: { imageId } }: InputNode, loadImage: LoadImage) => {
   if (imageId === null) throw new GraphError("upload an image", id);
-  // imageId is a uuid (contract) — safe to build a path from; null — expired / evicted
-  const image = await loadUpload(uploadsDir, imageId);
+  const image = await loadImage(imageId);
   if (!image) throw new GraphError("image not found", id);
   return image;
 };
@@ -174,7 +175,7 @@ type Flow = { data: ImageRawDataArray; opacity: number };
 // (fill / tint) write in place, so consumers never share a buffer.
 export const runGraph = async (
   graph: ToastGraph,
-  uploadsDir: string,
+  loadImage: LoadImage,
   maxLayers = RENDER_MAX_LAYERS_DEFAULT,
 ): Promise<{ data: ImageRawDataArray } & LayerDimensions> => {
   const issue = validateGraph(graph);
@@ -188,7 +189,7 @@ export const runGraph = async (
   const output = graph.nodes.find((node) => node.type === "output")!;
 
   const pulls = ancestry(byId, into, output.id, maxLayers);
-  const { data, width, height } = await loadInput(input, uploadsDir);
+  const { data, width, height } = await loadInput(input, loadImage);
 
   const results = new Map<NodeId, Flow>();
   const pull = (id: NodeId): Flow => {
