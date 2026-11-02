@@ -7,27 +7,48 @@ import type { RenderReply, RenderRequest } from "./render-worker";
 
 type Rendered = Extract<RenderReply, { png: string }>;
 
-let worker: Worker | null = null;
-let queue: Promise<unknown> = Promise.resolve();
+export const createRenderQueue = (workerUrl: URL) => {
+  let worker: Worker | null = null;
+  let failRender: ((reason: Error) => void) | null = null;
+  let queue: Promise<unknown> = Promise.resolve();
 
-const run = (request: RenderRequest) =>
-  new Promise<Rendered>((resolve, reject) => {
-    if (!worker) {
-      worker = new Worker(new URL("./render-worker.ts", import.meta.url));
-      worker.unref(); // an idle worker doesn't keep the process alive
-    }
-    worker.onmessage = ({ data: reply }: MessageEvent<RenderReply>) => {
-      if ("png" in reply) return resolve(reply);
-      const { message, nodeId } = reply.error;
-      reject(nodeId ? new GraphError(message, nodeId) : new Error(message));
-    };
-    worker.onerror = (event) => reject(new Error(event.message));
-    worker.postMessage(request);
-  });
+  // A dead worker never replies: forget it — the next render starts a fresh one — and fail the render
+  // in flight, or it holds the line forever. The close after terminate() finds the worker already forgotten.
+  const discard = (dead: Worker, message: string) => {
+    if (worker !== dead) return;
+    worker = null;
+    failRender?.(new Error(message));
+  };
 
-// one render at a time, in call order
-export const render = (request: RenderRequest): Promise<Rendered> => {
-  const result = queue.then(() => run(request));
-  queue = result.catch(() => {});
-  return result;
+  const startWorker = () => {
+    const started = new Worker(workerUrl);
+    started.unref(); // an idle worker doesn't keep the process alive
+    started.addEventListener("error", (event) => {
+      discard(started, event.message);
+      started.terminate();
+    });
+    started.addEventListener("close", () => discard(started, "render worker exited"));
+    return started;
+  };
+
+  const run = (request: RenderRequest) =>
+    new Promise<Rendered>((resolve, reject) => {
+      worker ??= startWorker();
+      failRender = reject;
+      worker.onmessage = ({ data: reply }: MessageEvent<RenderReply>) => {
+        if ("png" in reply) return resolve(reply);
+        const { message, nodeId } = reply.error;
+        reject(nodeId ? new GraphError(message, nodeId) : new Error(message));
+      };
+      worker.postMessage(request);
+    });
+
+  // one render at a time, in call order
+  return (request: RenderRequest): Promise<Rendered> => {
+    const result = queue.then(() => run(request));
+    queue = result.catch(() => {});
+    return result;
+  };
 };
+
+export const render = createRenderQueue(new URL("./render-worker.ts", import.meta.url));
