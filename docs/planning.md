@@ -124,6 +124,7 @@
      - (#4) blend-modes: normal + add only
 5. [ ] 02.11-15.11. animation node with export (timeline node)
    - 2 weeks
+   - 02.11 went to the server refactor and its review (see sprint 7); sprint work starts 03.11
    - extend contract
    - without live-preview
    - render current frame view
@@ -142,6 +143,7 @@
 7. [ ] 23.11-29.11. free buffer
    - manual review + refactoring of the vibe-coded code — by the user, Claude helps (moved from sprint 3 on 26.10): `server` → `contract` → `web` → `lib`, no behaviour change, tests green before and after, one package = one branch, `refactor:` commits; findings that don't fit → `docs/backlog/`. Already written down: `docs/backlog/2026-11-01_validate-graph-into-zod.md`, `docs/backlog/2026-10-06_lib-tech-debt.md`, `2026-10-06_image-codec-into-lib.md`, `2026-10-06_render-boundary.md`, `2026-10-06_ts-hot-loop-allocations.md`, `2026-10-03_lib-test-audit.md`
      - [x] 02.11 server: application / infrastructure layers, application depends on a `LoadImage` port; review fixes — a dead render worker no longer blocks the queue, `loadUpload` without the `exists()` race — `docs/diary/2026-11-02_server-layers-review-fixes.md`
+     - [ ] the rest of that review, deferred whole on 02.11, to take in one go: `docs/backlog/2026-11-02_server-layers-open-points.md` (worker death not logged, no timeout on a hung render, raw errors to the client, final layer layout, …), `docs/backlog/2026-11-02_image-id-path-safety.md`; `v0.7.2` not checked on prod / in the browser
    - before the release 28.11 — the buffer first goes to whatever slipped from sprints 4–6
 
 ## cut-list

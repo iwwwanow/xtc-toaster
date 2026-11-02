@@ -1,6 +1,6 @@
 # Незакрытое и сомнительное после разбивки сервера на слои
 
-Всё, что осталось после ревью и правок `refactor/server-layers` (`v0.7.2`), чтобы разобрать одним заходом. Подробности — `docs/diary/2026-11-02_server-layers-review-fixes.md`; проверка `imageId` вынесена отдельно — `docs/backlog/2026-11-02_image-id-path-safety.md`.
+Всё, что осталось после ревью и правок `refactor/server-layers` (`v0.7.2`), чтобы разобрать одним заходом. Решение 02.11: отложено целиком, в планировании стоит под ручным ревью спринта 7. Подробности — `docs/diary/2026-11-02_server-layers-review-fixes.md`; проверка `imageId` вынесена отдельно — `docs/backlog/2026-11-02_image-id-path-safety.md`.
 
 **Находки ревью, которые не брали в работу**
 
@@ -22,5 +22,5 @@
 **Окружение и процесс**
 
 - **Старый симлинк `packages/server/node_modules/canvas` (от 10.10) всё ещё лежит локально.** Он уже скрыл поломку чистой установки и скроет следующую такую же. Лечится чистым `bun install`; а локальный зелёный прогон после правки зависимостей ничего не доказывает, проверять надо через `docker build --target test .`.
-- **`docs/sprints/sprint-5.refactor-planning.md`** — неотслеживаемый черновик пользователя с другой раскладкой (`infra/handlers`, `infra/entrypoints`, `application/use-case`), а в коде сейчас `presentation/`, `repository/`, `workers/`. Решить, какая раскладка итоговая.
+- **Итоговая раскладка слоёв не решена.** В черновике пользователя `docs/sprints/sprint-5.refactor-planning.md` (в git не попал, к концу 02.11 в рабочем дереве его нет) была другая раскладка: `infra/handlers`, `infra/entrypoints`, `application/use-case`. В коде сейчас `presentation/`, `repository/`, `workers/`.
 - **`ubuntu-latest` в `.github/workflows/release.yml`.** CI предупреждает о переходе метки на Ubuntu 26. Пока всё зелёное, но образ раннера может смениться без коммита в репо.
