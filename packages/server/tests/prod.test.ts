@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { UploadResponseSchema } from "@xtc-toaster/contract";
-import { createServer } from "../src/server";
+import { createServer } from "../src/infrastructure/presentation/server";
 
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
 const OUT_DIR = resolve(import.meta.dirname, "output/prod");

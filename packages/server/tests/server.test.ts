@@ -10,7 +10,7 @@ import {
   UploadResponseSchema,
   type ServerMessage,
 } from "@xtc-toaster/contract";
-import { createServer } from "../src/server";
+import { createServer } from "../src/infrastructure/presentation/server";
 
 const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
 const UPLOADS_DIR = resolve(import.meta.dirname, "output/uploads");

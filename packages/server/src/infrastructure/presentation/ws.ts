@@ -5,8 +5,8 @@ import {
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
-import { render } from "./render";
-import { GraphError } from "./run-graph";
+import { GraphError } from "../../application/run-graph";
+import { render } from "../workers/render-queue";
 
 // Renders run in a worker and can't be aborted → per connection one render
 // runs, at most one waits; a newer message replaces the waiting one.

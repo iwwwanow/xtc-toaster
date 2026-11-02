@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import {
   validateGraph,
   type LayersNode,
@@ -15,12 +14,12 @@ import {
   Channel,
   Color,
   Composition,
-  imageFileToRawData,
   type ImageRawDataArray,
   type Layer,
   type LayerDimensions,
   type Quad,
 } from "@xtc-toaster/lib";
+import { loadUpload } from "../infrastructure/repository/uploads";
 
 // becomes render-error; nodeId points the client at the node to highlight
 export class GraphError extends Error {
@@ -99,10 +98,10 @@ const CHANNEL: Record<ChannelNode["data"]["channel"], Channel> = {
 
 const loadInput = async ({ id, data: { imageId } }: InputNode, uploadsDir: string) => {
   if (imageId === null) throw new GraphError("upload an image", id);
-  // imageId is a uuid (contract) — safe to build a path from
-  const path = join(uploadsDir, imageId);
-  if (!(await Bun.file(path).exists())) throw new GraphError("image not found", id);
-  return imageFileToRawData(path);
+  // imageId is a uuid (contract) — safe to build a path from; null — expired / evicted
+  const image = await loadUpload(uploadsDir, imageId);
+  if (!image) throw new GraphError("image not found", id);
+  return image;
 };
 
 type Applied = { node: Exclude<GraphNode, InputNode | LayersNode | OutputNode>; layer: Layer } & LayerDimensions;

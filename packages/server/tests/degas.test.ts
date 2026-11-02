@@ -4,7 +4,7 @@ import { copyFile, mkdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { GraphNode, ToastGraph } from "@xtc-toaster/contract";
 import { toast1degas } from "@xtc-toaster/toasts";
-import { runGraph } from "../src/run-graph";
+import { runGraph } from "../src/application/run-graph";
 
 // toast-1 (degas) as a graph against the lib golden test of the script's recipe — the same picture, the same
 // hash: `frame t=0` in packages/lib/tests/__snapshots__/pipeline.golden.test.ts.snap. That snapshot changes

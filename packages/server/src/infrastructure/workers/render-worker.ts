@@ -1,7 +1,7 @@
-// Render worker: the whole render (runGraph + png encoding) off the main thread, see render.ts
+// Render worker: the whole render (runGraph + png encoding) off the main thread, see render-queue.ts
 import type { NodeId, ToastGraph } from "@xtc-toaster/contract";
-import { encodePng } from "./codec";
-import { GraphError, runGraph } from "./run-graph";
+import { render } from "../../application/render";
+import { GraphError } from "../../application/run-graph";
 
 export type RenderRequest = { graph: ToastGraph; uploadsDir: string; maxLayers?: number };
 export type RenderReply =
@@ -13,8 +13,8 @@ declare const self: Worker;
 self.onmessage = async ({ data: { graph, uploadsDir, maxLayers } }: MessageEvent<RenderRequest>) => {
   let reply: RenderReply;
   try {
-    const { data, width, height } = await runGraph(graph, uploadsDir, maxLayers);
-    reply = { width, height, png: encodePng(data, { width, height }).toString("base64") };
+    const { png, width, height } = await render(graph, uploadsDir, maxLayers);
+    reply = { width, height, png: png.toString("base64") };
   } catch (e) {
     const nodeId = e instanceof GraphError ? e.nodeId : undefined;
     reply = { error: { message: e instanceof Error ? e.message : String(e), ...(nodeId && { nodeId }) } };

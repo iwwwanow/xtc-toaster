@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
+import { removeExpired, type UploadsLimits } from "../repository/uploads";
 import { createStaticHandler } from "./static";
 import { handleUpload } from "./upload";
-import { removeExpired, type UploadsLimits } from "./uploads-cleanup";
 import { createWsHandler, initialWsData } from "./ws";
 
 export type ServerOptions = {

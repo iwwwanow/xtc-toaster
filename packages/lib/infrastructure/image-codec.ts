@@ -1,8 +1,8 @@
-// Temporary: the server talks to canvas directly because lib only has
-// file-based codec functions. Everything canvas-related lives here so it can
-// move into lib in one piece — docs/backlog/2026-10-06_image-codec-into-lib.md
+// Buffer-level image codec: the pieces of `canvas` the server (and anything
+// without files on disk) needs to decode / encode images. Moved from
+// packages/server/src/codec.ts — docs/backlog/2026-10-06_image-codec-into-lib.md.
 import { createCanvas, loadImage } from "canvas";
-import type { ImageRawDataArray, LayerDimensions } from "@xtc-toaster/lib";
+import type { ImageRawDataArray, LayerDimensions } from "../domain/types";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];

@@ -11,8 +11,7 @@
   },
   "dependencies": {
     "@xtc-toaster/contract": "workspace:*",
-    "@xtc-toaster/lib": "workspace:*",
-    "canvas": "3.2.3"
+    "@xtc-toaster/lib": "workspace:*"
   },
   "devDependencies": {
     "@xtc-toaster/toasts": "workspace:*"

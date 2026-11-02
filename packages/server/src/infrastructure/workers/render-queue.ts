@@ -2,7 +2,7 @@
 // event loop stays free and ws messages reach the per-connection queue while a render is going
 // (latest-wins, ws.ts). One worker for the whole process: native canvas crashes bun once a second
 // worker uses it. Renders of different connections wait in line — docs/backlog/2026-10-11_render-pipeline-evolution.md
-import { GraphError } from "./run-graph";
+import { GraphError } from "../../application/run-graph";
 import type { RenderReply, RenderRequest } from "./render-worker";
 
 type Rendered = Extract<RenderReply, { png: string }>;

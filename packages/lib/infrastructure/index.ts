@@ -1,4 +1,5 @@
 export { assembleGif, assembleVideo, loopVideoTo, speedUpVideo } from "./assemble-gif";
+export { decodeImage, encodePng, isPngOrJpeg } from "./image-codec";
 import { createCanvas, loadImage } from "canvas";
 import { writeFile } from "fs/promises";
 import type { ImageRawDataArray, LayerDimensions } from "../domain/types";

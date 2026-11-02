@@ -5,8 +5,8 @@ import { TOAST_GRAPH_VERSION, type BlendMode, type GraphEdge, type GraphNode } f
 import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, cornersQuad, runGraph } from "./run-graph";
 
 // runGraph reads the picture from an uploads dir: the fixture under a uuid name, like an upload
-const FIXTURE_PATH = resolve(import.meta.dirname, "../../lib/tests/fixtures/poppies.jpg");
-const UPLOADS_DIR = resolve(import.meta.dirname, "../tests/output/run-graph");
+const FIXTURE_PATH = resolve(import.meta.dirname, "../../../lib/tests/fixtures/poppies.jpg");
+const UPLOADS_DIR = resolve(import.meta.dirname, "../../tests/output/run-graph");
 const IMAGE_ID = "3f6c1a52-8e0b-4c1d-9a7e-2b5f4d6e8a90";
 
 beforeAll(async () => {
