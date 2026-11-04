@@ -7,7 +7,7 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-04) — contract done (no ws messages yet), next — web
+### status (2026-11-04) — contract done (no ws messages yet), tracks and keys decided; web starts 05.11
 
 - the 29.10 sketch reviewed, its open points answered — see the decisions at the end; the discussion — `docs/diary/2026-11-03_sprint-5-planning.md`
 - technical checks (memory, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
@@ -39,8 +39,8 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
   } }
   ```
 - `GraphEdgeSchema` gets an optional `sourceHandle` — the param's name. A param link: `{ source: "move-1", sourceHandle: "x", target: "anim", targetHandle: "t1" }`, built like the `layers` rows
-- `validateGraph`: a link with `sourceHandle` goes only into the animation node, the node takes only such links; the handle is a numeric param of the source node's type; one track per param; `value` within the param's `PARAMS` bounds; `frame` within `0..frames-1`; keys of a track on different frames; nothing links out of the animation node
-- `graphAtFrame(graph, frame)` in contract — one pure function for web and server: linear between keys, the nearest key's value outside them (blender's constant extrapolation), a track without keys leaves `data` as is
+- `validateGraph`: a link with `sourceHandle` goes only into the animation node, the node takes only such links; the handle is a numeric param of the source node's type; one track per param; keys of a track on different frames; nothing links out of the animation node. Not rules: a key past `frames`, a key out of the param's bounds, a track without a link
+- `graphAtFrame(graph, frame)` in contract — one pure function for web and server: linear between keys, the nearest key's value outside them (blender's constant extrapolation), a track without keys leaves `data` as is, a value is clamped to the param's `PARAMS` bounds (the keys stay as they are)
 - `TOAST_GRAPH_VERSION` stays `1`, the old `number | Keyframes` plan is dropped
 - ws: `render-animation` from the client, `animation-progress` (`frame` / `frames`) and the result from the server
 
@@ -56,14 +56,16 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
 #### web
 
 - a handle on every numeric param row
-- a link dropped from a param onto the animation node creates a track, its first key — at the playhead with the param's current value. Removing the link removes the track; removing a param's node removes its links, so its tracks too
+- tracks work as the `layers` rows: `+ track` adds an empty row with its handle — on top, right under the button; rows are dragged to reorder (the order doesn't change the picture); `×` removes the row with its link and keys. Nothing is created by dropping a link onto the node
+- a link into an empty track makes its first key — at the playhead with the param's current value. Removing the link, or the param's node, keeps the row and its keys; relinked to another param the keys stay as they are, the frame clamps them to its bounds. No link — no `+ key`
 - `AnimationNode`, inside the node, blender as the base:
   - **width** — 3 uiu grid columns, `190 × 3 + 16 × 2 = 602px`: channels — 1 column (190), keys — 2 (396)
   - **height** — grows with the tracks, as the `layers` node; no vertical scroll (removed 04.11 — `docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`)
   - **handles** — the current style: one in each channel row, out of the node's frame, as the `layers` rows; the link's `targetHandle` is the track's id
   - **scroll** — only horizontal over the timeline with the ruler moving along; the channels column stays outside it, so its handles aren't clipped. The area is `nowheel nodrag nopan`, or the canvas takes the wheel and the drag
+  - **frames** — only what gets rendered: keys past the end stay, dimmed on the timeline so they can be selected and removed, and still pull the interpolation; the playhead stops at `frames - 1`
   - **top** — `fps`, `frames`, `loop` (`reps` / `seconds` / off — a switch, the other field is off), the ruler, the playhead (click on the ruler)
-  - **a track row** — the param's name, keys as diamonds, `+ key` at the playhead (the value — interpolated at that frame)
+  - **a track row** — the param's name from the link (`move.x`), no link — `track 3`; no visibility checkbox, no blend mode; keys as diamonds, `+ key` at the playhead (the value — interpolated at that frame)
   - **the selected key** — number fields `frame` and `value`, `× key`
 - a param with a track: its field is read-only and shows the value at the playhead — values are edited in the animation node
 - moving the playhead → the usual render of that frame (latest-wins holds); `download png` saves that frame
@@ -87,7 +89,7 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 ### definition of done
 
 - `docker build --target test .` green, `bun run test` covers `graphAtFrame` and the new `validateGraph` rules
-- a param wired to the node makes a track; keys added and removed by hand; the playhead changes the output picture
+- `+ track` makes a row, a wired param gets its first key; keys added and removed by hand; the playhead changes the output picture
 - `render animation` downloads a gif that plays the keys, `reps` / `seconds` work and exclude each other
 - degas animated exports on the prod limits with no OOM (`docker compose` with `mem_limit` or prod), the numbers in the diary
 - a toast with animation survives export → import → reload
@@ -139,12 +141,12 @@ answered 03.11:
 - keys are added and removed by hand in the ui; autokey → stretch
 - `fps`, `frames`, `loop` live in the animation node; `reps` and `seconds` exclude each other; only one cycle is rendered
 - export minimum: gif only
+- 04.11: tracks as the `layers` rows, by hand, a new one on top; keys outlive a shorter `frames` and a removed or rewired link (the frame clamps the value) — nothing is destroyed by a setting or a wire
 - keys count in frames, not seconds (as blender): a changed `fps` changes the speed — confirmed 04.11
 
 defaults (set 03.11 while fixing the plan, not asked separately — change here if wrong):
 
 - a param with a track is read-only until stretch 3
 - `loop` absent — gif loops forever
-- removing a link removes its track with its keys
 - the stretch order above, and matrix as stretch, not must
 - set 04.11 with the contract: `fps` — an integer 1–100 (gif delays are 1/100 s, can widen for mp4); `loop` is strict — a file with both `reps` and `seconds` is refused; a track without a link is allowed and changes nothing, like an unlinked `layers` row
