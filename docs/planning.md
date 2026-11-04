@@ -122,15 +122,17 @@
      - uiu → only the rule + tokens (goes first)
      - drag-to-reorder → `↑` / `↓`
      - (#4) blend-modes: normal + add only
-5. [ ] 02.11-15.11. animation node with export (timeline node)
-   - 2 weeks
-   - 02.11 went to the server refactor and its review (see sprint 7); sprint work starts 03.11
+5. [ ] 03.11-15.11. animation node with export
+   - 2 weeks; 02.11 went to the server refactor and its review (see sprint 7)
+   - plan fixed 03.11: `docs/sprints/sprint-5.spec.md`, `sprint-5.diagram.d2`; details — `docs/diary/2026-11-03_sprint-5-planning.md`
+   - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
    - extend contract
    - without live-preview
    - render current frame view
-   - export animated pucture (mp4/gif)
+   - export animated picture: gif (mp4 → stretch)
+   - not here: time-window — `docs/backlog/2026-11-03_timeline-time-windows.md`
    - cut if behind:
-     - (#1) export gif only, no mp4
+     - (#1) export gif only, no mp4 — applied up front on 03.11
      - (#6) last resort: animation → 1.1, release static toasts
 6. [ ] 16.11-22.11. result testing
    - 1 week
@@ -152,8 +154,9 @@
 
 ## next-release-features:
 
-1. animation node with live-preview (timeline node)
+1. animation node with live-preview
    - live preview animated picture
+   - time-window: a vertical cut of the timeline, a show reel — `docs/backlog/2026-11-03_timeline-time-windows.md`
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
    - server: done 11.10 — render in a worker thread, latest-wins holds for bursts — `docs/backlog/2026-10-11_render-pipeline-evolution.md`

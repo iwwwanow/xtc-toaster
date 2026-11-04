@@ -1,32 +1,86 @@
-timeline: {
-  props: {
-    prop-1
-    prop-2
-    prop-3
+vars: {
+  d2-config: {
+    layout-engine: dagre
   }
-  time-window-1
-  time-window-2
-  time-window-3
 }
 
-node-1: {
-  prop-1
-  prop-2
+# sprint 5 — animation node. spec: docs/sprints/sprint-5.spec.md
+# решено 03.11 (docs/diary/2026-11-03_sprint-5-planning.md):
+# - у ноды анимации нет выхода: runGraph идёт от output и до неё не доходит
+# - одна дорожка = одно числовое свойство; провод от свойства создаёт дорожку
+# - скорость линейная; ключи ставятся и удаляются вручную через ui
+# - один output, кнопка render animation; второго output нет
+# - интерфейс внутри ноды: 3 колонки uiu (602px), высота --CARD-HEIGHT, скролл по вертикали и по таймлайну
+# - экспорт пока только gif; рендерится один цикл, повтор — свойство файла
+# - time-window (нарезка, шоу-рил) — позже: docs/backlog/2026-11-03_timeline-time-windows.md
+
+direction: right
+
+input: "input"
+
+move: "move" {
+  x: "x ●"
+  y: "y ●"
 }
 
-node-2: {
-  prop-1
+corners: "corners" {
+  top-left-x: "topLeftX ●"
+  other: "..."
 }
 
-node-1.prop-1 -> timeline.props.prop-1
-node-1.prop-2 -> timeline.props.prop-3
+opacity-node: "opacity" {
+  value: "opacity ●"
+}
 
-node-2.prop-1 -> timeline.props.prop-2
+layers-node: "layers" {
+  row-1: "● layer 1"
+  row-2: "● layer 2"
+}
 
-node-1 -> timeline.time-window-1
-node-2 -> timeline.time-window-3
-node-3 -> timeline.time-window-2
+output: "output\n(кадр под playhead)"
 
-timeline -> output
+# пиксели — как раньше
+input -> move
+move -> corners
+corners -> layers-node.row-1
+input -> opacity-node
+opacity-node -> layers-node.row-2
+layers-node -> output
 
-# TODO: need validation, review and details
+animation: "animation (без выхода)" {
+  style.stroke-width: 2
+
+  settings: "fps · frames · loop: reps | seconds"
+  ruler: "линейка · playhead"
+  track-1: "● move.x — ◆────◆"
+  track-2: "● move.y — ◆──◆──◆"
+  track-3: "● corners.topLeftX — ◆────◆"
+  track-4: "● opacity — ◆───◆"
+  key: "выбранный ключ: frame · value · × key"
+}
+
+# привязка свойства к дорожке, не пиксели
+move.x -> animation.track-1: {style.stroke-dash: 3}
+move.y -> animation.track-2: {style.stroke-dash: 3}
+corners.top-left-x -> animation.track-3: {style.stroke-dash: 3}
+opacity-node.value -> animation.track-4: {style.stroke-dash: 3}
+
+actions: "actions panel" {
+  png: "download png\n(кадр под playhead)"
+  gif: "render animation\n(frame n / N)"
+}
+
+output -> actions.png
+actions.gif -> export
+
+export: "экспорт" {
+  style.stroke-dash: 3
+
+  frame: "кадр: graphAtFrame(graph, n)\n+ обычный рендер"
+  ffmpeg: "ffmpeg → gif\nloop — свойство файла"
+  file: "<toast>_<YYYYMMDD-HHmmss>.gif"
+
+  frame -> frame: "один цикл: 0..frames-1"
+  frame -> ffmpeg
+  ffmpeg -> file
+}

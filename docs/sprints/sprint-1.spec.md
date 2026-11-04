@@ -84,7 +84,7 @@ contract does not change for stretch — only the moment the client sends `rende
 - several inputs on output (layers) — sprint 4
   - edges into output get `targetHandle` (layer index), output `data` gets per-layer `blendMode` / `opacity`
 - animatable params — sprint 5
-  - param becomes `number | Keyframes`, `version: 2` + `migrate(graph)`
+  - ~~param becomes `number | Keyframes`, `version: 2` + `migrate(graph)`~~ → 03.11: a separate `animation` node, params unchanged, version stays — `docs/sprints/sprint-5.spec.md`
 - s3 for uploads — later, for now `assets/uploads/<imageId>`
 - images over 2 MP, binary ws frames instead of base64 — later (see upload limits)
 - webp — `canvas` can't decode it (`loadImage` → "Unsupported image type")
