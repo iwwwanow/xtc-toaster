@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { TOAST_GRAPH_VERSION, type BlendMode, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
+import { TOAST_GRAPH_VERSION, graphAtFrame, type BlendMode, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
 import { imageFileToRawData } from "@xtc-toaster/lib";
 import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, cornersQuad, runGraph } from "./run-graph";
 
@@ -180,6 +180,33 @@ describe("runGraph: layersNode", () => {
       edge("outer", "out"),
     ];
     expect(await hashOf(nodes, edges)).toBe(await plain());
+  });
+});
+
+describe("runGraph: the animation node", () => {
+  const animation: GraphNode = {
+    id: "anim",
+    type: "animation",
+    data: { fps: 24, frames: 11, tracks: [{ id: "t1", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] }] },
+  };
+  const animated = (id: string): GraphEdge => ({ id: "param", source: id, sourceHandle: "opacity", target: "anim", targetHandle: "t1" });
+  const chain = [edge("in", "op"), edge("op", "out")];
+
+  test("is never reached: the picture is the one without it", async () => {
+    const nodes = [input, opacity("op", 0.5), output];
+    expect(await hashOf([...nodes, animation], [...chain, animated("op")])).toBe(await hashOf(nodes, chain));
+  });
+
+  test("a param link alone doesn't pull its source", async () => {
+    const nodes = [input, opacity("op", 0.5), animation, output];
+    expect(await hashOf(nodes, [edge("in", "out"), animated("op")])).toBe(await plain());
+  });
+
+  test("a frame from graphAtFrame renders as the same graph with that value", async () => {
+    const frame = graphAtFrame(graph([input, opacity("op", 1), animation, output], [...chain, animated("op")]), 5);
+    const { data } = await runGraph(frame, loadImage);
+    const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
+    expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
   });
 });
 

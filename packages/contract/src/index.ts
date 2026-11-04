@@ -1,3 +1,4 @@
+export * from "./animation";
 export * from "./constants";
 export * from "./graph";
 export * from "./messages";

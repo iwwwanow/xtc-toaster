@@ -73,6 +73,101 @@ describe("validateGraph", () => {
   });
 });
 
+describe("validateGraph, the animation node", () => {
+  const move: GraphNode = { id: "mv", type: "move", data: { x: 0, y: 0 } };
+  const matrix: GraphNode = { id: "mx", type: "matrix", data: { matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] } };
+  const animation = (tracks: { id: string; keys: { frame: number; value: number }[] }[], frames = 10): GraphNode => ({
+    id: "anim",
+    type: "animation",
+    data: { fps: 24, frames, tracks },
+  });
+  const t1 = { id: "t1", keys: [{ frame: 0, value: 0 }, { frame: 9, value: 10 }] };
+  const t2 = { id: "t2", keys: [] };
+  const param = (source: string, sourceHandle: string, targetHandle?: string): GraphEdge => ({
+    id: `${source}.${sourceHandle}`,
+    source,
+    sourceHandle,
+    target: "anim",
+    ...(targetHandle && { targetHandle }),
+  });
+  const withAnimation = (node: GraphNode, edges: GraphEdge[], extra: GraphNode[] = [move]) =>
+    graph([input, ...extra, node, output], edges);
+
+  test.each([
+    ["a node without tracks", withAnimation(animation([]), [])],
+    ["a param linked to a track", withAnimation(animation([t1]), [param("mv", "x", "t1")])],
+    ["two params of one node", withAnimation(animation([t1, t2]), [param("mv", "x", "t1"), param("mv", "y", "t2")])],
+    ["a track without a link", withAnimation(animation([t1]), [])],
+    ["a track without keys", withAnimation(animation([t2]), [param("mv", "x", "t2")])],
+    [
+      "a param link next to the node's pixel links",
+      withAnimation(animation([t1]), [edge("in", "mv"), edge("mv", "out"), param("mv", "x", "t1")]),
+    ],
+    ["a key on the last frame and on the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 9, value: 100 }] }]), [param("mv", "x", "t1")])],
+  ])("accepts %s", (_, g) => {
+    expect(validateGraph(g)).toBeNull();
+  });
+
+  test.each([
+    ["a second animation node", graph([input, animation([]), { ...animation([]), id: "anim2" }, output], []), "anim2"],
+    ["a pixel link into it", withAnimation(animation([t1]), [edge("mv", "anim", "t1")]), "anim"],
+    ["a link out of it", withAnimation(animation([t1]), [edge("anim", "out")]), "anim"],
+    ["a param link out of it", withAnimation(animation([t1]), [{ ...edge("anim", "mv"), sourceHandle: "x" }]), "anim"],
+    ["a param link into a plain node", withAnimation(animation([]), [{ ...edge("mv", "out"), sourceHandle: "x" }]), "mv"],
+    ["a param link into a layers row", graph([input, move, layersNode, output], [{ ...edge("mv", "cmp", "top"), sourceHandle: "x" }]), "mv"],
+    ["a param the type doesn't have", withAnimation(animation([t1]), [param("mv", "z", "t1")]), "mv"],
+    ["an inherited name as a param", withAnimation(animation([t1]), [param("mv", "constructor", "t1")]), "mv"],
+    ["a non-numeric param", withAnimation(animation([t1]), [param("mx", "matrix", "t1")], [matrix]), "mx"],
+    ["a param of the input", withAnimation(animation([t1]), [param("in", "imageId", "t1")]), "in"],
+    ["a param link without a track", withAnimation(animation([t1]), [param("mv", "x")]), "anim"],
+    ["a link into a missing track", withAnimation(animation([t1]), [param("mv", "x", "ghost")]), "anim"],
+    ["two tracks on one param", withAnimation(animation([t1, t2]), [param("mv", "x", "t1"), { ...param("mv", "x", "t2"), id: "again" }]), "anim"],
+    ["two params on one track", withAnimation(animation([t1]), [param("mv", "x", "t1"), param("mv", "y", "t1")]), "anim"],
+    ["a key under the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: -101 }] }]), [param("mv", "x", "t1")]), "anim"],
+    ["a key over the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: 101 }] }]), [param("mv", "x", "t1")]), "anim"],
+    ["a key past the last frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 10, value: 0 }] }]), []), "anim"],
+    ["two keys on one frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 1, value: 0 }, { frame: 1, value: 5 }] }]), []), "anim"],
+  ])("rejects %s, pointing at the node", (_, g, nodeId) => {
+    expect(validateGraph(g)).toMatchObject({ nodeId });
+  });
+});
+
+describe("the animation node in parseToastGraph", () => {
+  const nodeWith = (data: unknown) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ id: "anim", type: "animation", data }], edges: [] });
+  const base = { fps: 24, frames: 48, tracks: [] };
+
+  test.each([
+    ["no loop", base],
+    ["reps", { ...base, loop: { reps: 3 } }],
+    ["seconds", { ...base, loop: { seconds: 15 } }],
+    ["keys", { ...base, tracks: [{ id: "t1", keys: [{ frame: 47, value: 10 }, { frame: 0, value: 0.5 }] }] }],
+  ])("round-trips %s", (_, data) => {
+    expect<unknown>(parseToastGraph(nodeWith(data)).nodes[0]!.data).toEqual(data);
+  });
+
+  test("a param link keeps sourceHandle", () => {
+    const link = { id: "1", source: "mv", sourceHandle: "x", target: "anim", targetHandle: "t1" };
+    expect<unknown>(parseToastGraph({ ...nodeWith(base), edges: [link] }).edges[0]).toEqual(link);
+  });
+
+  test.each([
+    ["reps and seconds together", { ...base, loop: { reps: 3, seconds: 15 } }],
+    ["an empty loop", { ...base, loop: {} }],
+    ["zero reps", { ...base, loop: { reps: 0 } }],
+    ["fractional reps", { ...base, loop: { reps: 1.5 } }],
+    ["zero seconds", { ...base, loop: { seconds: 0 } }],
+    ["zero fps", { ...base, fps: 0 }],
+    ["fps over the max", { ...base, fps: 101 }],
+    ["fractional fps", { ...base, fps: 23.976 }],
+    ["zero frames", { ...base, frames: 0 }],
+    ["a negative key frame", { ...base, tracks: [{ id: "t1", keys: [{ frame: -1, value: 0 }] }] }],
+    ["a fractional key frame", { ...base, tracks: [{ id: "t1", keys: [{ frame: 0.5, value: 0 }] }] }],
+    ["a duplicate track id", { ...base, tracks: [{ id: "t1", keys: [] }, { id: "t1", keys: [] }] }],
+  ])("rejects %s", (_, data) => {
+    expect(() => parseToastGraph(nodeWith(data))).toThrow();
+  });
+});
+
 describe("layersNode in parseToastGraph", () => {
   test("a fan-out graph round-trips, targetHandle kept", () => {
     expect<unknown>(parseToastGraph(fanOut())).toEqual(fanOut());
