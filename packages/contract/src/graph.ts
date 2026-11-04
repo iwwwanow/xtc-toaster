@@ -1,8 +1,15 @@
 import { z } from "zod";
 import { LAYER_NAME_MAX, TOAST_GRAPH_VERSION } from "./constants";
-import { BLEND_MODES, CHANNELS, PARAMS, type ParamBounds } from "./params";
+import { ANIMATION_FPS, BLEND_MODES, CHANNELS, PARAMS, type ParamBounds } from "./params";
 
 const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
+
+const uniqueIds = (what: string) => (rows: { id: string }[], ctx: z.RefinementCtx) => {
+  rows.forEach(({ id }, index) => {
+    if (rows.findIndex((row) => row.id === id) !== index)
+      ctx.addIssue({ code: "custom", path: [index, "id"], message: `duplicate ${what} id` });
+  });
+};
 
 export const NodeIdSchema = z.string().min(1);
 export type NodeId = z.infer<typeof NodeIdSchema>;
@@ -142,15 +149,33 @@ export const LayersNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("layers"),
   data: z.object({
-    layers: z
-      .array(LayerRowSchema)
-      .min(1)
-      .superRefine((layers, ctx) => {
-        layers.forEach(({ id }, index) => {
-          if (layers.findIndex((layer) => layer.id === id) !== index)
-            ctx.addIssue({ code: "custom", path: [index, "id"], message: "duplicate layer id" });
-        });
-      }),
+    layers: z.array(LayerRowSchema).min(1).superRefine(uniqueIds("layer")),
+  }),
+});
+
+// a value on a frame; frames count from 0, as the playhead. Whether the frame fits the node's `frames` and the
+// value fits the linked param — validateGraph
+export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
+
+// keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
+export const AnimationTrackSchema = z.object({ id: z.string().min(1), keys: z.array(AnimationKeySchema) });
+
+// one or the other, absent — the format's default. Strict: a plain object would drop one of the two in silence
+export const AnimationLoopSchema = z.union([
+  z.strictObject({ reps: z.int().min(1) }),
+  z.strictObject({ seconds: z.number().positive() }),
+]);
+
+// no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
+// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render
+export const AnimationNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("animation"),
+  data: z.object({
+    fps: z.int().min(ANIMATION_FPS.min).max(ANIMATION_FPS.max),
+    frames: z.int().min(1),
+    loop: AnimationLoopSchema.optional(),
+    tracks: z.array(AnimationTrackSchema).superRefine(uniqueIds("track")),
   }),
 });
 
@@ -179,6 +204,7 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   TintNodeSchema,
   OpacityNodeSchema,
   LayersNodeSchema,
+  AnimationNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -202,13 +228,19 @@ export type OpacityNode = z.infer<typeof OpacityNodeSchema>;
 export type LayersNode = z.infer<typeof LayersNodeSchema>;
 export type LayerRow = z.infer<typeof LayerRowSchema>;
 export type BlendMode = LayerRow["blendMode"];
+export type AnimationNode = z.infer<typeof AnimationNodeSchema>;
+export type AnimationTrack = z.infer<typeof AnimationTrackSchema>;
+export type AnimationKey = z.infer<typeof AnimationKeySchema>;
+export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: NodeIdSchema,
   target: NodeIdSchema,
-  // a layers edge: the layer row it goes into; every other node has one unnamed handle (no field)
+  // a param link into the animation node: the param's name; a pixel link has no field
+  sourceHandle: z.string().min(1).optional(),
+  // a layers edge: the layer row it goes into; a param link: the track; every other node has one unnamed handle (no field)
   targetHandle: z.string().min(1).optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;

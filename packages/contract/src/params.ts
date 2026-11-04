@@ -68,6 +68,16 @@ export const PARAMS = {
   },
 } as const satisfies Record<string, Record<string, ParamBounds>>;
 
+// the bounds of a node type's numeric param; null — not one (a color, a matrix, an unknown name)
+export const paramBounds = (type: string, param: string): ParamBounds | null => {
+  const params: Record<string, Record<string, ParamBounds>> = PARAMS;
+  const ofType = Object.hasOwn(params, type) ? params[type] : undefined;
+  return ofType && Object.hasOwn(ofType, param) ? ofType[param]! : null;
+};
+
+// an animation node's fps: a gif stores delays in 1/100 s, so 100 is the most it can hold
+export const ANIMATION_FPS = { min: 1, max: 100, initial: 24 } as const satisfies ParamBounds;
+
 // channel picks one of these — not a range: the ui shows a select
 export const CHANNELS = ["red", "green", "blue", "alpha"] as const;
 

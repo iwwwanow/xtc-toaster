@@ -125,6 +125,7 @@
 5. [ ] 03.11-15.11. animation node with export
    - 2 weeks; 02.11 went to the server refactor and its review (see sprint 7)
    - plan fixed 03.11: `docs/sprints/sprint-5.spec.md`, `sprint-5.diagram.d2`; details — `docs/diary/2026-11-03_sprint-5-planning.md`
+   - 04.11: [x] contract — the node, param links, `validateGraph`, `graphAtFrame`, tests; the ws messages moved to the server step. Vertical scroll over the tracks removed — the node grows with them, handles and styles as they are now (`docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`). Keys count in frames — confirmed. Next — web, 05–08.11. Details — `docs/diary/2026-11-04_animation-contract.md`
    - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
    - extend contract
    - without live-preview

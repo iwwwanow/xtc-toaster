@@ -1,5 +1,6 @@
 import {
   validateGraph,
+  type AnimationNode,
   type LayersNode,
   type GraphEdge,
   type GraphNode,
@@ -105,7 +106,7 @@ const loadInput = async ({ id, data: { imageId } }: InputNode, loadImage: LoadIm
   return image;
 };
 
-type Applied = { node: Exclude<GraphNode, InputNode | LayersNode | OutputNode>; layer: Layer } & LayerDimensions;
+type Applied = { node: Exclude<GraphNode, InputNode | LayersNode | AnimationNode | OutputNode>; layer: Layer } & LayerDimensions;
 
 // one node onto the layer; opacity is returned, not applied — lib keeps one opacity per layer and
 // bakes it at render, so the chain multiplies its opacity nodes here
@@ -223,7 +224,8 @@ export const runGraph = async (
     if (node.type === "layers") return compose(node, links);
 
     const flow = pull(links[0]!.source);
-    if (node.type === "output") return flow;
+    // the animation node is never on the way (nothing links out of it), this only narrows the type
+    if (node.type === "output" || node.type === "animation") return flow;
     const layer = new Composition(width, height).createLayerFromPixelData(flow.data);
     try {
       const opacity = applyNode({ node, layer, width, height }, flow.opacity);
