@@ -103,7 +103,8 @@ describe("validateGraph, the animation node", () => {
       "a param link next to the node's pixel links",
       withAnimation(animation([t1]), [edge("in", "mv"), edge("mv", "out"), param("mv", "x", "t1")]),
     ],
-    ["a key on the last frame and on the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 9, value: 100 }] }]), [param("mv", "x", "t1")])],
+    ["a key past the last frame — frames is only what gets rendered", withAnimation(animation([{ id: "t1", keys: [{ frame: 10, value: 0 }] }]), [param("mv", "x", "t1")])],
+    ["a key out of the param's bounds — graphAtFrame clamps", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: 101 }] }]), [param("mv", "x", "t1")])],
   ])("accepts %s", (_, g) => {
     expect(validateGraph(g)).toBeNull();
   });
@@ -123,9 +124,6 @@ describe("validateGraph, the animation node", () => {
     ["a link into a missing track", withAnimation(animation([t1]), [param("mv", "x", "ghost")]), "anim"],
     ["two tracks on one param", withAnimation(animation([t1, t2]), [param("mv", "x", "t1"), { ...param("mv", "x", "t2"), id: "again" }]), "anim"],
     ["two params on one track", withAnimation(animation([t1]), [param("mv", "x", "t1"), param("mv", "y", "t1")]), "anim"],
-    ["a key under the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: -101 }] }]), [param("mv", "x", "t1")]), "anim"],
-    ["a key over the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: 101 }] }]), [param("mv", "x", "t1")]), "anim"],
-    ["a key past the last frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 10, value: 0 }] }]), []), "anim"],
     ["two keys on one frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 1, value: 0 }, { frame: 1, value: 5 }] }]), []), "anim"],
   ])("rejects %s, pointing at the node", (_, g, nodeId) => {
     expect(validateGraph(g)).toMatchObject({ nodeId });

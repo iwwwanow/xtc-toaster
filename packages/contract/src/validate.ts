@@ -11,22 +11,19 @@ export type GraphIssue = { message: string; nodeId?: NodeId };
 // The first issue found or null.
 // TODO: call it from ToastGraphSchema.superRefine — one entry point, fromToastFile's own checks go; stays a
 // plain function for web canConnect, nodeId must reach the issue — docs/backlog/2026-11-01_validate-graph-into-zod.md
-// a param link: from a numeric param of the source's type, into a track, the keys within the param's bounds
+// a param link: from a numeric param of the source's type, into a track
 const paramLinkIssue = (from: GraphNode, to: AnimationNode, { sourceHandle, targetHandle }: GraphEdge): GraphIssue | null => {
   if (sourceHandle === undefined) return { message: "link a param", nodeId: to.id };
-  const bounds = paramBounds(from.type, sourceHandle);
-  if (!bounds) return { message: "only a numeric param can be animated", nodeId: from.id };
+  if (!paramBounds(from.type, sourceHandle)) return { message: "only a numeric param can be animated", nodeId: from.id };
   const track = to.data.tracks.find(({ id }) => id === targetHandle);
   if (!track) return { message: "link a track", nodeId: to.id };
-  if (track.keys.some(({ value }) => value < bounds.min || value > bounds.max))
-    return { message: "a key is out of the param's bounds", nodeId: to.id };
   return null;
 };
 
-// keys on the node's frames, one per frame of a track; a track without a link is allowed, like a layers row
-const animationIssue = ({ id, data: { frames, tracks } }: AnimationNode): GraphIssue | null => {
+// one key per frame of a track. Allowed: a track without a link, like a layers row; a key past `frames` (frames is
+// only what gets rendered) or out of the param's bounds (graphAtFrame clamps) — shortening or rewiring loses nothing
+const animationIssue = ({ id, data: { tracks } }: AnimationNode): GraphIssue | null => {
   for (const { keys } of tracks) {
-    if (keys.some(({ frame }) => frame >= frames)) return { message: "a key is past the last frame", nodeId: id };
     if (new Set(keys.map(({ frame }) => frame)).size !== keys.length) return { message: "two keys on one frame", nodeId: id };
   }
   return null;

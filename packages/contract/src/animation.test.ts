@@ -107,6 +107,26 @@ describe("graphAtFrame", () => {
     expect(graph).toEqual(animated());
   });
 
+  const withTrack = (trackKeys: { frame: number; value: number }[], frames = 11): ToastGraph => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "sc", type: "scale", data: { x: 1, y: 1 } },
+      { id: "anim", type: "animation", data: { fps: 24, frames, tracks: [{ id: "t", keys: trackKeys }] } },
+    ],
+    edges: [{ id: "1", source: "sc", sourceHandle: "x", target: "anim", targetHandle: "t" }],
+  });
+
+  test("a key out of the param's bounds is clamped on the frame, the key itself stays", () => {
+    const graph = withTrack(keys([0, 50], [10, -50]));
+    expect(data(graphAtFrame(graph, 0), "sc")).toEqual({ x: PARAMS.scale.x.max, y: 1 });
+    expect(data(graphAtFrame(graph, 10), "sc")).toEqual({ x: PARAMS.scale.x.min, y: 1 });
+    expect(data(graphAtFrame(graph, 0), "anim")).toEqual(data(graph, "anim"));
+  });
+
+  test("a key past the last frame still pulls the frames before it", () => {
+    expect(data(graphAtFrame(withTrack(keys([0, 1], [20, 3]), 11), 10), "sc")).toEqual({ x: 2, y: 1 });
+  });
+
   test("a graph without an animation node comes back as it is", () => {
     const graph: ToastGraph = { version: TOAST_GRAPH_VERSION, nodes: animated().nodes.filter(({ type }) => type !== "animation"), edges: [] };
     expect(graphAtFrame(graph, 3)).toBe(graph);

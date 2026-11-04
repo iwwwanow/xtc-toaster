@@ -153,8 +153,8 @@ export const LayersNodeSchema = z.object({
   }),
 });
 
-// a value on a frame; frames count from 0, as the playhead. Whether the frame fits the node's `frames` and the
-// value fits the linked param — validateGraph
+// a value on a frame; frames count from 0, as the playhead. May lie past the node's `frames` and out of the linked
+// param's bounds: see validateGraph, graphAtFrame
 export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
 
 // keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
