@@ -7,10 +7,10 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-03) — plan fixed, work starts 04.11
+### status (2026-11-04) — plan fixed, contract in progress
 
 - the 29.10 sketch reviewed, its open points answered — see the decisions at the end; the discussion — `docs/diary/2026-11-03_sprint-5-planning.md`
-- technical checks (memory, handles in a scroll, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
+- technical checks (memory, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
 
 ---
 
@@ -59,8 +59,9 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
 - a link dropped from a param onto the animation node creates a track, its first key — at the playhead with the param's current value. Removing the link removes the track; removing a param's node removes its links, so its tracks too
 - `AnimationNode`, inside the node, blender as the base:
   - **width** — 3 uiu grid columns, `190 × 3 + 16 × 2 = 602px`: channels — 1 column (190), keys — 2 (396)
-  - **height** — fixed, `--CARD-HEIGHT` (288px)
-  - **scroll** — vertical over the tracks with the channel names staying aligned to their rows, horizontal over the timeline with the ruler moving along. Both areas `nowheel nodrag nopan`, or the canvas takes the wheel and the drag
+  - **height** — grows with the tracks, as the `layers` node; no vertical scroll (removed 04.11 — `docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`)
+  - **handles** — the current style: one in each channel row, out of the node's frame, as the `layers` rows; the link's `targetHandle` is the track's id
+  - **scroll** — only horizontal over the timeline with the ruler moving along; the channels column stays outside it, so its handles aren't clipped. The area is `nowheel nodrag nopan`, or the canvas takes the wheel and the drag
   - **top** — `fps`, `frames`, `loop` (`reps` / `seconds` / off — a switch, the other field is off), the ruler, the playhead (click on the ruler)
   - **a track row** — the param's name, keys as diamonds, `+ key` at the playhead (the value — interpolated at that frame)
   - **the selected key** — number fields `frame` and `value`, `× key`
@@ -79,10 +80,9 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
 Not decided, on purpose. Each one first, before the code that depends on it:
 
 1. **Sequence on disk or straight into ffmpeg?** Streaming into stdin is the base idea: `assembleGif` / `assembleVideo` take every frame in one array (2 MP ≈ 8 MB a frame), that goes. But the current one-pass `split` + `palettegen` + `paletteuse` may hold the whole clip inside ffmpeg until the palette is ready — then stdin alone saves nothing for gif. Not measured. Alternatives: two passes (a palette first, then `paletteuse`) over a sequence on disk, or a palette from a few frames. Limits to fit: `mem_limit: 512m` with a ~430 MiB render peak at 7 rows, ffmpeg in the same container, `read_only` + tmpfs (tmpfs counts as memory), the only disk — the uploads volume
-2. **Handles of rows in a vertical scroll.** A row that scrolled away has its handle clipped, and xyflow may not re-measure handles on an inner scroll — wires would point to the wrong place. The fallback: one handle on the node's frame, a track found by the link's `source` + `sourceHandle`, no `targetHandle`. Try it first — it changes the contract
-3. **Render time.** ~7.2 s a frame at 7 rows on the laptop → ~3 min for degas's 24 frames, prod is likely slower, the worker is shared. Measure on the prod limits, set `RENDER_MAX_FRAMES`; whether a queue entry is a frame (others wait one frame) or a job
-4. **Gif size at 2 MP and how it reaches the client** — over ws in base64 as the png, or a file over http
-5. **Gif timing** — delays are in 1/100 s, so degas's 36 fps can't be exact; `-loop` semantics for `reps`
+2. **Render time.** ~7.2 s a frame at 7 rows on the laptop → ~3 min for degas's 24 frames, prod is likely slower, the worker is shared. Measure on the prod limits, set `RENDER_MAX_FRAMES`; whether a queue entry is a frame (others wait one frame) or a job
+3. **Gif size at 2 MP and how it reaches the client** — over ws in base64 as the png, or a file over http
+4. **Gif timing** — delays are in 1/100 s, so degas's 36 fps can't be exact; `-loop` semantics for `reps`
 
 ### definition of done
 
@@ -95,9 +95,9 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 
 ### order
 
-1. **04.11 wed** — check 2 (handles in a scroll) in the real node, the contract decision; contract + `graphAtFrame` + `validateGraph`, tests
+1. **04.11 wed** — contract + `graphAtFrame` + `validateGraph`, tests
 2. **05–08.11** — web: param handles, the animation node, keys, playhead, the current frame through the usual render
-3. **09.11 mon** — check 1 and 3: measurements, the sequence decision
+3. **09.11 mon** — check 1 and 2: measurements, the sequence decision
 4. **10–11.11** — server: `render-animation`, gif, progress, `RENDER_MAX_FRAMES`, ffmpeg in the image
 5. **12.11 thu** — web: the button, progress, download, loop
 6. **13.11 fri** — toasts: test ones, degas animated; the prod-limits check, release
@@ -109,9 +109,8 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 2. **tracks grouped by node** — a header per source node. With 24 tracks in degas this is what makes the list readable
 3. **a key indicator on number fields + autokey**, blender-like — an indicator / button of a key on the field; changing an animated field creates or updates a key at the current frame. The field stops being read-only
 4. **matrix → matrix** — a track on the whole matrix, keys hold 9 numbers, each element lerped; a singular matrix on the way is the existing render-error on that frame. Needs `value: number | number[]` and 9 fields for the selected key
-5. **min / max node size from uiu, for all nodes** — max height `--CARD-HEIGHT` with a vertical scroll. To validate by hand, node by node: which nodes it breaks, how wide the 8px uiu scrollbar is inside a node, whether min comes from a variable (uiu has no width variable: 190px is written into `.grid`)
-6. **mp4 export** — `assembleVideo` made streaming, `-pix_fmt yuv420p`, loop by `loopVideoTo`
-7. dragging keys along the track
+5. **mp4 export** — `assembleVideo` made streaming, `-pix_fmt yuv420p`, loop by `loopVideoTo`
+6. dragging keys along the track
 
 ### cut if behind (in order)
 
@@ -121,6 +120,7 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 
 ### not in this sprint
 
+- **vertical scroll over the tracks, min / max size of all nodes** — `docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`
 - **time-window** (a vertical cut of the timeline, chains per window, a show reel) — `docs/backlog/2026-11-03_timeline-time-windows.md`
 - easing, curves — an optional field on a key later, the version stays
 - animating `color`, `channel`, `blendMode` — color needs an interpolation space, enums only jump
@@ -135,14 +135,14 @@ answered 03.11:
 
 - the node has no output; one `output`, no `animation-output`. It shows the frame under the playhead (render is automatic, there was never a render button), the one new button is `render animation`
 - a track is one property; wiring any numeric param creates a track; linear speed
-- the interface lives inside a wide node, 3 uiu columns wide, fixed height, vertical scroll over tracks, horizontal over the timeline
+- the interface lives inside a wide node, 3 uiu columns wide, horizontal scroll over the timeline; 04.11: no vertical scroll, the height grows with the tracks, handles and styles as they are now
 - keys are added and removed by hand in the ui; autokey → stretch
 - `fps`, `frames`, `loop` live in the animation node; `reps` and `seconds` exclude each other; only one cycle is rendered
 - export minimum: gif only
+- keys count in frames, not seconds (as blender): a changed `fps` changes the speed — confirmed 04.11
 
 defaults (set 03.11 while fixing the plan, not asked separately — change here if wrong):
 
-- keys count in frames, not seconds (as blender): a changed `fps` changes the speed
 - a param with a track is read-only until stretch 3
 - `loop` absent — gif loops forever
 - removing a link removes its track with its keys
