@@ -7,7 +7,7 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-04) — plan fixed, contract in progress
+### status (2026-11-04) — contract done (no ws messages yet), next — web
 
 - the 29.10 sketch reviewed, its open points answered — see the decisions at the end; the discussion — `docs/diary/2026-11-03_sprint-5-planning.md`
 - technical checks (memory, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
@@ -95,10 +95,10 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 
 ### order
 
-1. **04.11 wed** — contract + `graphAtFrame` + `validateGraph`, tests
+1. **04.11 wed** — contract + `graphAtFrame` + `validateGraph`, tests (the ws messages — with the server, step 4: the result's shape depends on check 3)
 2. **05–08.11** — web: param handles, the animation node, keys, playhead, the current frame through the usual render
 3. **09.11 mon** — check 1 and 2: measurements, the sequence decision
-4. **10–11.11** — server: `render-animation`, gif, progress, `RENDER_MAX_FRAMES`, ffmpeg in the image
+4. **10–11.11** — ws messages in the contract; server: `render-animation`, gif, progress, `RENDER_MAX_FRAMES`, ffmpeg in the image
 5. **12.11 thu** — web: the button, progress, download, loop
 6. **13.11 fri** — toasts: test ones, degas animated; the prod-limits check, release
 7. **14–15.11** — stretch, the QA list, sprint close, diary
@@ -147,3 +147,4 @@ defaults (set 03.11 while fixing the plan, not asked separately — change here 
 - `loop` absent — gif loops forever
 - removing a link removes its track with its keys
 - the stretch order above, and matrix as stretch, not must
+- set 04.11 with the contract: `fps` — an integer 1–100 (gif delays are 1/100 s, can widen for mp4); `loop` is strict — a file with both `reps` and `seconds` is refused; a track without a link is allowed and changes nothing, like an unlinked `layers` row
