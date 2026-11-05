@@ -14,16 +14,15 @@ export const valueAtFrame = (keys: readonly AnimationKey[], frame: number): numb
   return Math.min(Math.max(from, to), Math.max(Math.min(from, to), value));
 };
 
-// The same graph with the animated values put into `data` — one function for web and server, a frame then goes
-// through the plain render. The animation node and its links stay: the render never reaches them. A track without
-// keys or without a link changes nothing. A value is clamped to the param's bounds: the keys stay as they are, so a
-// track rewired to another param and back loses nothing
-export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
+// What the tracks put into `data` on a frame: node → param → value. A track without keys or without a link gives
+// nothing. A value is clamped to the param's bounds: the keys stay as they are, so a track rewired to another param
+// and back loses nothing
+export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
+  const values = new Map<NodeId, Record<string, number>>();
   const animation = graph.nodes.find((node) => node.type === "animation");
-  if (!animation) return graph;
+  if (!animation) return values;
 
   const typeOf = new Map(graph.nodes.map(({ id, type }) => [id, type]));
-  const values = new Map<NodeId, Record<string, number>>();
   for (const { source, sourceHandle, target, targetHandle } of graph.edges) {
     if (target !== animation.id || sourceHandle === undefined) continue;
     const track = animation.data.tracks.find(({ id }) => id === targetHandle);
@@ -32,7 +31,14 @@ export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
     if (value === null || !bounds) continue;
     values.set(source, { ...values.get(source), [sourceHandle]: Math.min(bounds.max, Math.max(bounds.min, value)) });
   }
+  return values;
+};
 
+// The same graph with the animated values put into `data` — one function for web and server, a frame then goes
+// through the plain render. The animation node and its links stay: the render never reaches them
+export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
+  const values = animatedValues(graph, frame);
+  if (values.size === 0) return graph;
   const nodes = graph.nodes.map((node) => {
     const animated = values.get(node.id);
     return animated ? ({ ...node, data: { ...node.data, ...animated } } as GraphNode) : node;
