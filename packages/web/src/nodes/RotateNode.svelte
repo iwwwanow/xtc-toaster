@@ -9,14 +9,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.rotate}</h6></legend>
   <Slider
     label="angle"
+    node={id}
+    param="angle"
     bounds={PARAMS.rotate.angle}
     step={1}
     value={data.angle}
     onchange={(angle) => session.setNodeData(id, { ...data, angle })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

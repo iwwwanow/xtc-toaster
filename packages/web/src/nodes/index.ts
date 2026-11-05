@@ -1,4 +1,5 @@
 import type { NodeTypes } from "@xyflow/svelte";
+import AnimationNode from "./AnimationNode.svelte";
 import BlurNode from "./BlurNode.svelte";
 import ChannelNode from "./ChannelNode.svelte";
 import ColorNoiseNode from "./ColorNoiseNode.svelte";
@@ -39,5 +40,6 @@ export const nodeTypes = {
   corners: CornersNode,
   matrix: MatrixNode,
   layers: LayersNode,
+  animation: AnimationNode,
   output: OutputNode,
 } satisfies NodeTypes;

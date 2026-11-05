@@ -1,9 +1,10 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { BLEND_MODES, LAYER_NAME_MAX, type BlendMode } from "@xtc-toaster/contract";
-  import { addLayer, layerName, moveLayer, renameLayer, setBlendMode, toggleLayer } from "../layers";
+  import { addLayer, layerName, moveRow, renameLayer, setBlendMode, toggleLayer } from "../layers";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { session } from "../session.svelte";
+  import { RowDrag } from "./row-drag.svelte";
 
   let { id, data }: NodeProps<FlowNodeOf<"layers">> = $props();
 
@@ -14,29 +15,7 @@
     queueMicrotask(() => updateNodeInternals(id));
   };
 
-  // row drag & drop inside the node: the dragged row's index; a menu drop onto the canvas uses another mime
-  const ROW_MIME = "application/x-xtc-layers-row";
-  let dragged = $state<number | null>(null);
-  let over = $state<number | null>(null);
-
-  const ondragstart = (index: number) => (event: DragEvent) => {
-    dragged = index;
-    event.dataTransfer?.setData(ROW_MIME, String(index));
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-  };
-  const ondragover = (index: number) => (event: DragEvent) => {
-    if (dragged === null) return;
-    event.preventDefault();
-    over = index;
-  };
-  const ondrop = (index: number) => (event: DragEvent) => {
-    if (dragged === null) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (dragged !== index) setLayers(moveLayer(data.layers, dragged, index));
-    dragged = over = null;
-  };
-  const ondragend = () => (dragged = over = null);
+  const drag = new RowDrag("application/x-xtc-layers-row", (from, to) => setLayers(moveRow(data.layers, from, to)));
 
   // rename in place: double-click the name → input; Enter / blur keeps, Esc drops
   let editing = $state<string | null>(null);
@@ -51,6 +30,7 @@
   };
 </script>
 
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.layers}</h6></legend>
   <button
@@ -66,10 +46,10 @@
       class="nodrag"
       role="listitem"
       style="position: relative; display: flex; gap: var(--GRID-GAP-4); align-items: center"
-      style:outline={over === index && dragged !== index ? "1px dashed currentColor" : "none"}
-      style:opacity={dragged === index ? 0.4 : 1}
-      ondragover={ondragover(index)}
-      ondrop={ondrop(index)}
+      style:outline={drag.over === index && drag.dragged !== index ? "1px dashed currentColor" : "none"}
+      style:opacity={drag.dragged === index ? 0.4 : 1}
+      ondragover={drag.dragover(index)}
+      ondrop={drag.drop(index)}
     >
       <!-- the row's own input, out of the node's left edge like every handle (past the frame's padding and
            1px border, then the handle offset — app.css) -->
@@ -85,8 +65,8 @@
         tabindex="-1"
         title="drag to reorder"
         style="cursor: grab; user-select: none"
-        ondragstart={ondragstart(index)}
-        {ondragend}>⠿</span
+        ondragstart={drag.start(index)}
+        ondragend={drag.end}>⠿</span
       >
       <label class="checkbox_ai-generated">
         <input
@@ -144,4 +124,3 @@
     </div>
   {/each}
 </fieldset>
-<Handle type="source" position={Position.Right} />

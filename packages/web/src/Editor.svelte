@@ -48,13 +48,16 @@
     void deleteElements({ edges: [edge] });
   };
 
-  // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect
+  // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect.
+  // A param linked into an empty track makes its first key
   const onbeforeconnect = (connection: Connection) => {
     session.freeTarget(connection);
+    session.seedTrack(connection);
     return connection;
   };
   const onbeforereconnect = (edge: Edge) => {
     session.freeTarget(edge, edge.id);
+    session.seedTrack(edge);
     return edge;
   };
 

@@ -9,14 +9,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.blur}</h6></legend>
   <Slider
     label="radius (px)"
+    node={id}
+    param="radius"
     bounds={PARAMS.blur.radius}
     step={1}
     value={data.radius}
     onchange={(radius) => session.setNodeData(id, { ...data, radius })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

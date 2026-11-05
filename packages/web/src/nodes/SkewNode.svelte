@@ -9,10 +9,13 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.skew}</h6></legend>
   <Slider
     label="x (°)"
+    node={id}
+    param="x"
     bounds={PARAMS.skew.x}
     step={1}
     value={data.x}
@@ -20,10 +23,11 @@
   />
   <Slider
     label="y (°)"
+    node={id}
+    param="y"
     bounds={PARAMS.skew.y}
     step={1}
     value={data.y}
     onchange={(y) => session.setNodeData(id, { ...data, y })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "anim", "type": "animation", "data": { "fps": 24, "frames": 4, "tracks": [{ "id": "t1", "keys": [] }] } },
+    { "id": "out", "type": "output", "data": {} }
+  ],
+  "edges": [
+    { "id": "in-out", "source": "in", "target": "out" },
+    { "id": "in-anim", "source": "in", "target": "anim", "targetHandle": "t1" }
+  ]
+}

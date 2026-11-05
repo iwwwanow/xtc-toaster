@@ -9,14 +9,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.colorNoise}</h6></legend>
   <Slider
     label="deviationCoefficient"
+    node={id}
+    param="deviationCoefficient"
     bounds={PARAMS.colorNoise.deviationCoefficient}
     step={0.01}
     value={data.deviationCoefficient}
     onchange={(deviationCoefficient) => session.setNodeData(id, { deviationCoefficient })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

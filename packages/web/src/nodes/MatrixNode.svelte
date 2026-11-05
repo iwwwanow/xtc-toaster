@@ -14,6 +14,7 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.matrix}</h6></legend>
   <!-- raw 3×3, row-major, px of the image: [x, y, 1] · H — the last row is the translation -->
@@ -30,4 +31,3 @@
     {/each}
   </div>
 </fieldset>
-<Handle type="source" position={Position.Right} />

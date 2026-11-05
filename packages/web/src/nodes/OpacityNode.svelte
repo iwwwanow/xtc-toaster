@@ -9,14 +9,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.opacity}</h6></legend>
   <Slider
     label="opacity"
+    node={id}
+    param="opacity"
     bounds={PARAMS.opacity.opacity}
     step={0.05}
     value={data.opacity}
     onchange={(opacity) => session.setNodeData(id, { ...data, opacity })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

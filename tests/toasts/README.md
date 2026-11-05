@@ -19,6 +19,9 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | `hidden-row` | fork-3 with names (`poppies`, `hue noise`) and the green `add` row hidden: poppies over hue noise, no green; the hidden row dimmed, its checkbox off |
 | `unlinked-row` | the top row unlinked — skipped; poppies over the picture |
 | `empty-layers` | no row linked → `render-error` on the layers node |
+| `animation` | input → move → opacity → output with an animation node below: 4 tracks (a new one on top, empty and unlinked — `track 4`; `opacity.opacity`; `move.y` with a dimmed key past the end; `move.x`). Dashed wires; `x`, `y`, `opacity` fields read-only; a ruler click changes the output picture |
+| `broken-animation-two-nodes` | import refused: only one animation node |
+| `broken-animation-pixel-link` | import refused: a pixel link into a track |
 | `broken-cycle` | import refused: a cycle (off the output path) |
 | `broken-double-link` | import refused: two links into one layers row |
 

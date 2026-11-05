@@ -1,11 +1,14 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
+  animatedValues,
+  graphAtFrame,
   UPLOAD_MAX_MEGAPIXELS,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { removeLayer, removeLayerEdges } from "./layers";
+import { clampPlayhead, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
   canConnect,
@@ -61,11 +64,24 @@ class Session {
   replaced = $state(0);
 
   locked = $derived(!this.connected || this.uploading || this.rendering);
+  // the animation node stays live during a render: scrubbing and setting keys would otherwise wait for every frame's
+  // render, and latest-wins already drops what they make stale
+  animationLocked = $derived(!this.connected || this.uploading);
   imageId = $derived(
     this.nodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
   );
+  animationNode = $derived(this.nodes.find((node): node is FlowNodeOf<"animation"> => node.type === "animation"));
+
+  // ui state, not in the toast; the wanted frame stays while `frames` shrinks and grows back
+  private playhead = $state(0);
+  frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
+
+  private graph = $derived(toGraph(this.nodes, this.edges));
+  private animated = $derived(animatedValues(this.graph, this.frame));
+  // what one render needs: the frame under the playhead, without the animation node
+  private frameGraph = $derived(withoutAnimation(graphAtFrame(this.graph, this.frame)));
   // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
-  graphKey = $derived(JSON.stringify(toGraph(this.nodes, this.edges)));
+  graphKey = $derived(JSON.stringify(this.frameGraph));
 
   private requestId = 0;
   private socket: ReturnType<typeof connectSocket> | null = null;
@@ -106,6 +122,7 @@ class Session {
 
   // a node from the left menu, dropped at a flow position — unlinked until the user links it
   addNode(type: MenuNodeType, position: XYPosition) {
+    if (type === "animation" && this.animationNode) return; // one per graph (contract)
     this.nodes = [...this.nodes, createNode(type, position)];
   }
 
@@ -118,8 +135,40 @@ class Session {
   removeLayerRow(nodeId: string, layerId: string) {
     const node = this.nodes.find((node): node is FlowNodeOf<"layers"> => node.id === nodeId && node.type === "layers");
     if (!node) return;
-    this.edges = removeLayerEdges(this.edges, nodeId, layerId);
+    this.edges = removeRowEdges(this.edges, nodeId, layerId);
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
+  }
+
+  // a param's value at the playhead; null — no track with keys drives it
+  animatedValue(nodeId: string, param: string): number | null {
+    return this.animated.get(nodeId)?.[param] ?? null;
+  }
+
+  // a moved playhead is a new frame → App sends a new render, if the picture changes on it
+  setPlayhead(frame: number) {
+    this.playhead = frame;
+  }
+
+  // a track goes away with its link and keys
+  removeTrack(nodeId: string, trackId: string) {
+    const node = this.animationNode;
+    if (node?.id !== nodeId) return;
+    this.edges = removeRowEdges(this.edges, nodeId, trackId);
+    this.setNodeData(nodeId, { ...node.data, tracks: removeTrack(node.data.tracks, trackId) });
+  }
+
+  // a param linked into an empty track: the first key, at the playhead with the param's value
+  seedTrack({ source, sourceHandle, target, targetHandle }: Link) {
+    const node = this.animationNode;
+    if (node?.id !== target || !sourceHandle || !targetHandle) return;
+    const value = paramValue(this.nodes, source, sourceHandle);
+    if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
+  }
+
+  // the param a track drives, its value in the node's own data
+  trackParamValue(nodeId: string, trackId: string): number | null {
+    const link = trackLink(this.edges, nodeId, trackId);
+    return link?.sourceHandle ? paramValue(this.nodes, link.source, link.sourceHandle) : null;
   }
 
   // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused
@@ -135,7 +184,7 @@ class Session {
   render() {
     this.requestId += 1;
     this.rendering = true;
-    this.socket?.send({ type: "render", requestId: this.requestId, graph: toGraph(this.nodes, this.edges) });
+    this.socket?.send({ type: "render", requestId: this.requestId, graph: this.frameGraph });
   }
 
   download() {
@@ -151,6 +200,7 @@ class Session {
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
+    this.playhead = 0;
     this.replaced++;
   }
 
@@ -160,6 +210,7 @@ class Session {
       const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.playhead = 0;
       this.replaced++;
       this.importError = null;
       return true;

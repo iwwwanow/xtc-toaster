@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "move-1", "type": "move", "data": { "x": 0, "y": 0 } },
+    { "id": "opacity-1", "type": "opacity", "data": { "opacity": 1 } },
+    { "id": "out", "type": "output", "data": {} },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 12,
+        "frames": 24,
+        "loop": { "reps": 3 },
+        "tracks": [
+          { "id": "track-4", "keys": [] },
+          { "id": "track-3", "keys": [{ "frame": 0, "value": 1 }, { "frame": 23, "value": 0.2 }] },
+          { "id": "track-2", "keys": [{ "frame": 0, "value": 0 }, { "frame": 12, "value": 40 }, { "frame": 30, "value": 40 }] },
+          { "id": "track-1", "keys": [{ "frame": 0, "value": -50 }, { "frame": 23, "value": 50 }] }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "in-move", "source": "in", "target": "move-1" },
+    { "id": "move-opacity", "source": "move-1", "target": "opacity-1" },
+    { "id": "opacity-out", "source": "opacity-1", "target": "out" },
+    { "id": "t1", "source": "move-1", "sourceHandle": "x", "target": "anim", "targetHandle": "track-1" },
+    { "id": "t2", "source": "move-1", "sourceHandle": "y", "target": "anim", "targetHandle": "track-2" },
+    { "id": "t3", "source": "opacity-1", "sourceHandle": "opacity", "target": "anim", "targetHandle": "track-3" }
+  ]
+}

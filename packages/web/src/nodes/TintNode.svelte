@@ -7,6 +7,7 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.tint}</h6></legend>
   <!-- the color with the alpha kept — paints what a mask left; change fires when the picker closes — one render per pick, like a slider release -->
@@ -21,4 +22,3 @@
     />
   </label>
 </fieldset>
-<Handle type="source" position={Position.Right} />

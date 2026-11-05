@@ -9,10 +9,13 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.corners}</h6></legend>
   <Slider
     label="top-left x (%)"
+    node={id}
+    param="topLeftX"
     bounds={PARAMS.corners.topLeftX}
     step={1}
     value={data.topLeftX}
@@ -20,6 +23,8 @@
   />
   <Slider
     label="top-left y (%)"
+    node={id}
+    param="topLeftY"
     bounds={PARAMS.corners.topLeftY}
     step={1}
     value={data.topLeftY}
@@ -27,6 +32,8 @@
   />
   <Slider
     label="top-right x (%)"
+    node={id}
+    param="topRightX"
     bounds={PARAMS.corners.topRightX}
     step={1}
     value={data.topRightX}
@@ -34,6 +41,8 @@
   />
   <Slider
     label="top-right y (%)"
+    node={id}
+    param="topRightY"
     bounds={PARAMS.corners.topRightY}
     step={1}
     value={data.topRightY}
@@ -41,6 +50,8 @@
   />
   <Slider
     label="bottom-right x (%)"
+    node={id}
+    param="bottomRightX"
     bounds={PARAMS.corners.bottomRightX}
     step={1}
     value={data.bottomRightX}
@@ -48,6 +59,8 @@
   />
   <Slider
     label="bottom-right y (%)"
+    node={id}
+    param="bottomRightY"
     bounds={PARAMS.corners.bottomRightY}
     step={1}
     value={data.bottomRightY}
@@ -55,6 +68,8 @@
   />
   <Slider
     label="bottom-left x (%)"
+    node={id}
+    param="bottomLeftX"
     bounds={PARAMS.corners.bottomLeftX}
     step={1}
     value={data.bottomLeftX}
@@ -62,10 +77,11 @@
   />
   <Slider
     label="bottom-left y (%)"
+    node={id}
+    param="bottomLeftY"
     bounds={PARAMS.corners.bottomLeftY}
     step={1}
     value={data.bottomLeftY}
     onchange={(bottomLeftY) => session.setNodeData(id, { ...data, bottomLeftY })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

@@ -11,6 +11,7 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.channel}</h6></legend>
   <!-- a pick, not a range: the change is the release — renders right away like a slider release -->
@@ -23,4 +24,3 @@
     </select>
   </label>
 </fieldset>
-<Handle type="source" position={Position.Right} />

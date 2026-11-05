@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { INITIAL_DATA, type LayerRow } from "@xtc-toaster/contract";
-import { addLayer, layerName, moveLayer, removeLayer, removeLayerEdges, renameLayer, setBlendMode, toggleLayer } from "./layers";
+import { addLayer, layerName, moveRow, removeLayer, removeRowEdges, renameLayer, setBlendMode, toggleLayer } from "./layers";
 
 const layers = (): LayerRow[] => [
   { id: "a", blendMode: "add" },
@@ -29,7 +29,7 @@ describe("layers rows", () => {
 
   test("the name comes from the id until the user sets one — it moves with the row", () => {
     expect(layerName({ id: "layer-3", blendMode: "normal" })).toBe("layer 3");
-    expect(layerName(moveLayer(renameLayer(layers(), "a", " poppies "), 0, 2)[2]!)).toBe("poppies");
+    expect(layerName(moveRow(renameLayer(layers(), "a", " poppies "), 0, 2)[2]!)).toBe("poppies");
   });
 
   test("an empty name or the id-derived one drops the name", () => {
@@ -49,7 +49,7 @@ describe("layers rows", () => {
     [2, 0, ["c", "a", "b"]],
     [1, 1, ["a", "b", "c"]],
   ])("row %p dropped at %p", (from, to, order) => {
-    expect(ids(moveLayer(layers(), from, to))).toEqual(order);
+    expect(ids(moveRow(layers(), from, to))).toEqual(order);
   });
 
   test("removing a row drops only its link", () => {
@@ -58,6 +58,6 @@ describe("layers rows", () => {
       { id: "2", source: "y", target: "cmp", targetHandle: "b" },
       { id: "3", source: "x", target: "other", targetHandle: "a" },
     ];
-    expect(removeLayerEdges(edges, "cmp", "a").map(({ id }) => id)).toEqual(["2", "3"]);
+    expect(removeRowEdges(edges, "cmp", "a").map(({ id }) => id)).toEqual(["2", "3"]);
   });
 });

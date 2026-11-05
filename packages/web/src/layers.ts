@@ -19,8 +19,8 @@ export const addLayer = (layers: readonly LayerRow[]): LayerRow[] => [
 export const removeLayer = (layers: readonly LayerRow[], id: string): LayerRow[] =>
   layers.filter((layer) => layer.id !== id);
 
-// the row's link goes with it
-export const removeLayerEdges = (edges: Edge[], nodeId: string, id: string): Edge[] =>
+// the row's link goes with it; a track's too
+export const removeRowEdges = (edges: Edge[], nodeId: string, id: string): Edge[] =>
   edges.filter(({ target, targetHandle }) => target !== nodeId || targetHandle !== id);
 
 // the shown name: the user's, else from the id ("layer-3" → "layer 3") — it moves with the row either way
@@ -46,10 +46,11 @@ export const toggleLayer = (layers: readonly LayerRow[], id: string): LayerRow[]
 export const setBlendMode = (layers: readonly LayerRow[], id: string, blendMode: BlendMode): LayerRow[] =>
   layers.map((layer) => (layer.id === id ? { ...layer, blendMode } : layer));
 
-// the row at `from` dropped at `to` (indexes before the move); the handle ids move with the rows
-export const moveLayer = (layers: readonly LayerRow[], from: number, to: number): LayerRow[] => {
-  const moved = [...layers];
-  const [layer] = moved.splice(from, 1);
-  if (layer) moved.splice(to, 0, layer);
+// the row at `from` dropped at `to` (indexes before the move); the handle ids move with the rows.
+// Layers rows and animation tracks alike
+export const moveRow = <Row>(rows: readonly Row[], from: number, to: number): Row[] => {
+  const moved = [...rows];
+  const [row] = moved.splice(from, 1);
+  if (row) moved.splice(to, 0, row);
   return moved;
 };

@@ -9,10 +9,13 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.selectColor}</h6></legend>
   <Slider
     label="hue"
+    node={id}
+    param="hue"
     bounds={PARAMS.selectColor.hue}
     step={1}
     value={data.hue}
@@ -20,10 +23,11 @@
   />
   <Slider
     label="tolerance"
+    node={id}
+    param="tolerance"
     bounds={PARAMS.selectColor.tolerance}
     step={1}
     value={data.tolerance}
     onchange={(tolerance) => session.setNodeData(id, { ...data, tolerance })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

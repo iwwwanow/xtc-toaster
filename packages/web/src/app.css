@@ -52,6 +52,7 @@ legend {
 
 /* TODO(uiu): hand-written — uiu has no label | control row; blender-like: the label right-aligned */
 .param {
+  position: relative; /* a param's handle sits in its own row */
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
@@ -249,4 +250,128 @@ legend {
   to {
     visibility: visible;
   }
+}
+
+/* TODO(uiu): hand-written — uiu has no timeline. The animation node: 3 grid columns wide, channels — one column,
+   keys — the rest, scrolled sideways; a row's height is shared so both sides line up */
+.animation {
+  --animation-row: 24px;
+  width: calc(3 * 190px + 2 * var(--GRID-GAP));
+  box-sizing: border-box;
+}
+.animation__settings {
+  display: flex;
+  align-items: center;
+  gap: var(--GRID-GAP-2);
+}
+.animation__number {
+  width: 72px;
+}
+.animation__body {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  column-gap: var(--GRID-GAP-2);
+}
+.animation__row {
+  height: var(--animation-row);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--GRID-GAP-4);
+  box-sizing: border-box;
+}
+.animation__head {
+  justify-content: space-between;
+}
+.animation__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animation__timeline {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--LIGHT) transparent;
+  border: 1px solid var(--LIGHT);
+}
+.animation__content {
+  min-width: 100%;
+  position: relative;
+}
+.animation__ruler {
+  width: 100%;
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  border-bottom: 1px solid var(--LIGHT);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0 calc(var(--frame-width) - 1px),
+    var(--LIGHT) calc(var(--frame-width) - 1px) var(--frame-width)
+  );
+  background-size: 100% 4px;
+  background-position: bottom;
+  background-repeat: no-repeat;
+}
+.animation__label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  line-height: 1.6rem;
+  color: var(--MEDIUM);
+  pointer-events: none;
+}
+.animation__keys {
+  display: block;
+}
+.animation__span {
+  height: 1px;
+  position: absolute;
+  top: 50%;
+  background-color: var(--LIGHT);
+}
+.animation__key {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: pointer;
+  background-color: var(--MEDIUM);
+}
+.animation__key:hover {
+  background-color: var(--DARK);
+}
+.animation__key_selected {
+  background-color: var(--BLUE);
+}
+/* past the last rendered frame: still pulls the interpolation, still selectable */
+.animation__key_past {
+  opacity: 0.4;
+}
+.animation__past {
+  position: absolute;
+  inset: 0 0 0 auto;
+  right: 0;
+  pointer-events: none;
+  background-color: var(--WHITE);
+  opacity: 0.6;
+}
+.animation__playhead {
+  width: 1px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-color: var(--BLUE);
+}
+
+/* a node's pixel output sits on the legend's line: its param rows have handles of their own on the same edge — at
+   the node's middle it would land on one of them (a one-param node) */
+.svelte-flow__node > .svelte-flow__handle-right {
+  top: 8px;
 }
