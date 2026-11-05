@@ -128,7 +128,8 @@
    - 04.11: [x] contract — the node, param links, `validateGraph`, `graphAtFrame`, tests; the ws messages moved to the server step. Vertical scroll over the tracks removed — the node grows with them, handles and styles as they are now (`docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`). Keys count in frames — confirmed. Next — web, 05–08.11. Details — `docs/diary/2026-11-04_animation-contract.md`
    - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
    - 04.11, decided: tracks as the `layers` rows — `+ track`, a new row on top, drag to reorder, the param comes by a wire. Keys outlive a shorter `frames` and a removed or rewired link: `frames` is only the render range, a frame clamps the value to the param's bounds. Both rules left `validateGraph`
-   - [ ] 05.11 start web: param handles, tracks, keys, playhead, the current frame through the usual render
+   - [x] 05.11 web: param handles, tracks, keys, playhead, the current frame through the usual render — headless browser checks passed, not yet tried by the user. Details — `docs/diary/2026-11-05_animation-web.md`
+   - [ ] next: check 1 and 2 of the spec (sequence on disk or stdin, render time on the prod limits), then the server
    - extend contract
    - without live-preview
    - render current frame view
