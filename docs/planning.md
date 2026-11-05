@@ -129,11 +129,16 @@
    - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
    - 04.11, decided: tracks as the `layers` rows — `+ track`, a new row on top, drag to reorder, the param comes by a wire. Keys outlive a shorter `frames` and a removed or rewired link: `frames` is only the render range, a frame clamps the value to the param's bounds. Both rules left `validateGraph`
    - [x] 05.11 web: param handles, tracks, keys, playhead, the current frame through the usual render — headless browser checks passed, not yet tried by the user. Details — `docs/diary/2026-11-05_animation-web.md`
-   - [ ] next: check 1 and 2 of the spec (sequence on disk or stdin, render time on the prod limits), then the server
-   - extend contract
+   - [ ] user look at the node: `?toast=animation`, the decisions of 05.11 at the end of the spec (the pixel output on the legend's line in every node, `forever`, no lock during a render)
+   - [ ] next — check 1 and 2 of the spec, planned for 09.11, can start now (web took one day of four): sequence on disk or stdin, render time on the prod limits
+   - [ ] ws messages `render-animation`, `animation-progress`; server: `render-animation`, gif, `RENDER_MAX_FRAMES`, ffmpeg in the image
+   - [ ] web: `render animation`, progress, gif download, the animation node locked during an export
+   - [ ] toasts: degas animated (24 tracks), the prod-limits check, release
+   - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
+   - [x] extend contract
    - without live-preview
-   - render current frame view
-   - export animated picture: gif (mp4 → stretch)
+   - [x] render current frame view
+   - [ ] export animated picture: gif (mp4 → stretch)
    - not here: time-window — `docs/backlog/2026-11-03_timeline-time-windows.md`
    - cut if behind:
      - (#1) export gif only, no mp4 — applied up front on 03.11
