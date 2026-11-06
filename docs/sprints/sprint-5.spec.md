@@ -7,9 +7,9 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-05) — contract and web (the node, keys, playhead, the current frame) done, not yet checked by the user; next — check 1 and 2, then the server
+### status (2026-11-06) — contract and web done, looked at by the user 06.11 (works); `play` added; check 1 decided — frames on disk; next — the server
 
-Left in web: `render animation` (step 5, needs the server). 24 tracks of degas not tried yet (step 6).
+Left in web: `render animation` (step 5, needs the server). 24 tracks of degas not tried yet (step 6). The ui gets no polish — the user redraws it by hand later (`CLAUDE.md`).
 
 - the 29.10 sketch reviewed, its open points answered — see the decisions at the end; the discussion — `docs/diary/2026-11-03_sprint-5-planning.md`
 - technical checks (memory, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
@@ -148,7 +148,7 @@ answered 03.11:
 
 set 05.11 with the web, not asked separately — change here if wrong (`docs/diary/2026-11-05_animation-web.md`):
 
-- a node's pixel output moved to the legend's line, in every node: at the node's middle it lands on a one-param node's row handle
+- ~~a node's pixel output moved to the legend's line, in every node: at the node's middle it lands on a one-param node's row handle~~ → the bottom-right corner, 06.11
 - the render message carries the frame without the animation node and its links: fps, track order or a key elsewhere don't change the picture and don't start a render
 - the animation node isn't locked by a running render (`session.animationLocked`), only by no connection and an upload: else every playhead move blocks `+ key` until its frame is rendered. `render animation` will have to lock it
 - the loop switch reads `forever` / `reps` / `seconds`, not `off`: an absent `loop` is a gif that loops forever
@@ -156,6 +156,13 @@ set 05.11 with the web, not asked separately — change here if wrong (`docs/dia
 - a key's typed value stops at the linked param's bounds; an unlinked track has none
 - the animation node is placed right of the params it animates, in a row of its own: wires run forward
 - a track with a link but no keys drives nothing, its param stays editable
+
+answered 06.11, after the user's look:
+
+- a node's pixel output goes to the **bottom-right corner**, not the legend's line (`docs/backlog/2026-11-05_node-output-bottom-right.md`)
+- **`play`** in the animation node, next to `+ track`: one frame rendered → the playhead moves on → the next one rendered, the last frame goes back to the first; a frame stays no shorter than `1 / fps`, but as long as its render takes. A render error or a lost connection stops it. Rendering ahead and keeping the frames on the client — later, `docs/backlog/2026-11-06_play-frame-cache-on-client.md`
+- check 1: **frames go to disk** first, not into ffmpeg's stdin or memory — 512 MiB with a ~430 MiB render peak leaves no room for the clip; in memory / streaming — later, `docs/backlog/2026-11-06_animation-frames-in-memory.md`
+- QA isn't run during the sprint: `sprint-5.qa.md` is only written, run at the end of the release (`CLAUDE.md`)
 
 defaults (set 03.11 while fixing the plan, not asked separately — change here if wrong):
 

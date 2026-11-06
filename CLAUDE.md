@@ -52,6 +52,11 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 - **Barrel exports.** A package exposes one entry — `"exports": { ".": "<barrel>" }` (`src/index.ts`, lib: `main.ts`) — and other packages import only from the package root, never subpaths or deep paths. Inside a package, a folder with a public surface gets its own `index.ts` barrel. A barrel never re-exports a module with side effects on import (e.g. `toast-1_degas`).
 - **Output file naming.** Every file the project produces for the user (render downloads, baked videos, exports) is named `<toast>_<YYYYMMDD-HHmmss>.<ext>` — `<toast>` is the toast directory name, timestamp in local time. Example: `toast-2_signac_20261009-153012.png`.
 
+## Sprint process
+
+- **QA runs once, at the end of the release** (sprint 6, before 28.11 — decided 01.11, confirmed 06.11). During a sprint nobody runs QA, and a sprint closes without it: each sprint only writes its `docs/sprints/sprint-N.qa.md` list, the open items of every list are run all at once at the end. Checks while implementing (tests, a headless browser) are not QA and stay
+- **The UI will be redrawn by the user by hand** (06.11). Until then the ui only has to work: no visual polish, no layout rework beyond what a feature needs
+
 ## UI styles — uiu first
 
 `web` takes its styles from **uiu** (`github.com/iwwwanow/uiu`: `owo.css` — tokens, reset, typography; `ai-generated.css` — components with the `_ai-generated` suffix) — a bun git dependency of `packages/web`, pinned to a release tag (`"uiu": "github:iwwwanow/uiu#vX.Y.Z"`, `import "uiu/owo.css"`); bump: the tag + `bun install`, a `chore(web): uiu vX.Y.Z` commit. uiu itself is edited in `../iwwwanow_uiu`, released there, then bumped here.

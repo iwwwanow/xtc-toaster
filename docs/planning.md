@@ -129,8 +129,9 @@
    - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
    - 04.11, decided: tracks as the `layers` rows — `+ track`, a new row on top, drag to reorder, the param comes by a wire. Keys outlive a shorter `frames` and a removed or rewired link: `frames` is only the render range, a frame clamps the value to the param's bounds. Both rules left `validateGraph`
    - [x] 05.11 web: param handles, tracks, keys, playhead, the current frame through the usual render — headless browser checks passed, not yet tried by the user. Details — `docs/diary/2026-11-05_animation-web.md`
-   - [ ] user look at the node: `?toast=animation`, the decisions of 05.11 at the end of the spec (the pixel output on the legend's line in every node, `forever`, no lock during a render)
-   - [ ] next — check 1 and 2 of the spec, planned for 09.11, can start now (web took one day of four): sequence on disk or stdin, render time on the prod limits
+   - [x] 06.11 user look at the node: works; the pixel output → the bottom-right corner of every node; `play` added (one frame at a time; frames ahead on the client — `docs/backlog/2026-11-06_play-frame-cache-on-client.md`); the ui gets no polish — the user redraws it by hand later
+   - [x] 06.11 check 1: frames on disk first (memory is too tight), in memory / stdin later — `docs/backlog/2026-11-06_animation-frames-in-memory.md`
+   - [ ] check 2: render time on the prod limits → `RENDER_MAX_FRAMES` — with the server
    - [ ] ws messages `render-animation`, `animation-progress`; server: `render-animation`, gif, `RENDER_MAX_FRAMES`, ffmpeg in the image
    - [ ] web: `render animation`, progress, gif download, the animation node locked during an export
    - [ ] toasts: degas animated (24 tracks), the prod-limits check, release
@@ -147,7 +148,7 @@
    - 1 week
    - 3 toasts
    - new user test (+ the sister's cursor lag: Windows + Chrome)
-   - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11
+   - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11, confirmed 06.11: QA only at the end of the release, never during a sprint (`CLAUDE.md`)
    - final fixes
    - cut if behind:
      - (#5) 2 toasts instead of 3
