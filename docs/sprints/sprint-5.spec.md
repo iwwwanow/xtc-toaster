@@ -7,7 +7,7 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-06) — contract and web done, looked at by the user 06.11 (works); `play` added; check 1 decided — frames on disk; next — the server
+### status (2026-11-06) — contract, web and server done; `play` added; checks 1 and 3 decided (frames on disk, the gif over http); next — web: `render animation`
 
 Left in web: `render animation` (step 5, needs the server). 24 tracks of degas not tried yet (step 6). The ui gets no polish — the user redraws it by hand later (`CLAUDE.md`).
 

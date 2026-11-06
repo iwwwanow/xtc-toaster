@@ -131,8 +131,8 @@
    - [x] 05.11 web: param handles, tracks, keys, playhead, the current frame through the usual render — headless browser checks passed, not yet tried by the user. Details — `docs/diary/2026-11-05_animation-web.md`
    - [x] 06.11 user look at the node: works; the pixel output → the bottom-right corner of every node; `play` added (one frame at a time; frames ahead on the client — `docs/backlog/2026-11-06_play-frame-cache-on-client.md`); the ui gets no polish — the user redraws it by hand later
    - [x] 06.11 check 1: frames on disk first (memory is too tight), in memory / stdin later — `docs/backlog/2026-11-06_animation-frames-in-memory.md`
-   - [ ] check 2: render time on the prod limits → `RENDER_MAX_FRAMES` — with the server
-   - [ ] ws messages `render-animation`, `animation-progress`; server: `render-animation`, gif, `RENDER_MAX_FRAMES`, ffmpeg in the image
+   - [ ] check 2: measured 06.11 on the laptop under 512m — degas 7 rows at 2 MP: ~5.4 s a frame, 24 frames 134 s, peak 462 MiB, no OOM; left — the same on prod, then `RENDER_MAX_FRAMES` in the stack (fallback 48)
+   - [x] 06.11 ws messages `render-animation`, `animation-progress`, `animation-rendered` (the gif as a file over http); server: frames as pngs on disk, gif in two ffmpeg passes, `RENDER_MAX_FRAMES`, ffmpeg in the image — `feat/animation-server`, `docs/diary/2026-11-06_animation-play-and-server.md`
    - [ ] web: `render animation`, progress, gif download, the animation node locked during an export
    - [ ] toasts: degas animated (24 tracks), the prod-limits check, release
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
