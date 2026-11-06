@@ -266,6 +266,8 @@ class Session {
   private receive(message: ServerMessage) {
     if (message.requestId === null) return console.error("render-error", message);
     if (message.requestId !== this.requestId) return; // stale — a newer request was sent
+    // the web doesn't send render-animation yet — the button, progress and download are the next web step
+    if (message.type === "animation-progress" || message.type === "animation-rendered") return;
 
     this.rendering = false;
     if (message.type === "rendered") {

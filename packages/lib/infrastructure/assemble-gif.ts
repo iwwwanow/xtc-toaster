@@ -1,4 +1,5 @@
 import { execFile, spawn } from "node:child_process";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ImageRawDataArray } from "../domain/types";
 
@@ -142,4 +143,48 @@ export function assembleVideo(
     outputPath,
   ];
   return pipeFrames(frames, width, height, fps, args);
+}
+
+// ffmpeg with no stdin; rejects with the tail of its stderr
+function runFfmpeg(args: string[]): Promise<void> {
+  const proc = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+  let stderr = "";
+  proc.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+  return new Promise<void>((resolve, reject) => {
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited ${code}:\n${stderr.slice(-800)}`));
+    });
+  });
+}
+
+// a frame's file in a sequence: frame-0000.png, frame-0001.png, … — what assembleGifFromFrames reads
+export const sequenceFrameName = (index: number) => `frame-${String(index).padStart(4, "0")}.png`;
+
+// the gif muxer's -loop: how many times the clip plays, undefined — forever. ffmpeg counts repeats after the
+// first play: 0 is forever, -1 plays once
+export const gifLoopArg = (plays: number | undefined): number =>
+  plays === undefined ? 0 : plays <= 1 ? -1 : plays - 1;
+
+// A gif from a png sequence on disk (`sequenceFrameName` in `dir`), in two passes: a palette over every frame,
+// then the frames through it. ffmpeg reads one frame at a time — the one-pass split + palettegen holds the
+// whole clip in memory until the palette is ready. The palette goes into `dir` too
+export async function assembleGifFromFrames(
+  dir: string,
+  fps: number,
+  outputPath: string,
+  plays?: number,
+): Promise<void> {
+  const input = ["-framerate", String(fps), "-i", join(dir, "frame-%04d.png")];
+  const palette = join(dir, "palette.png");
+  await runFfmpeg(["-y", ...input, "-vf", "palettegen=stats_mode=full", palette]);
+  await runFfmpeg([
+    "-y",
+    ...input,
+    "-i", palette,
+    "-lavfi", "paletteuse=dither=sierra2_4a",
+    "-loop", String(gifLoopArg(plays)),
+    outputPath,
+  ]);
 }

@@ -16,11 +16,13 @@ COPY packages/toasts/package.json packages/toasts/
 COPY packages/web/package.json packages/web/
 RUN bun install --frozen-lockfile
 
-# ffmpeg — packages/lib/tests/infrastructure.test.ts assembles a video; its own layer, cached in CI
-FROM base AS test
+# ffmpeg — the server assembles gifs (render-animation), lib's tests assemble video; its own layer, cached in CI
+FROM base AS ffmpeg
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg \
   && rm -rf /var/lib/apt/lists/*
+
+FROM ffmpeg AS test
 COPY --from=deps /app ./
 COPY . .
 RUN bun run typecheck && bun run test
@@ -38,8 +40,7 @@ COPY --from=deps /app/packages ./packages
 RUN rm -rf node_modules packages/*/node_modules \
   && bun install --frozen-lockfile --production --filter @xtc-toaster/server
 
-# no ffmpeg — the server doesn't make video
-FROM base AS runtime
+FROM ffmpeg AS runtime
 COPY --from=prod-deps /app ./
 COPY packages/contract ./packages/contract
 COPY packages/lib ./packages/lib

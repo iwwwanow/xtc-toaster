@@ -3,15 +3,19 @@
 // перезаписываются при каждом прогоне. Без ffmpeg/ffprobe в PATH ffmpeg-часть пропускается.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   assembleGif,
+  assembleGifFromFrames,
   assembleVideo,
+  gifLoopArg,
   decodePixels,
   encodePng,
   imageFileToRawData,
   loopVideoTo,
   rawDataToImageFile,
+  sequenceFrameName,
   speedUpVideo,
 } from "../infrastructure";
 import { colorNoise } from "../domain/services";
@@ -137,6 +141,33 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     expect(probe(path)).toMatchObject({ width, height, frames: 6 });
   });
 
+  // the gif's NETSCAPE2.0 block holds the repeat count; no block — the gif plays once
+  const loopCount = async (path: string) => {
+    const bytes = Buffer.from(await Bun.file(path).arrayBuffer());
+    const at = bytes.indexOf("NETSCAPE2.0");
+    return at === -1 ? null : bytes.readUInt16LE(at + 13);
+  };
+
+  test("assembleGifFromFrames: a png sequence on disk → every frame, the plays in the loop block", async () => {
+    const dir = resolve(outDir, "sequence");
+    await mkdir(dir, { recursive: true });
+    await Promise.all(frames.map((frame, i) => rawDataToImageFile(frame, { width, height }, resolve(dir, sequenceFrameName(i)))));
+
+    const forever = resolve(outDir, "sequence-forever.gif");
+    await assembleGifFromFrames(dir, 6, forever);
+    expect(probe(forever)).toMatchObject({ width, height, frames: 6 });
+    expect(probe(forever).duration).toBeCloseTo(1, 1);
+    expect(await loopCount(forever)).toBe(0);
+
+    const three = resolve(outDir, "sequence-3.gif");
+    await assembleGifFromFrames(dir, 6, three, 3);
+    expect(await loopCount(three)).toBe(2);
+
+    const once = resolve(outDir, "sequence-once.gif");
+    await assembleGifFromFrames(dir, 6, once, 1);
+    expect(await loopCount(once)).toBeNull();
+  });
+
   test("assembleVideo pads odd dimensions to even for libx264", async () => {
     const path = resolve(outDir, "noise.mp4");
     await assembleVideo(frames, width, height, 6, path); // 125×180 → 126×180
@@ -165,4 +196,10 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
   test("ffmpeg failures reject with its stderr", async () => {
     expect(loopVideoTo(resolve(outDir, "missing.mp4"), 1, resolve(outDir, "never.mp4"))).rejects.toThrow(/ffmpeg exited/);
   });
+});
+
+test("gifLoopArg: forever → 0, once → -1, n plays → n - 1 repeats", () => {
+  expect(gifLoopArg(undefined)).toBe(0);
+  expect(gifLoopArg(1)).toBe(-1);
+  expect(gifLoopArg(3)).toBe(2);
 });

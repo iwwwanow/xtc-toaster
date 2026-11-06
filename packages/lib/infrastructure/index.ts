@@ -1,4 +1,12 @@
-export { assembleGif, assembleVideo, loopVideoTo, speedUpVideo } from "./assemble-gif";
+export {
+  assembleGif,
+  assembleGifFromFrames,
+  assembleVideo,
+  gifLoopArg,
+  loopVideoTo,
+  sequenceFrameName,
+  speedUpVideo,
+} from "./assemble-gif";
 export { decodeImage, decodePixels, encodePng, isPngOrJpeg } from "./image-codec";
 import { createCanvas, loadImage } from "canvas";
 import { writeFile } from "fs/promises";
