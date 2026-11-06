@@ -7,7 +7,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { clampPlayhead, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { clampPlayhead, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
 import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
@@ -98,6 +98,7 @@ class Session {
         this.serverUnavailable = true;
         // an in-flight response is lost — the graph is re-sent after reconnect
         this.rendering = false;
+        this.stop();
       },
       onMessage: (message) => this.receive(message),
     });
@@ -147,6 +148,45 @@ class Session {
   // a moved playhead is a new frame → App sends a new render, if the picture changes on it
   setPlayhead(frame: number) {
     this.playhead = frame;
+  }
+
+  // Play, one frame at a time: a frame is rendered, then the playhead moves on and the next one is rendered. A frame
+  // is shown no shorter than 1 / fps, but as long as its render takes — no frames rendered ahead yet
+  // (`docs/backlog/2026-11-06_play-frame-cache-on-client.md`)
+  playing = $state(false);
+  canRender = $derived(this.connected && this.imageId !== null);
+  private playTimer: ReturnType<typeof setTimeout> | undefined;
+  private frameShownAt = 0;
+
+  togglePlay() {
+    if (this.playing) return this.stop();
+    if (!this.animationNode || !this.canRender) return;
+    this.playing = true;
+    this.frameShownAt = performance.now();
+    this.nextAfterFrame();
+  }
+
+  stop() {
+    this.playing = false;
+    clearTimeout(this.playTimer);
+  }
+
+  private nextAfterFrame() {
+    const node = this.animationNode;
+    if (!this.playing || !node || !this.canRender) return this.stop();
+    const wait = Math.max(0, 1000 / node.data.fps - (performance.now() - this.frameShownAt));
+    clearTimeout(this.playTimer);
+    this.playTimer = setTimeout(() => this.advance(), wait);
+  }
+
+  private advance() {
+    const node = this.animationNode;
+    if (!this.playing || !node) return this.stop();
+    const before = this.graphKey;
+    this.playhead = nextFrame(this.frame, node.data.frames);
+    this.frameShownAt = performance.now();
+    // the same picture (keys hold still here) — no render to wait for, App sends nothing
+    if (this.graphKey === before) this.nextAfterFrame();
   }
 
   // a track goes away with its link and keys
@@ -200,6 +240,7 @@ class Session {
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
+    this.stop();
     this.playhead = 0;
     this.replaced++;
   }
@@ -210,6 +251,7 @@ class Session {
       const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.stop();
       this.playhead = 0;
       this.replaced++;
       this.importError = null;
@@ -228,8 +270,12 @@ class Session {
     this.rendering = false;
     if (message.type === "rendered") {
       this.renderError = null;
-      return this.setRendered(base64ToBlob(message.png, "image/png"));
+      this.setRendered(base64ToBlob(message.png, "image/png"));
+      if (this.playing) this.nextAfterFrame();
+      return;
     }
+
+    this.stop();
 
     // TODO: notify the user (notification toast or something else) — to be designed
     console.error("render-error", message);

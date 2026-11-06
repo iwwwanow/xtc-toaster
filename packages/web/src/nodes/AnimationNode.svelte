@@ -188,6 +188,13 @@
           disabled={locked}
           onclick={() => setTracks(addTrack(data.tracks))}>+ track</button
         >
+        <button
+          class="nodrag btn_ai-generated btn-sm_ai-generated"
+          type="button"
+          title={session.playing ? "stop on this frame" : "render the frames one after another, from the playhead"}
+          disabled={!session.playing && (locked || !session.canRender)}
+          onclick={() => session.togglePlay()}>{session.playing ? "stop" : "play"}</button
+        >
         <span class="field__hint_ai-generated" style="white-space: nowrap">frame {session.frame}</span>
       </div>
       {#each data.tracks as track, index (track.id)}

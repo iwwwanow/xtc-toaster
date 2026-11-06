@@ -6,6 +6,7 @@ import {
   clampPlayhead,
   keyValueAt,
   moveKey,
+  nextFrame,
   paramValue,
   removeKey,
   removeTrack,
@@ -81,6 +82,13 @@ describe("timeline", () => {
     expect(clampPlayhead(100, 48)).toBe(47);
     expect(clampPlayhead(-1, 48)).toBe(0);
     expect(clampPlayhead(3, 48)).toBe(3);
+  });
+
+  test("next frame: one on, the last back to the first, a playhead past the end from the last", () => {
+    expect(nextFrame(0, 48)).toBe(1);
+    expect(nextFrame(47, 48)).toBe(0);
+    expect(nextFrame(100, 48)).toBe(0);
+    expect(nextFrame(0, 1)).toBe(0);
   });
 
   test("ruler labels: every 5 frames, bounded on a far key", () => {

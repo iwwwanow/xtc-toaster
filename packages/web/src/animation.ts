@@ -88,6 +88,9 @@ export const rulerLabels = (end: number): number[] => {
 // the playhead stops at the last rendered frame
 export const clampPlayhead = (frame: number, frames: number): number => Math.max(0, Math.min(frames - 1, frame));
 
+// play: the frame after this one, the last goes back to the first
+export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
+
 // what one frame's render needs: no animation node, no param links. Fps, keys elsewhere, track order don't touch
 // the picture, so they don't change this graph and don't start a render
 export const withoutAnimation = (graph: ToastGraph): ToastGraph => ({

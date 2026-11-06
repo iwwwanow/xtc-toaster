@@ -370,8 +370,9 @@ legend {
   background-color: var(--BLUE);
 }
 
-/* a node's pixel output sits on the legend's line: its param rows have handles of their own on the same edge — at
-   the node's middle it would land on one of them (a one-param node) */
+/* a node's pixel output sits in the bottom-right corner: its param rows have handles of their own on the same edge —
+   at the node's middle it would land on one of them (a one-param node) */
 .svelte-flow__node > .svelte-flow__handle-right {
-  top: 8px;
+  top: auto;
+  bottom: 0;
 }
