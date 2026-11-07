@@ -109,6 +109,7 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 
 ### stretch (if time is left, in order)
 
+0. **manual ui pass** (added 07.11) — the next step once everything above is done: the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»)
 1. **wires by selection** — the animation node selected: its param wires highlighted; not selected: grey, maybe thinner
 2. **tracks grouped by node** — a header per source node. With 24 tracks in degas this is what makes the list readable
 3. **a key indicator on number fields + autokey**, blender-like — an indicator / button of a key on the field; changing an animated field creates or updates a key at the current frame. The field stops being read-only

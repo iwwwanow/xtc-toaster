@@ -133,9 +133,11 @@
    - [x] 06.11 check 1: frames on disk first (memory is too tight), in memory / stdin later — `docs/backlog/2026-11-06_animation-frames-in-memory.md`
    - [ ] check 2: measured 06.11 on the laptop under 512m — degas 7 rows at 2 MP: ~5.4 s a frame, 24 frames 134 s, peak 462 MiB, no OOM; left — the same on prod, then `RENDER_MAX_FRAMES` in the stack (fallback 48)
    - [x] 06.11 ws messages `render-animation`, `animation-progress`, `animation-rendered` (the gif as a file over http); server: frames as pngs on disk, gif in two ffmpeg passes, `RENDER_MAX_FRAMES`, ffmpeg in the image — `feat/animation-server`, `docs/diary/2026-11-06_animation-play-and-server.md`
-   - [ ] web: `render animation`, progress, gif download, the animation node locked during an export
+   - [x] 07.11 web: `render animation` (off without a linked track with keys), `frame n / N` on the button, the gif downloads as `<toast>_<YYYYMMDD-HHmmss>.gif`, the editor and the animation node locked during an export; gifs on the server kept for good (decided 07.11, no TTL — only leftover frame directories are cleaned) — `docs/diary/2026-11-07_animation-export-web.md`
+   - [ ] gif alpha: a semi-transparent frame turns fully transparent or opaque (gif has 1-bit alpha) — an `opacity` track blinks out instead of fading; found 07.11, the fix needs a decision (flatten onto a background?) — `docs/diary/2026-11-07_animation-export-web.md`
    - [ ] toasts: degas animated (24 tracks), the prod-limits check, release
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
+   - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
    - [x] extend contract
    - without live-preview
    - [x] render current frame view
