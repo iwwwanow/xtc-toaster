@@ -167,23 +167,38 @@ export const sequenceFrameName = (index: number) => `frame-${String(index).padSt
 export const gifLoopArg = (plays: number | undefined): number =>
   plays === undefined ? 0 : plays <= 1 ? -1 : plays - 1;
 
+// a png's size from its IHDR chunk: width and height are the first two fields, big-endian, at bytes 16 and 20
+async function pngSize(path: string): Promise<{ width: number; height: number }> {
+  const header = Buffer.from(await Bun.file(path).slice(0, 24).arrayBuffer());
+  return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) };
+}
+
+// the gif's background: a gif pixel is either opaque or fully transparent, so a frame is flattened onto it —
+// a fading layer fades into white instead of blinking out at half opacity (decided 07.11)
+const GIF_BACKGROUND = "white";
+
 // A gif from a png sequence on disk (`sequenceFrameName` in `dir`), in two passes: a palette over every frame,
 // then the frames through it. ffmpeg reads one frame at a time — the one-pass split + palettegen holds the
-// whole clip in memory until the palette is ready. The palette goes into `dir` too
+// whole clip in memory until the palette is ready. The palette goes into `dir` too. Every frame is laid over
+// GIF_BACKGROUND first (overlay in rgb — its default yuv420 would blur the colors)
 export async function assembleGifFromFrames(
   dir: string,
   fps: number,
   outputPath: string,
   plays?: number,
 ): Promise<void> {
+  const { width, height } = await pngSize(join(dir, sequenceFrameName(0)));
   const input = ["-framerate", String(fps), "-i", join(dir, "frame-%04d.png")];
+  const flatten =
+    `color=c=${GIF_BACKGROUND}:s=${width}x${height}:r=${fps}[bg];` +
+    "[bg][0:v]overlay=shortest=1:format=rgb,format=rgb24";
   const palette = join(dir, "palette.png");
-  await runFfmpeg(["-y", ...input, "-vf", "palettegen=stats_mode=full", palette]);
+  await runFfmpeg(["-y", ...input, "-filter_complex", `${flatten},palettegen=stats_mode=full`, palette]);
   await runFfmpeg([
     "-y",
     ...input,
     "-i", palette,
-    "-lavfi", "paletteuse=dither=sierra2_4a",
+    "-filter_complex", `${flatten}[flat];[flat][1:v]paletteuse=dither=sierra2_4a`,
     "-loop", String(gifLoopArg(plays)),
     outputPath,
   ]);

@@ -168,6 +168,35 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     expect(await loopCount(once)).toBeNull();
   });
 
+  // the first frame of a gif as rgba
+  const firstGifFrame = (path: string) =>
+    spawnSync("ffmpeg", ["-v", "error", "-i", path, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"]).stdout;
+
+  test("assembleGifFromFrames: a semi-transparent frame is flattened onto white, the gif has no holes", async () => {
+    const dir = resolve(outDir, "sequence-alpha");
+    await mkdir(dir, { recursive: true });
+    const [w, h] = [8, 8];
+    // half-transparent red, then almost transparent red — the second used to come out as an empty frame
+    const alphas = [128, 40];
+    await Promise.all(
+      alphas.map((alpha, i) => {
+        const frame = new Uint8ClampedArray(w * h * 4);
+        for (let p = 0; p < frame.length; p += 4) frame.set([255, 0, 0, alpha], p);
+        return rawDataToImageFile(frame, { width: w, height: h }, resolve(dir, sequenceFrameName(i)));
+      }),
+    );
+    const path = resolve(outDir, "sequence-alpha.gif");
+    await assembleGifFromFrames(dir, 6, path);
+    expect(probe(path)).toMatchObject({ width: w, height: h, frames: 2 });
+
+    const [r, g, b, a] = firstGifFrame(path);
+    expect(a).toBe(255);
+    expect(r).toBeGreaterThan(240);
+    // red at 128 / 255 over white: g = b ≈ 127
+    expect(Math.abs(g! - 127)).toBeLessThan(12);
+    expect(Math.abs(b! - 127)).toBeLessThan(12);
+  });
+
   test("assembleVideo pads odd dimensions to even for libx264", async () => {
     const path = resolve(outDir, "noise.mp4");
     await assembleVideo(frames, width, height, 6, path); // 125×180 → 126×180
