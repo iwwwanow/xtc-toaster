@@ -4,6 +4,7 @@ import {
   addKey,
   addTrack,
   clampPlayhead,
+  hasAnimatedParams,
   keyValueAt,
   moveKey,
   nextFrame,
@@ -95,6 +96,28 @@ describe("timeline", () => {
     expect(rulerLabels(12)).toEqual([0, 5, 10]);
     expect(rulerLabels(1_000_000_000).length).toBeLessThanOrEqual(200);
   });
+});
+
+const animatedGraph = (keys: AnimationTrack["keys"], linked = true): ToastGraph => ({
+  version: TOAST_GRAPH_VERSION,
+  nodes: [
+    { id: "in", type: "input", data: { imageId: null } },
+    { id: "m", type: "move", data: { x: 1, y: 2 } },
+    { id: "a", type: "animation", data: { fps: 24, frames: 2, tracks: [{ id: "t", keys }] } },
+    { id: "out", type: "output", data: {} },
+  ],
+  edges: [
+    { id: "1", source: "in", target: "m" },
+    { id: "2", source: "m", target: "out" },
+    ...(linked ? [{ id: "3", source: "m", sourceHandle: "x", target: "a", targetHandle: "t" }] : []),
+  ],
+});
+
+test("an export needs a linked track with keys", () => {
+  expect(hasAnimatedParams(animatedGraph([{ frame: 5, value: 3 }]))).toBe(true);
+  expect(hasAnimatedParams(animatedGraph([]))).toBe(false);
+  expect(hasAnimatedParams(animatedGraph([{ frame: 5, value: 3 }], false))).toBe(false);
+  expect(hasAnimatedParams({ ...animatedGraph([]), nodes: animatedGraph([]).nodes.filter(({ type }) => type !== "animation") })).toBe(false);
 });
 
 test("withoutAnimation keeps only what the picture depends on", () => {

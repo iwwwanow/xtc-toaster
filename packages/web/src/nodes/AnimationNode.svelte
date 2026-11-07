@@ -254,7 +254,7 @@
           class="animation__row animation__ruler"
           type="button"
           aria-label="move the playhead"
-          disabled={!session.connected}
+          disabled={!session.connected || session.exporting !== null}
           onclick={onrulerclick}
         >
           {#each rulerLabels(end) as frame (frame)}

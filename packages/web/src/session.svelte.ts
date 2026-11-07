@@ -7,7 +7,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { clampPlayhead, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { clampPlayhead, hasAnimatedParams, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
 import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
@@ -63,10 +63,16 @@ class Session {
   // bumped when the graph is replaced as a whole (import, clear) — Editor fits the view to the new layout
   replaced = $state(0);
 
-  locked = $derived(!this.connected || this.uploading || this.rendering);
+  // a render-animation running: frames done of frames; null — no export
+  exporting = $state.raw<{ frame: number; frames: number } | null>(null);
+  // shown under the export button
+  exportError = $state<string | null>(null);
+
+  locked = $derived(!this.connected || this.uploading || this.rendering || this.exporting !== null);
   // the animation node stays live during a render: scrubbing and setting keys would otherwise wait for every frame's
-  // render, and latest-wins already drops what they make stale
-  animationLocked = $derived(!this.connected || this.uploading);
+  // render, and latest-wins already drops what they make stale. Not during an export: the server takes one message
+  // at a time, and a render sent now would replace the waiting export
+  animationLocked = $derived(!this.connected || this.uploading || this.exporting !== null);
   imageId = $derived(
     this.nodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
   );
@@ -83,7 +89,10 @@ class Session {
   // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
   graphKey = $derived(JSON.stringify(this.frameGraph));
 
+  // ids grow across renders and exports; requestId — the last render, exportId — the running export
+  private lastRequestId = 0;
   private requestId = 0;
+  private exportId: number | null = null;
   private socket: ReturnType<typeof connectSocket> | null = null;
 
   connect() {
@@ -99,6 +108,7 @@ class Session {
         // an in-flight response is lost — the graph is re-sent after reconnect
         this.rendering = false;
         this.stop();
+        if (this.exporting) this.endExport("connection lost — render the animation again");
       },
       onMessage: (message) => this.receive(message),
     });
@@ -222,9 +232,59 @@ class Session {
   }
 
   render() {
-    this.requestId += 1;
+    this.requestId = ++this.lastRequestId;
     this.rendering = true;
     this.socket?.send({ type: "render", requestId: this.requestId, graph: this.frameGraph });
+  }
+
+  // the button: a picture to render and keys that move something
+  canExport = $derived(
+    this.canRender && !this.uploading && this.exporting === null && hasAnimatedParams(this.graph),
+  );
+
+  // One cycle of the animation node as a gif, rendered on the server frame by frame, then downloaded. Renders
+  // wait until it's done (App), the editor is locked; a render already sent still comes back under its own id
+  exportAnimation() {
+    const node = this.animationNode;
+    if (!this.canExport || !node) return;
+    this.stop();
+    this.exportId = ++this.lastRequestId;
+    this.exporting = { frame: 0, frames: node.data.frames };
+    this.exportError = null;
+    this.socket?.send({ type: "render-animation", requestId: this.exportId, graph: this.graph });
+  }
+
+  private async receiveExport(message: ServerMessage) {
+    switch (message.type) {
+      case "animation-progress":
+        this.exporting = { frame: message.frame, frames: message.frames };
+        return;
+      case "animation-rendered":
+        try {
+          const response = await fetch(message.url);
+          if (!response.ok) throw new Error(`GET ${message.url}: ${response.status}`);
+          saveBlob(await response.blob(), outputFileName(TOAST, "gif"));
+          this.endExport(null);
+        } catch (error) {
+          console.error("gif download failed", error);
+          this.endExport("gif download failed");
+        }
+        return;
+      case "render-error": {
+        console.error("render-animation error", message);
+        const type = this.nodes.find(({ id }) => id === message.nodeId)?.type;
+        this.endExport(type ? `${type}: ${message.message}` : message.message);
+        return;
+      }
+      case "rendered":
+        return; // never for a render-animation
+    }
+  }
+
+  private endExport(error: string | null) {
+    this.exportId = null;
+    this.exporting = null;
+    this.exportError = error;
   }
 
   download() {
@@ -265,9 +325,9 @@ class Session {
 
   private receive(message: ServerMessage) {
     if (message.requestId === null) return console.error("render-error", message);
+    if (message.requestId === this.exportId) return void this.receiveExport(message);
     if (message.requestId !== this.requestId) return; // stale — a newer request was sent
-    // the web doesn't send render-animation yet — the button, progress and download are the next web step
-    if (message.type === "animation-progress" || message.type === "animation-rendered") return;
+    if (message.type === "animation-progress" || message.type === "animation-rendered") return; // an old export's
 
     this.rendering = false;
     if (message.type === "rendered") {

@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
 import { NODE_LABELS, type FlowNode, type MenuNodeType } from "./graph";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
@@ -98,3 +98,7 @@ export const withoutAnimation = (graph: ToastGraph): ToastGraph => ({
   nodes: graph.nodes.filter(({ type }) => type !== "animation"),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),
 });
+
+// a gif worth exporting: some linked track with keys drives a param — else every frame is the same picture.
+// A track's value holds before its first key and after its last, so frame 0 tells
+export const hasAnimatedParams = (graph: ToastGraph): boolean => animatedValues(graph, 0).size > 0;

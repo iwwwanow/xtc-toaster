@@ -31,6 +31,15 @@
 
 <Panel position="top-right" style="display: flex; flex-direction: column; align-items: stretch; gap: var(--GRID-GAP-4)">
   <button class="btn_ai-generated" disabled={session.locked || !session.rendered} onclick={() => session.download()}>download png</button>
+  <span class="tooltip_ai-generated tooltip-left">
+    <button class="btn_ai-generated" disabled={!session.canExport} onclick={() => session.exportAnimation()}
+      >{session.exporting ? `frame ${session.exporting.frame} / ${session.exporting.frames}` : "render animation"}</button
+    >
+    <span class="tooltip__content_ai-generated">one cycle of the animation node as .gif — needs a track with keys</span>
+  </span>
+  {#if session.exportError}
+    <div class="field__error_ai-generated">{session.exportError}</div>
+  {/if}
   <!-- the sister asked what the .json is — a hint, the button label stays short -->
   <span class="tooltip_ai-generated tooltip-left">
     <button class="btn_ai-generated" onclick={() => session.exportToast()}>export toast</button>
