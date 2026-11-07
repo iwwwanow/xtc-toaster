@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { findGif, removeExpiredAnimations } from "../repository/animations";
+import { findGif, removeLeftoverFrames } from "../repository/animations";
 import { removeExpired, type UploadsLimits } from "../repository/uploads";
 import { createStaticHandler } from "./static";
 import { handleUpload } from "./upload";
@@ -38,8 +38,8 @@ export const createServer = async ({
       removeExpired(uploadsDir, uploads.ttlMs)
         .then((removed) => removed > 0 && console.log(`uploads: ${removed} expired removed`))
         .catch((error) => console.error("uploads cleanup failed", error)),
-      removeExpiredAnimations(uploadsDir)
-        .then((removed) => removed > 0 && console.log(`animations: ${removed} expired removed`))
+      removeLeftoverFrames(uploadsDir)
+        .then((removed) => removed > 0 && console.log(`animations: ${removed} leftover frame sequences removed`))
         .catch((error) => console.error("animations cleanup failed", error)),
     ]);
   await cleanup();

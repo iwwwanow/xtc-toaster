@@ -2,9 +2,10 @@ import { mkdir, readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 // Rendered animations live next to the uploads (the only disk in prod), in a directory of their own: per job a
-// frame sequence directory, removed once the gif is made, and the gif. The client fetches the gif right after
-// the render — the gifs are only kept a short while, the uploads' quota doesn't count them.
-export const ANIMATION_TTL_MS = 15 * 60_000;
+// frame sequence directory, removed once the gif is made, and the gif. The gifs are kept for good (decided 07.11) —
+// no TTL, the uploads' quota doesn't count them. A sequence directory outlives its job only when the process dies
+// mid-render; one untouched for FRAMES_TTL_MS is such a leftover (a live job writes a frame every few seconds)
+export const FRAMES_TTL_MS = 15 * 60_000;
 
 export const animationsDir = (uploadsDir: string) => join(uploadsDir, "animations");
 
@@ -22,15 +23,15 @@ export const removeFrames = (job: AnimationJob) => rm(job.framesDir, { recursive
 
 export const removeGif = (job: AnimationJob) => rm(job.gifPath, { force: true });
 
-// gifs and sequence directories (a job cut short by a crash) older than ttlMs go
-export const removeExpiredAnimations = async (uploadsDir: string, ttlMs = ANIMATION_TTL_MS, now = Date.now()) => {
+// sequence directories of jobs cut short by a crash, untouched for ttlMs, go; the gifs stay
+export const removeLeftoverFrames = async (uploadsDir: string, ttlMs = FRAMES_TTL_MS, now = Date.now()) => {
   const dir = animationsDir(uploadsDir);
   const names = await readdir(dir).catch(() => []);
   const expired = await Promise.all(
     names.map(async (name) => {
       const path = join(dir, name);
       const info = await stat(path).catch(() => null);
-      return info && now - info.mtimeMs > ttlMs ? path : null;
+      return info?.isDirectory() && now - info.mtimeMs > ttlMs ? path : null;
     }),
   );
   const paths = expired.filter((path) => path !== null);

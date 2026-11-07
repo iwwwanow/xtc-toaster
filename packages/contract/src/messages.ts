@@ -51,7 +51,7 @@ export const AnimationProgressMessageSchema = z.object({
 });
 
 // the gif is a file: `url` is the path to GET it from (a 2 MP clip is tens of MB — too much for one ws message),
-// kept on the server for a while (ANIMATION_TTL_MS on the server), the client saves it right away
+// kept on the server for good, the client saves it right away
 export const AnimationRenderedMessageSchema = z.object({
   type: z.literal("animation-rendered"),
   requestId: RequestIdSchema,

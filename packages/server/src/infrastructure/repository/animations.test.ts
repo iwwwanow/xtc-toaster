@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, readdir, rm, utimes } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { animationsDir, createAnimationJob, findGif, removeExpiredAnimations, removeFrames } from "./animations";
+import { animationsDir, createAnimationJob, findGif, removeFrames, removeLeftoverFrames } from "./animations";
 
 const UPLOADS_DIR = resolve(import.meta.dirname, "../../../tests/output/animations-repo");
 
@@ -25,23 +25,23 @@ describe("animations repository", () => {
     },
   );
 
-  test("expired gifs and leftover sequences go, fresh ones stay", async () => {
+  test("leftover sequences go, fresh ones and every gif stay", async () => {
     const dir = animationsDir(UPLOADS_DIR);
     await mkdir(join(dir, "old-job"), { recursive: true });
+    await mkdir(join(dir, "live-job"), { recursive: true });
     await Bun.write(join(dir, "old.gif"), "x");
     await Bun.write(join(dir, "fresh.gif"), "x");
     const hourAgo = new Date(Date.now() - 3_600_000);
     await utimes(join(dir, "old-job"), hourAgo, hourAgo);
     await utimes(join(dir, "old.gif"), hourAgo, hourAgo);
 
-    await removeExpiredAnimations(UPLOADS_DIR, 15 * 60_000);
+    expect(await removeLeftoverFrames(UPLOADS_DIR, 15 * 60_000)).toBe(1);
     const left = await readdir(dir);
-    expect(left).toContain("fresh.gif");
-    expect(left).not.toContain("old.gif");
+    expect(left).toEqual(expect.arrayContaining(["fresh.gif", "old.gif", "live-job"]));
     expect(left).not.toContain("old-job");
   });
 
   test("no animations directory yet → nothing to remove", async () => {
-    expect(await removeExpiredAnimations(join(UPLOADS_DIR, "none"))).toBe(0);
+    expect(await removeLeftoverFrames(join(UPLOADS_DIR, "none"))).toBe(0);
   });
 });
