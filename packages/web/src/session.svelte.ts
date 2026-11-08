@@ -60,7 +60,7 @@ class Session {
   // shown in the right panel under the import button
   importError = $state<string | null>(null);
 
-  // bumped when the graph is replaced as a whole (import, clear) — Editor fits the view to the new layout
+  // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
 
   // a render-animation running: frames done of frames; null — no export
