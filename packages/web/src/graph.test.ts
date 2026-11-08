@@ -257,8 +257,11 @@ describe("toFlow rows", () => {
     const { toast1degas } = await import("@xtc-toaster/toasts");
     const { nodes, edges } = toFlow(toast1degas);
     const y = Object.fromEntries(nodes.map(({ id, position }) => [id, position.y]));
-    // every link between two chain nodes is horizontal; only the links out of the input and into the layers node bend
-    const bent = edges.filter(({ source, target }) => source !== "in" && target !== "cmp" && y[source] !== y[target]);
+    // every pixel link between two chain nodes is horizontal; only the links out of the input and into the layers
+    // node bend (param links into the animation node have a sourceHandle — not part of the chains)
+    const bent = edges.filter(
+      ({ source, target, sourceHandle }) => !sourceHandle && source !== "in" && target !== "cmp" && y[source] !== y[target],
+    );
     expect(bent).toEqual([]);
   });
 });
