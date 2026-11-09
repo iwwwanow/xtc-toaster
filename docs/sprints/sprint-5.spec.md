@@ -260,7 +260,7 @@ Rules for dragging a key:
 
 - a node's pixel **input** — the top-left corner, on the legend's line (now: the middle of the left side); the pixel **output** stays bottom-right (06.11)
 - a **param's output** handle 2–4 px closer to its field (now `--handle-offset` out of the frame) — it belongs to the row, not to the frame
-- the pixel input and output squares ~2 px bigger than the param handles (4 → 6 px); the hit area stays
+- ~~the pixel input and output squares ~2 px bigger (4 → 6 px)~~ — tried 09.11, the user: looks bad; all handles stay 4 px
 - elk arrange: the input port moves with it — the ports are read from the measured handles, nothing to change
 
 ### definition of done (extension)

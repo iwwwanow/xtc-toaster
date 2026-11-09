@@ -192,8 +192,6 @@ legend {
   --handle-offset: var(--GRID-GAP-4);
   /* a param's output sits closer: it belongs to its row, not to the frame (09.11) */
   --param-handle-offset: 1px;
-  /* the node's own pixel in / out — a little bigger than a param's (09.11) */
-  --pixel-handle-size: 6px;
   /* the fieldset's top border runs through the legend's middle: the pixel input sits on that line */
   --legend-line: 0.5lh;
 }
@@ -376,13 +374,10 @@ legend {
   background-color: var(--BLUE);
 }
 
-/* a node's own pixel handles (a param's sits in its row, deeper): a little bigger. The output in the bottom-right
-   corner — its param rows have handles of their own on the same edge, at the node's middle it would land on one
-   of them (a one-param node); the input in the top-left, on the legend's line (09.11) */
-.svelte-flow__node > .svelte-flow__handle {
-  width: var(--pixel-handle-size);
-  height: var(--pixel-handle-size);
-}
+/* a node's own pixel handles (a param's sits in its row, deeper), the same 4px as a param's — 6px looked heavy
+   (tried 09.11, dropped). The output in the bottom-right corner — its param rows have handles of their own on the
+   same edge, at the node's middle it would land on one of them (a one-param node); the input in the top-left, on
+   the legend's line (09.11) */
 .svelte-flow__node > .svelte-flow__handle-right {
   top: auto;
   bottom: 0;

@@ -29,13 +29,13 @@
 - **web.**
   - Настройки `exportSettings` хранятся в session и проходят через `toGraph` / `toToastFile` / `fromToastFile` / `toSaved` / `fromSaved`. `withoutAnimation` их выбрасывает, так что смена настройки не запускает рендер.
   - Кнопка `render gif|mp4` с `▾`, под ней блок настроек (`.export-group` — `TODO(uiu)`, отмечено в `docs/backlog/2026-10-30_uiu-gaps-from-web.md`). Пустое значение для loop называется `forever` у gif и `once` у mp4.
-- **Handle** (пользователь попросил по скриншоту). Пиксельный вход теперь на линии легенды слева сверху (`--legend-line: 0.5lh`), выход остался справа снизу. Обе точки 6px вместо 4px. Выход параметра на 3px ближе к полю (`--param-handle-offset`).
+- **Handle** (пользователь попросил по скриншоту). Пиксельный вход теперь на линии легенды слева сверху (`--legend-line: 0.5lh`), выход остался справа снизу. Пробовали сделать обе точки 6px вместо 4px — пользователь посмотрел: выглядит плохо, вернули 4px. Выход параметра на 3px ближе к полю (`--param-handle-offset`).
 
 Проверено:
 
 - `bun run typecheck` и `bun run test` зелёные.
 - `docker build --target test .` зелёный: mp4-тесты lib прошли на ffmpeg 7.1 из trixie, libx264 там есть.
-- Headless Chrome на dev-стеке, `?toast=animation`. Открыли `▾`, выбрали mp4: loop показывает `once`, настройки легли в localStorage. `render mp4` скачал `toast-2_signac_<ts>.mp4`: h264, yuv420p, 250×360, 72 кадра (24 × reps 3), 12 fps. Центр входа совпал с линией легенды (±1px).
+- Headless Chrome на dev-стеке, `?toast=animation`. Открыли `▾`, выбрали mp4: loop показывает `once`, настройки легли в localStorage. `render mp4` скачал `toast-2_signac_<ts>.mp4`: h264, yuv420p, 250×360, 72 кадра (24 × reps 3), 12 fps. Центр входа совпал с линией легенды (±1px), это проверено ещё на 6px.
 - Пользователь руками это ещё не смотрел.
 
 Подводный камень сессии: `pkill -f "remote-debugging-port=9333"` в той же bash-команде убивает и сам shell (паттерн есть в его командной строке). Headless Chrome гасить по PID.
