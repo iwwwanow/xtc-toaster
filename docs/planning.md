@@ -4,7 +4,7 @@
 
 - hue mask. value change on animation frame
 - layer y-rotation with perspective
-- trail-effect
+- trail-effect — 09.11 idea: delay + duplicate nodes, `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
 
 ## release - 28.11
 
@@ -181,6 +181,9 @@
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
    - server: done 11.10 — render in a worker thread, latest-wins holds for bursts — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+3. new nodes (ideas 09.11, not decided)
+   - delay (shifts the animation of a chain) + duplicate (N copies of a chain) → a trail — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
+   - node groups, constants / variables: a short pipeline reused as one node, one value wired into many params — `docs/backlog/2026-11-09_node-groups-variables.md`. Changes the toast format: decide the shape before 1.0 freezes `TOAST_GRAPH_VERSION`, or make it an optional field
 
 ## tools:
 
