@@ -14,7 +14,7 @@
 </script>
 
 <Handle type="source" position={Position.Right} />
-<fieldset class="frame">
+<fieldset class="frame frame_span-2">
   <legend><h6>input</h6></legend>
   <input class="nodrag file-input" type="file" accept="image/png,image/jpeg" disabled={session.locked} {onchange} />
   {#if session.uploadError}

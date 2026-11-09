@@ -11,16 +11,16 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<fieldset class="frame">
+<fieldset class="frame frame_span-2">
   <legend><h6>output</h6></legend>
   {#if session.imageId === null}
     <div class="field__hint_ai-generated">upload an image</div>
   {:else if session.renderError}
-    <div class="field__error_ai-generated" style="max-width: 240px">
+    <div class="field__error_ai-generated">
       {#if errorNode}{errorNode}: {/if}{session.renderError.message}
     </div>
   {:else if session.rendered}
     <!-- rendered at the stored image size, shown scaled down -->
-    <img src={session.rendered.url} alt="render" width="240" />
+    <img src={session.rendered.url} alt="render" style="width: 100%" />
   {/if}
 </fieldset>

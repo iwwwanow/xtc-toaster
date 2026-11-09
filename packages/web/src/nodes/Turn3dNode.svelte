@@ -22,7 +22,8 @@
     onchange={(angle) => session.setNodeData(id, { ...data, angle })}
   />
   <Slider
-    label="focal length (mm)"
+    label="focal mm"
+    hint="focal length, mm (35 mm equivalent)"
     node={id}
     param="focalLength"
     bounds={PARAMS.turn3d.focalLength}

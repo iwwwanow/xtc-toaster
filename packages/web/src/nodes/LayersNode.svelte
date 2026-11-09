@@ -31,7 +31,7 @@
 </script>
 
 <Handle type="source" position={Position.Right} />
-<fieldset class="frame">
+<fieldset class="frame frame_span-2">
   <legend><h6>{NODE_LABELS.layers}</h6></legend>
   <button
     class="nodrag btn_ai-generated btn-sm_ai-generated btn-dashed_ai-generated"

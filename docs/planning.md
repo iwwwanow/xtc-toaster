@@ -141,7 +141,7 @@
      - [ ] blender timeline: playhead drag, the transport (`start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field), key drag, a param wire dropped on `+ track` makes a linked track, hotkeys with the node selected, zoom (fit by default, Ctrl+wheel, `fit`); blender's layout, text buttons instead of icons
      - [ ] tracks grouped by source node — a fieldset per group, a summary row (drag moves the group's keys), collapse
      - [x] 09.11 export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
-     - [ ] node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
+     - [x] 09.11 node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
      - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close

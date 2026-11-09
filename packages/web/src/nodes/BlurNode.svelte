@@ -13,7 +13,8 @@
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.blur}</h6></legend>
   <Slider
-    label="radius (px)"
+    label="radius px"
+    hint="radius, px"
     node={id}
     param="radius"
     bounds={PARAMS.blur.radius}

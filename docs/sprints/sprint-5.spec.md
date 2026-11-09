@@ -273,7 +273,7 @@ Rules for dragging a key:
 ### order (extension)
 
 1. **09.11 mon** — this spec, the diary, planning; done ahead the same day: contract (`export`, `loop` out of the node), server mp4, degas / test toasts moved, the export dropdown (from step 5), the handles (from step 3)
-2. **10.11 tue** — widths + the label inside the field (moved up from 11.11)
+2. **09.11** — widths + the label inside the field, done the same day too
 3. **11.11 wed** — widths + the label inside the field, the handles; the animation node at 6 columns, the header, the transport, the playhead drag, zoom
 4. **12.11 thu** — groups (fieldsets, summary rows, collapse), key drag, the hotkeys, a wire dropped on `+ track`
 5. **13.11 fri** — the export dropdown; the headless pass of the DoD

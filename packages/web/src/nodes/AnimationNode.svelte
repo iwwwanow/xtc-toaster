@@ -101,7 +101,7 @@
   };
 </script>
 
-<fieldset class="frame animation">
+<fieldset class="frame frame_span-6 animation">
   <legend><h6>{NODE_LABELS.animation}</h6></legend>
 
   <div class="animation__settings">

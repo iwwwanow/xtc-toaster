@@ -6,8 +6,10 @@
 
   // `node` + `param` — a node's numeric param: gets a handle for the animation node's tracks. A node's pixel output
   // comes before its fieldset in the markup: xyflow gives a link without a sourceHandle the first handle it finds
+  // `label` — short, it sits inside the field (`x %`); `hint` — its long form, the field's title
   type Props = {
     label: string;
+    hint?: string;
     bounds: ParamBounds;
     step: number;
     value: number;
@@ -15,7 +17,7 @@
     node?: string;
     param?: string;
   };
-  let { label, bounds, step, value, onchange, node, param }: Props = $props();
+  let { label, hint, bounds, step, value, onchange, node, param }: Props = $props();
 
   // a param with keys shows the value at the playhead and is edited in the animation node
   let animated = $derived(node !== undefined && param !== undefined ? session.animatedValue(node, param) : null);
@@ -86,16 +88,16 @@
   };
 </script>
 
-<!-- like blender's number field: two columns — the label right-aligned, the field; drag it (shift — slower),
-     ‹ › step it, a click types a value -->
-<div class="param">
-  <span class="param__label field__label_ai-generated">{label}</span>
+<!-- blender's node field: the label inside on the left, the value on the right, the row's whole width; drag it
+     (shift — slower), ‹ › step it, a click types a value -->
+<div class="param-field">
   {#if editing && animated === null}
     <!-- size 1: a text input is ~20 characters wide by itself and would widen the node's column — this way
          it takes the field's width (min-width in app.css) -->
     <input
       class="nodrag input_ai-generated input-sm_ai-generated drag-field__input"
       size="1"
+      aria-label={label}
       value={current}
       {@attach (input: HTMLInputElement) => (input.focus(), input.select())}
       onkeydown={ontypekey}
@@ -105,7 +107,7 @@
     <div
       class="nodrag drag-field"
       class:drag-field_locked={locked}
-      title={animated === null ? undefined : "animated: the keys are in the animation node"}
+      title={animated === null ? (hint ?? label) : `${hint ?? label} — animated: the keys are in the animation node`}
       role="slider"
       tabindex={locked ? -1 : 0}
       aria-label={label}
@@ -129,6 +131,7 @@
         onpointerdown={(event) => event.stopPropagation()}
         onclick={() => nudge(-1)}>‹</button
       >
+      <span class="drag-field__label">{label}</span>
       <span class="drag-field__value">{formatValue(current, step)}</span>
       <button
         class="drag-field__arrow"

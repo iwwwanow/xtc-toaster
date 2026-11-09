@@ -13,7 +13,8 @@
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.corners}</h6></legend>
   <Slider
-    label="top-left x (%)"
+    label="top-left x %"
+    hint="top-left x, % of the width"
     node={id}
     param="topLeftX"
     bounds={PARAMS.corners.topLeftX}
@@ -22,7 +23,8 @@
     onchange={(topLeftX) => session.setNodeData(id, { ...data, topLeftX })}
   />
   <Slider
-    label="top-left y (%)"
+    label="top-left y %"
+    hint="top-left y, % of the height"
     node={id}
     param="topLeftY"
     bounds={PARAMS.corners.topLeftY}
@@ -31,7 +33,8 @@
     onchange={(topLeftY) => session.setNodeData(id, { ...data, topLeftY })}
   />
   <Slider
-    label="top-right x (%)"
+    label="top-right x %"
+    hint="top-right x, % of the width"
     node={id}
     param="topRightX"
     bounds={PARAMS.corners.topRightX}
@@ -40,7 +43,8 @@
     onchange={(topRightX) => session.setNodeData(id, { ...data, topRightX })}
   />
   <Slider
-    label="top-right y (%)"
+    label="top-right y %"
+    hint="top-right y, % of the height"
     node={id}
     param="topRightY"
     bounds={PARAMS.corners.topRightY}
@@ -49,7 +53,8 @@
     onchange={(topRightY) => session.setNodeData(id, { ...data, topRightY })}
   />
   <Slider
-    label="bottom-right x (%)"
+    label="bottom-right x %"
+    hint="bottom-right x, % of the width"
     node={id}
     param="bottomRightX"
     bounds={PARAMS.corners.bottomRightX}
@@ -58,7 +63,8 @@
     onchange={(bottomRightX) => session.setNodeData(id, { ...data, bottomRightX })}
   />
   <Slider
-    label="bottom-right y (%)"
+    label="bottom-right y %"
+    hint="bottom-right y, % of the height"
     node={id}
     param="bottomRightY"
     bounds={PARAMS.corners.bottomRightY}
@@ -67,7 +73,8 @@
     onchange={(bottomRightY) => session.setNodeData(id, { ...data, bottomRightY })}
   />
   <Slider
-    label="bottom-left x (%)"
+    label="bottom-left x %"
+    hint="bottom-left x, % of the width"
     node={id}
     param="bottomLeftX"
     bounds={PARAMS.corners.bottomLeftX}
@@ -76,7 +83,8 @@
     onchange={(bottomLeftX) => session.setNodeData(id, { ...data, bottomLeftX })}
   />
   <Slider
-    label="bottom-left y (%)"
+    label="bottom-left y %"
+    hint="bottom-left y, % of the height"
     node={id}
     param="bottomLeftY"
     bounds={PARAMS.corners.bottomLeftY}

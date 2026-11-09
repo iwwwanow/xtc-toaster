@@ -33,6 +33,22 @@ legend {
 .frame > * {
   grid-column: 1 / -1;
 }
+
+/* TODO(uiu): hand-written — uiu has no column-width token (owo writes 190px into .grid). A node is one column of
+   owo's desktop grid, as a card; a wide node spans whole columns with the gaps between them (09.11) */
+.svelte-flow {
+  --grid-column: 190px;
+}
+.svelte-flow__node > .frame {
+  width: var(--grid-column);
+  box-sizing: border-box;
+}
+.svelte-flow__node > .frame_span-2 {
+  width: calc(2 * var(--grid-column) + var(--GRID-GAP));
+}
+.svelte-flow__node > .frame_span-6 {
+  width: calc(6 * var(--grid-column) + 5 * var(--GRID-GAP));
+}
 .frame > legend {
   padding: 0 4px;
   color: var(--MEDIUM);
@@ -63,11 +79,15 @@ legend {
 }
 
 /* TODO(uiu): hand-written — uiu has no number field (only .range_ai-generated, a 1px track under a 16px
-   thumb). Blender's: drag / ‹ › / click to type (nodes/Slider.svelte); sized like .input-sm_ai-generated,
-   the fill — where the value sits in the range */
-.drag-field,
+   thumb). Blender's node field: the label inside on the left, the value on the right, the row's whole width;
+   drag / ‹ › / click to type (nodes/Slider.svelte); sized like .input-sm_ai-generated, the fill — where the
+   value sits in the range */
+.param-field {
+  position: relative; /* the param's handle sits in its row */
+}
 .drag-field__input {
-  min-width: 128px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .drag-field {
   height: 24px;
@@ -93,13 +113,24 @@ legend {
   pointer-events: none;
   background-color: var(--LIGHT);
 }
+.drag-field__label,
 .drag-field__value {
-  flex: 1;
   position: relative;
-  text-align: center;
+  white-space: nowrap;
+}
+.drag-field__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--MEDIUM);
+}
+.drag-field__value {
+  padding-left: var(--GRID-GAP-4);
 }
 .drag-field__arrow {
   width: 16px;
+  flex: none;
   height: 100%;
   position: relative;
   visibility: hidden;
@@ -123,7 +154,7 @@ legend {
   visibility: hidden !important;
 }
 .drag-field__input {
-  text-align: center;
+  text-align: right;
 }
 
 /* TODO(uiu): hand-written — uiu has no color input; sized like .input-sm_ai-generated */
@@ -152,7 +183,7 @@ legend {
 
 /* TODO(uiu): hand-written — uiu has no file input; its button looks like .btn-sm_ai-generated */
 .file-input {
-  max-width: 240px;
+  max-width: 100%;
   font-size: 1.4rem;
   color: var(--MEDIUM);
 }
@@ -260,8 +291,6 @@ legend {
    keys — the rest, scrolled sideways; a row's height is shared so both sides line up */
 .animation {
   --animation-row: 24px;
-  width: calc(3 * 190px + 2 * var(--GRID-GAP));
-  box-sizing: border-box;
 }
 .animation__settings {
   display: flex;
@@ -273,7 +302,8 @@ legend {
 }
 .animation__body {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  /* channels — 2 columns of the grid, the timeline — the other 4 */
+  grid-template-columns: calc(2 * var(--grid-column) + var(--GRID-GAP)) minmax(0, 1fr);
   column-gap: var(--GRID-GAP-2);
 }
 .animation__row {

@@ -13,7 +13,8 @@
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.skew}</h6></legend>
   <Slider
-    label="x (°)"
+    label="x °"
+    hint="x, degrees"
     node={id}
     param="x"
     bounds={PARAMS.skew.x}
@@ -22,7 +23,8 @@
     onchange={(x) => session.setNodeData(id, { ...data, x })}
   />
   <Slider
-    label="y (°)"
+    label="y °"
+    hint="y, degrees"
     node={id}
     param="y"
     bounds={PARAMS.skew.y}
