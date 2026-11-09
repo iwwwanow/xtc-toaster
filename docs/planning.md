@@ -137,10 +137,10 @@
    - [x] 07.11 web: `render animation` (off without a linked track with keys), `frame n / N` on the button, the gif downloads as `<toast>_<YYYYMMDD-HHmmss>.gif`, the editor and the animation node locked during an export; gifs on the server kept for good (decided 07.11, no TTL — only leftover frame directories are cleaned) — `docs/diary/2026-11-07_animation-export-web.md`
    - [x] 07.11 gif alpha: gif has 1-bit alpha, a semi-transparent frame blinked out — every frame is flattened onto white before the palette (`assembleGifFromFrames`, decided 07.11): a fade goes into white — `docs/diary/2026-11-07_animation-export-web.md`
    - [x] 08.11 toasts: degas animated — 24 tracks (3 `corners` × 6, 3 `move` × 2), 24 frames at 36 fps, a 15 s loop; at frame 0 still bit for bit with the script. Nodes arranged with elk (`arrange.ts`): after import / `?toast=` / clear and a button in the controls. The user ran it locally 09.11 — works. `docs/diary/2026-11-08_degas-animated-elk-arrange.md`
-   - [ ] 09.11 extension before the release (asked by the user) — `docs/sprints/sprint-5.spec.md`, «extension 09.11»:
+   - [ ] 09.11 extension before the release (asked by the user) — `docs/sprints/sprint-5.spec.md`, «extension 09.11»; planning — `docs/diary/2026-11-09_sprint-5-extension-planning.md`:
      - [ ] blender timeline: playhead drag, the transport (`start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field), key drag, a param wire dropped on `+ track` makes a linked track, hotkeys with the node selected, zoom (fit by default, Ctrl+wheel, `fit`); blender's layout, text buttons instead of icons
      - [ ] tracks grouped by source node — a fieldset per group, a summary row (drag moves the group's keys), collapse
-     - [ ] export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
+     - [ ] export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
      - [ ] node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
