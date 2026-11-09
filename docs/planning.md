@@ -138,13 +138,15 @@
    - [x] 07.11 gif alpha: gif has 1-bit alpha, a semi-transparent frame blinked out — every frame is flattened onto white before the palette (`assembleGifFromFrames`, decided 07.11): a fade goes into white — `docs/diary/2026-11-07_animation-export-web.md`
    - [x] 08.11 toasts: degas animated — 24 tracks (3 `corners` × 6, 3 `move` × 2), 24 frames at 36 fps, a 15 s loop; at frame 0 still bit for bit with the script. Nodes arranged with elk (`arrange.ts`): after import / `?toast=` / clear and a button in the controls. The user ran it locally 09.11 — works. `docs/diary/2026-11-08_degas-animated-elk-arrange.md`
    - [ ] 09.11 extension before the release (asked by the user) — `docs/sprints/sprint-5.spec.md`, «extension 09.11»; planning — `docs/diary/2026-11-09_sprint-5-extension-planning.md`:
-     - [ ] blender timeline (09.11 done: the header with the transport and a frame field, playhead drag on the ruler, zoom — fit / Ctrl+wheel / `fit`; left: key drag, hotkeys, a wire dropped on `+ track`): playhead drag, the transport (`start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field), key drag, a param wire dropped on `+ track` makes a linked track, hotkeys with the node selected, zoom (fit by default, Ctrl+wheel, `fit`); blender's layout, text buttons instead of icons
+     - [x] 09.11 blender timeline, first half: the header (transport `start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field, fps / frames, `fit`), playhead drag on the ruler, zoom (fit by default, Ctrl+wheel, `fit`); text buttons instead of icons
+     - [ ] blender timeline, the rest: key drag (whole frames, an occupied frame refused) and the summary diamonds' drag (the group's keys of that frame together), hotkeys with the animation node selected (Space, ←/→, ↑/↓, Shift+←/→, Home, I, X/Del — Del deletes the key, not the node), a param wire dropped on `+ track` makes a linked track
      - [x] 09.11 tracks grouped by source node — a fieldset per group, a summary row, collapse (the summary drag comes with the key drag)
-     - [x] 09.11 arrange lines chains up by the nodes' tops, not by the bottom-right output (asked by the user)
+     - [x] 09.11 arrange lines chains up by the nodes' tops, not by the bottom-right output (asked by the user) — only elk's input changes, the handles on screen stay where they are
      - [x] 09.11 export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
      - [x] 09.11 node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
      - [x] 09.11 output: a checkerboard under the picture, its edge and transparent parts show (asked by the user; another pattern — one css line, `.transparency`)
      - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
+   - [ ] the DoD of the extension in headless Chrome + the user's look at the new ui — 12–13.11
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
