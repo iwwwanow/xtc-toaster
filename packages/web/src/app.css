@@ -373,6 +373,64 @@ legend {
 .animation__keys {
   display: block;
 }
+
+/* TODO(uiu): hand-written — a group of tracks: the node frame's look (.frame), nested. Its legend is one row
+   tall, so the timeline mirrors the group exactly: the summary row on the legend's line, the rows, then the
+   group's bottom padding and border (--group-bottom) */
+.animation {
+  --group-gap: var(--GRID-GAP-4);
+  --group-pad: var(--GRID-GAP-4);
+  --group-bottom: calc(var(--group-pad) + 1px);
+}
+.animation__group {
+  margin: var(--group-gap) 0 0;
+  padding: 0 var(--group-pad) var(--group-pad);
+  min-width: 0;
+  position: relative;
+  border: 1px solid var(--LIGHT);
+}
+.animation__group-legend {
+  height: var(--animation-row);
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+}
+.animation__toggle {
+  padding: 0;
+  cursor: pointer;
+  color: var(--MEDIUM);
+  font-style: italic;
+  white-space: nowrap;
+}
+.animation__toggle:hover {
+  color: var(--BLACK);
+}
+/* the timeline has a 1px border on top: the channels go down with it, row for row */
+.animation__channels {
+  padding-top: 1px;
+}
+.animation__group-keys {
+  margin-top: var(--group-gap);
+  padding-bottom: var(--group-bottom);
+}
+.animation__summary {
+  background-color: color-mix(in srgb, var(--LIGHT) 30%, transparent);
+}
+.animation__key_summary {
+  cursor: default;
+  background-color: var(--DARK);
+}
+/* a track's input: out of the node's left edge like a layers row's — past the node's padding and border, then the
+   group's border and padding */
+.animation__track-handle {
+  left: calc(-1 * (var(--GRID-GAP-2) + 1px + var(--handle-offset) + 1px + var(--group-pad)));
+}
+/* a collapsed group's inputs, one over another on the legend's line — a fieldset's padding box starts under its
+   legend, so up by half a row */
+.animation__group-handle {
+  top: calc(var(--animation-row) / -2);
+  left: calc(-1 * (var(--GRID-GAP-2) + 1px + var(--handle-offset) + 1px));
+}
 .animation__span {
   height: 1px;
   position: absolute;

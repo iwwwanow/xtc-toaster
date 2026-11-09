@@ -4,9 +4,11 @@ export class RowDrag {
   dragged = $state<number | null>(null);
   over = $state<number | null>(null);
 
+  // `canDrop` — rows the dragged one may land on (animation tracks: only inside their group); absent — any
   constructor(
     private readonly mime: string,
     private readonly move: (from: number, to: number) => void,
+    private readonly canDrop: (from: number, to: number) => boolean = () => true,
   ) {}
 
   start = (index: number) => (event: DragEvent) => {
@@ -15,12 +17,12 @@ export class RowDrag {
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
   };
   dragover = (index: number) => (event: DragEvent) => {
-    if (this.dragged === null) return;
+    if (this.dragged === null || !this.canDrop(this.dragged, index)) return;
     event.preventDefault();
     this.over = index;
   };
   drop = (index: number) => (event: DragEvent) => {
-    if (this.dragged === null) return;
+    if (this.dragged === null || !this.canDrop(this.dragged, index)) return;
     event.preventDefault();
     event.stopPropagation();
     if (this.dragged !== index) this.move(this.dragged, index);

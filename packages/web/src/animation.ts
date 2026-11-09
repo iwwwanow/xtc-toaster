@@ -70,6 +70,48 @@ export const trackName = (nodes: readonly FlowNode[], edges: readonly Edge[], no
   return `${NODE_LABELS[type as MenuNodeType] ?? type}.${link.sourceHandle}`;
 };
 
+// Tracks grouped by the node they animate, as blender's channel groups: a group per source node, in the order
+// of its first track; tracks inside in their own order. Unlinked tracks — a group of their own, on top (where
+// `+ track` puts a new one). A group is named by its node's type, numbered when the type repeats (`corners 2`);
+// a row by its param. Derived from the links — nothing of it is in the toast
+export const UNLINKED_GROUP = "unlinked";
+export type TrackRow = { track: AnimationTrack; index: number; name: string };
+export type TrackGroup = { id: string; name: string; rows: TrackRow[] };
+
+export const trackGroups = (
+  nodes: readonly FlowNode[],
+  edges: readonly Edge[],
+  nodeId: string,
+  tracks: readonly AnimationTrack[],
+): TrackGroup[] => {
+  const groups = new Map<string, { type: string | null; rows: TrackRow[] }>();
+  tracks.forEach((track, index) => {
+    const link = trackLink(edges, nodeId, track.id);
+    const type = link && nodes.find(({ id }) => id === link.source)?.type;
+    const linked = type !== undefined && link?.sourceHandle !== undefined && link.sourceHandle !== null;
+    const id = linked ? link.source : UNLINKED_GROUP;
+    const name = linked ? link.sourceHandle! : track.id.replaceAll("-", " ");
+    const group = groups.get(id) ?? { type: linked ? type : null, rows: [] };
+    group.rows.push({ track, index, name });
+    groups.set(id, group);
+  });
+  const typeCount = new Map<string, number>();
+  for (const { type } of groups.values()) if (type) typeCount.set(type, (typeCount.get(type) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  const named = [...groups].map(([id, { type, rows }]): TrackGroup => {
+    if (!type) return { id, name: UNLINKED_GROUP, rows };
+    const label = NODE_LABELS[type as MenuNodeType] ?? type;
+    const n = (seen.get(type) ?? 0) + 1;
+    seen.set(type, n);
+    return { id, name: typeCount.get(type)! > 1 ? `${label} ${n}` : label, rows };
+  });
+  return [...named.filter(({ id }) => id === UNLINKED_GROUP), ...named.filter(({ id }) => id !== UNLINKED_GROUP)];
+};
+
+// a group's summary row: one diamond per frame some track of the group has a key on
+export const groupKeyFrames = (group: TrackGroup): number[] =>
+  [...new Set(group.rows.flatMap(({ track }) => track.keys.map(({ frame }) => frame)))].toSorted((a, b) => a - b);
+
 // what a new key takes: the track's value on that frame, a track without keys — the param's own value
 export const keyValueAt = (track: AnimationTrack, frame: number, paramOwn: number | null): number | null =>
   valueAtFrame(track.keys, frame) ?? paramOwn;

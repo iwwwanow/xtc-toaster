@@ -12,6 +12,9 @@ import {
   removeKey,
   removeTrack,
   rulerLabels,
+  trackGroups,
+  groupKeyFrames,
+  UNLINKED_GROUP,
   rulerStep,
   fitPxPerFrame,
   zoomPxPerFrame,
@@ -180,4 +183,40 @@ test("withoutAnimation keeps only what the picture depends on", () => {
   expect(stripped.edges.map(({ id }) => id)).toEqual(["1", "2"]);
   // export settings change no picture — no render for them
   expect(stripped).not.toHaveProperty("export");
+});
+
+describe("track groups", () => {
+  const node = (id: string, type: string) => ({ id, type, position: { x: 0, y: 0 }, data: {} }) as unknown as FlowNode;
+  const link = (source: string, sourceHandle: string, track: string) =>
+    ({ id: `${source}-${track}`, source, sourceHandle, target: "a", targetHandle: track }) as const;
+  const t = (id: string, frames: number[] = []): AnimationTrack => ({ id, keys: frames.map((frame) => ({ frame, value: 0 })) });
+  const nodes = [node("c1", "corners"), node("m", "move"), node("c2", "corners")];
+  const tracks = [t("track-1", [0, 23]), t("track-2"), t("track-3", [5]), t("track-4", [0]), t("track-5", [0, 12])];
+  const edges = [
+    link("c1", "topLeftX", "track-1"),
+    link("m", "x", "track-3"),
+    link("c2", "topLeftY", "track-4"),
+    link("c1", "topLeftY", "track-5"),
+  ];
+
+  test("a group per source node in the order of its first track, unlinked on top, numbered when a type repeats", () => {
+    const groups = trackGroups(nodes, edges, "a", tracks);
+    expect(groups.map(({ id, name }) => [id, name])).toEqual([
+      [UNLINKED_GROUP, "unlinked"],
+      ["c1", "corners 1"],
+      ["m", "move"],
+      ["c2", "corners 2"],
+    ]);
+    expect(groups[1]!.rows.map(({ name, index }) => [name, index])).toEqual([["topLeftX", 0], ["topLeftY", 4]]);
+    expect(groups[0]!.rows.map(({ name }) => name)).toEqual(["track 2"]);
+  });
+
+  test("a link from a node that is gone — the track is unlinked", () => {
+    expect(trackGroups([], edges, "a", tracks).map(({ id }) => id)).toEqual([UNLINKED_GROUP]);
+  });
+
+  test("the summary row: every frame a track of the group has a key on, once", () => {
+    const corners1 = trackGroups(nodes, edges, "a", tracks).find(({ id }) => id === "c1")!;
+    expect(groupKeyFrames(corners1)).toEqual([0, 12, 23]);
+  });
 });

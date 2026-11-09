@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { tick } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import { ANIMATION_FPS, paramBounds, type AnimationTrack } from "@xtc-toaster/contract";
   import {
     addKey,
@@ -8,6 +9,7 @@
     clampPlayhead,
     fitPxPerFrame,
     frameAt,
+    groupKeyFrames,
     keyValueAt,
     moveKey,
     nextKeyFrame,
@@ -16,8 +18,8 @@
     rulerLabels,
     setKeyValue,
     timelineEnd,
+    trackGroups,
     trackLink,
-    trackName,
     zoomPxPerFrame,
   } from "../animation";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
@@ -37,7 +39,22 @@
     queueMicrotask(() => updateNodeInternals(id));
   };
 
-  const drag = new RowDrag("application/x-xtc-animation-track", (from, to) => setTracks(moveRow(data.tracks, from, to)));
+  // tracks grouped by the node they animate (blender's channel groups); a collapsed group keeps its summary row,
+  // its tracks' handles move onto the legend's line. Collapsing is ui only, not in the toast
+  let groups = $derived(trackGroups(session.nodes, session.edges, id, data.tracks));
+  const collapsed = new SvelteSet<string>();
+  const toggleGroup = (group: string) => {
+    if (!collapsed.delete(group)) collapsed.add(group);
+    queueMicrotask(() => updateNodeInternals(id));
+  };
+  const groupOf = (index: number) => groups.find(({ rows }) => rows.some((row) => row.index === index))?.id;
+
+  // a track is dragged inside its group only — across groups the order means nothing
+  const drag = new RowDrag(
+    "application/x-xtc-animation-track",
+    (from, to) => setTracks(moveRow(data.tracks, from, to)),
+    (from, to) => groupOf(from) === groupOf(to),
+  );
 
   let end = $derived(timelineEnd(data));
 
@@ -225,54 +242,71 @@
           onclick={() => setTracks(addTrack(data.tracks))}>+ track</button
         >
       </div>
-      {#each data.tracks as track, index (track.id)}
-        {@const name = trackName(session.nodes, session.edges, id, track.id)}
-        {@const linked = trackLink(session.edges, id, track.id) !== undefined}
-        <div
-          class="nodrag animation__row"
-          role="listitem"
-          style:outline={drag.over === index && drag.dragged !== index ? "1px dashed currentColor" : "none"}
-          style:opacity={drag.dragged === index ? 0.4 : 1}
-          ondragover={drag.dragover(index)}
-          ondrop={drag.drop(index)}
-        >
-          <!-- the track's input, out of the node's left edge like a layers row's -->
-          <Handle
-            type="target"
-            position={Position.Left}
-            id={track.id}
-            style="left: calc(-1 * var(--GRID-GAP-2) - 1px - var(--handle-offset))"
-          />
-          <span
-            draggable={!locked}
-            role="button"
-            tabindex="-1"
-            title="drag to reorder"
-            style="cursor: grab; user-select: none"
-            ondragstart={drag.start(index)}
-            ondragend={drag.end}>⠿</span
-          >
-          <span class="animation__name" title={name}>{name}</span>
-          {#if linked}
+      {#each groups as group (group.id)}
+        {@const open = !collapsed.has(group.id)}
+        <!-- TODO(uiu): hand-written — a group of tracks in the node frame's look (.frame), nested -->
+        <fieldset class="animation__group">
+          <legend class="animation__group-legend">
             <button
-              class="btn_ai-generated btn-sm_ai-generated"
+              class="nodrag animation__toggle"
               type="button"
-              title="a key at the playhead"
-              disabled={locked || track.keys.some((key) => key.frame === session.frame)}
-              onclick={() => addKeyAt(track)}>+ key</button
+              title={open ? "collapse the group" : "expand the group"}
+              aria-expanded={open}
+              onclick={() => toggleGroup(group.id)}
+              >{open ? "▾" : "▸"} {group.name}{open ? "" : ` (${group.rows.length})`}</button
             >
+          </legend>
+          {#if !open}
+            <!-- the hidden rows' inputs sit on the legend's line, one over another: their wires still land -->
+            {#each group.rows as { track } (track.id)}
+              <Handle type="target" position={Position.Left} id={track.id} class="animation__group-handle" />
+            {/each}
+          {:else}
+            {#each group.rows as { track, index, name } (track.id)}
+              {@const linked = trackLink(session.edges, id, track.id) !== undefined}
+              <div
+                class="nodrag animation__row"
+                role="listitem"
+                style:outline={drag.over === index && drag.dragged !== index ? "1px dashed currentColor" : "none"}
+                style:opacity={drag.dragged === index ? 0.4 : 1}
+                ondragover={drag.dragover(index)}
+                ondrop={drag.drop(index)}
+              >
+                <!-- the track's input, out of the node's left edge like a layers row's (past the group's frame too) -->
+                <Handle type="target" position={Position.Left} id={track.id} class="animation__track-handle" />
+                <span
+                  draggable={!locked}
+                  role="button"
+                  tabindex="-1"
+                  title="drag to reorder inside the group"
+                  style="cursor: grab; user-select: none"
+                  ondragstart={drag.start(index)}
+                  ondragend={drag.end}>⠿</span
+                >
+                <span class="animation__name" title={name}>{name}</span>
+                {#if linked}
+                  <button
+                    class="btn_ai-generated btn-sm_ai-generated"
+                    type="button"
+                    title="a key at the playhead"
+                    disabled={locked || track.keys.some((key) => key.frame === session.frame)}
+                    onclick={() => addKeyAt(track)}>+ key</button
+                  >
+                {/if}
+                <button
+                  class="btn_ai-generated btn-sm_ai-generated"
+                  type="button"
+                  title="remove the track, its link and keys"
+                  disabled={locked}
+                  onclick={() => {
+                    session.removeTrack(id, track.id);
+                    queueMicrotask(() => updateNodeInternals(id));
+                  }}>×</button
+                >
+              </div>
+            {/each}
           {/if}
-          <button
-            class="btn_ai-generated btn-sm_ai-generated"
-            type="button"
-            title="remove the track, its link and keys"
-            disabled={locked}
-            onclick={() => {
-              session.removeTrack(id, track.id);
-              queueMicrotask(() => updateNodeInternals(id));
-            }}>×</button
-          >
-        </div>
+        </fieldset>
       {/each}
     </div>
 
@@ -296,28 +330,47 @@
             <span class="animation__label" style:left="{frameX(frame)}px">{frame}</span>
           {/each}
         </div>
-        {#each data.tracks as track (track.id)}
-          <div class="animation__row animation__keys">
-            {#if track.keys.length > 1}
-              {@const frames = track.keys.map((key) => key.frame)}
-              <div
-                class="animation__span"
-                style:left="{frameX(Math.min(...frames))}px"
-                style:width="{(Math.max(...frames) - Math.min(...frames)) * px}px"
-              ></div>
+        {#each groups as group (group.id)}
+          {@const open = !collapsed.has(group.id)}
+          <!-- mirrors the group's fieldset: the summary row on the legend's line, then the tracks -->
+          <div class="animation__group-keys">
+            <div class="animation__row animation__keys animation__summary">
+              {#each groupKeyFrames(group) as frame (frame)}
+                <span
+                  class="animation__key animation__key_summary"
+                  class:animation__key_selected={selected?.frame === frame && group.rows.some(({ track }) => track.id === selected?.track)}
+                  class:animation__key_past={frame >= data.frames}
+                  style:left="{frameX(frame)}px"
+                  title="frame {frame}: keys of {group.name}"
+                ></span>
+              {/each}
+            </div>
+            {#if open}
+              {#each group.rows as { track } (track.id)}
+                <div class="animation__row animation__keys">
+                  {#if track.keys.length > 1}
+                    {@const frames = track.keys.map((key) => key.frame)}
+                    <div
+                      class="animation__span"
+                      style:left="{frameX(Math.min(...frames))}px"
+                      style:width="{(Math.max(...frames) - Math.min(...frames)) * px}px"
+                    ></div>
+                  {/if}
+                  {#each track.keys as key (key.frame)}
+                    <button
+                      class="animation__key"
+                      class:animation__key_selected={selected?.track === track.id && selected.frame === key.frame}
+                      class:animation__key_past={key.frame >= data.frames}
+                      type="button"
+                      style:left="{frameX(key.frame)}px"
+                      aria-label="key on frame {key.frame}"
+                      title="frame {key.frame}: {key.value}"
+                      onclick={() => (selected = { track: track.id, frame: key.frame })}
+                    ></button>
+                  {/each}
+                </div>
+              {/each}
             {/if}
-            {#each track.keys as key (key.frame)}
-              <button
-                class="animation__key"
-                class:animation__key_selected={selected?.track === track.id && selected.frame === key.frame}
-                class:animation__key_past={key.frame >= data.frames}
-                type="button"
-                style:left="{frameX(key.frame)}px"
-                aria-label="key on frame {key.frame}"
-                title="frame {key.frame}: {key.value}"
-                onclick={() => (selected = { track: track.id, frame: key.frame })}
-              ></button>
-            {/each}
           </div>
         {/each}
         <!-- past the rendered frames, only as far as a key goes -->
