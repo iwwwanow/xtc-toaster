@@ -124,7 +124,9 @@
       {:else if settings.loop}
         {@const loop = settings.loop}
         <label class="param">
-          <span class="param__label field__label_ai-generated">seconds</span>
+          <!-- «secs», not «seconds»: the label column is as wide as its longest label (format) — a longer one
+               would widen the panel -->
+          <span class="param__label field__label_ai-generated" title="seconds">secs</span>
           <input
             class="input_ai-generated input-sm_ai-generated"
             type="number"

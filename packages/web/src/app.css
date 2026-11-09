@@ -500,8 +500,20 @@ legend {
 .export-group__main > .btn_ai-generated {
   flex: 1;
 }
+/* the panel keeps the width of its buttons whatever the loop mode: a number input's own width (~20 characters)
+   would widen it (the panel is sized to its content's max-content, a percentage width doesn't stop that), so an
+   input asks for no width of its own and stretches to the column (09.11, asked by the user) */
 .export-settings {
   min-width: 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+.export-settings input:not([type="checkbox"]) {
+  width: 0;
+  min-width: 100%;
+}
+/* the selects keep their width — it is the panel's in every mode */
+.export-settings select {
+  width: 100%;
 }
 
 /* TODO(uiu): hand-written — uiu has no transparency background. Under a picture with alpha: Photoshop's
