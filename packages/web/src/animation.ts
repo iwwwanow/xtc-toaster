@@ -78,11 +78,49 @@ export const keyValueAt = (track: AnimationTrack, frame: number, paramOwn: numbe
 export const timelineEnd = ({ frames, tracks }: AnimationData): number =>
   Math.max(frames, ...tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame + 1)));
 
-// a label every 5 frames; the count is bounded, a key on a far frame doesn't make thousands of them
+// Timeline zoom: px a frame takes. Fit (blender's View All) by default — the frames fill the timeline's width;
+// Ctrl+wheel steps it around the cursor, between ZOOM.min and ZOOM.max (or the fit, if that's wider)
+export const ZOOM = { min: 4, max: 64, step: 1.25 } as const;
+
+export const fitPxPerFrame = (width: number, end: number): number => Math.max(ZOOM.min, width / Math.max(1, end));
+
+export const zoomPxPerFrame = (px: number, direction: 1 | -1, fit: number): number =>
+  Math.min(Math.max(ZOOM.max, fit), Math.max(ZOOM.min, px * ZOOM.step ** direction));
+
+// a label every 1 / 2 / 5 / 10 / 20 / 50 / … frames — the smallest step that keeps labels RULER_LABEL_PX apart;
+// the count is bounded, a key on a far frame doesn't make millions of them
+const RULER_LABEL_PX = 32;
 const MAX_RULER_LABELS = 200;
-export const rulerLabels = (end: number): number[] => {
-  const step = Math.max(5, Math.ceil(end / MAX_RULER_LABELS / 5) * 5);
+export const rulerStep = (pxPerFrame: number, end: number): number => {
+  if (!(pxPerFrame > 0)) throw new RangeError(`rulerStep: px per frame ${pxPerFrame}`);
+  for (let magnitude = 1; ; magnitude *= 10) {
+    for (const step of [1, 2, 5].map((n) => n * magnitude)) {
+      if (step * pxPerFrame >= RULER_LABEL_PX && end / step <= MAX_RULER_LABELS) return step;
+    }
+  }
+};
+
+export const rulerLabels = (end: number, pxPerFrame: number): number[] => {
+  const step = rulerStep(pxPerFrame, end);
   return Array.from({ length: Math.ceil(end / step) }, (_, index) => index * step);
+};
+
+// the frame under a point `x` px into the timeline's content
+export const frameAt = (x: number, pxPerFrame: number): number => Math.max(0, Math.floor(x / pxPerFrame));
+
+// blender's jump to keyframe: the nearest key of any track before / after the frame, among the rendered frames
+// (the playhead stops at the last one); null — none that way
+const renderedKeyFrames = ({ frames, tracks }: Pick<AnimationData, "frames" | "tracks">): number[] =>
+  [...new Set(tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame)))].filter((frame) => frame < frames);
+
+export const prevKeyFrame = (data: Pick<AnimationData, "frames" | "tracks">, frame: number): number | null => {
+  const before = renderedKeyFrames(data).filter((key) => key < frame);
+  return before.length > 0 ? Math.max(...before) : null;
+};
+
+export const nextKeyFrame = (data: Pick<AnimationData, "frames" | "tracks">, frame: number): number | null => {
+  const after = renderedKeyFrames(data).filter((key) => key > frame);
+  return after.length > 0 ? Math.min(...after) : null;
 };
 
 // the playhead stops at the last rendered frame

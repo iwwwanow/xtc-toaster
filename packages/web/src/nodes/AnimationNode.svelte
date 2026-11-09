@@ -1,17 +1,24 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
+  import { tick } from "svelte";
   import { ANIMATION_FPS, paramBounds, type AnimationTrack } from "@xtc-toaster/contract";
   import {
     addKey,
     addTrack,
+    clampPlayhead,
+    fitPxPerFrame,
+    frameAt,
     keyValueAt,
     moveKey,
+    nextKeyFrame,
+    prevKeyFrame,
     removeKey,
     rulerLabels,
     setKeyValue,
     timelineEnd,
     trackLink,
     trackName,
+    zoomPxPerFrame,
   } from "../animation";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { moveRow } from "../layers";
@@ -32,23 +39,67 @@
 
   const drag = new RowDrag("application/x-xtc-animation-track", (from, to) => setTracks(moveRow(data.tracks, from, to)));
 
-  const PX_PER_FRAME = 12;
   let end = $derived(timelineEnd(data));
-  const frameX = (frame: number) => frame * PX_PER_FRAME + PX_PER_FRAME / 2;
+
+  // zoom — px a frame takes: fit (blender's View All) until Ctrl+wheel sets one; `fit` / Home go back to fit.
+  // The timeline's width in layout px (clientWidth isn't scaled by the canvas zoom)
+  let timelineWidth = $state(0);
+  let zoom = $state<number | null>(null);
+  let fit = $derived(fitPxPerFrame(timelineWidth, end));
+  let px = $derived(zoom ?? fit);
+  const frameX = (frame: number) => frame * px + px / 2;
 
   let locked = $derived(session.animationLocked);
+  // the playhead moves while a render runs (latest-wins), not during an export
+  let canMove = $derived(session.connected && session.exporting === null);
 
-  // a click on the ruler; the rect is in screen px, scaled by the canvas zoom, offsetWidth is not
-  const onrulerclick = ({ clientX, currentTarget }: MouseEvent & { currentTarget: HTMLElement }) => {
-    const rect = currentTarget.getBoundingClientRect();
-    const x = (clientX - rect.left) * (currentTarget.offsetWidth / rect.width);
-    session.setPlayhead(Math.floor(x / PX_PER_FRAME));
+  // a point's x in an element's own px: the rect is in screen px, scaled by the canvas zoom, offsetWidth is not
+  const localX = (clientX: number, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    return (clientX - rect.left) * (element.offsetWidth / rect.width);
   };
 
-  // the wheel over the timeline scrolls it sideways: the node's own area takes it from the canvas (nowheel),
-  // and there is nothing to scroll vertically
-  const onwheel = (event: WheelEvent & { currentTarget: HTMLElement }) => {
-    if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
+  // the transport: every move stops play and stays among the rendered frames; null — nowhere to go
+  const go = (frame: number | null) => {
+    if (frame === null || !canMove) return;
+    session.stop();
+    session.setPlayhead(clampPlayhead(frame, data.frames));
+  };
+  let prevKey = $derived(prevKeyFrame(data, session.frame));
+  let nextKey = $derived(nextKeyFrame(data, session.frame));
+
+  // scrubbing, blender's: press on the ruler and drag — every whole frame passed is rendered (latest-wins)
+  let scrubbing = false;
+  const scrubTo = (event: PointerEvent & { currentTarget: HTMLElement }) =>
+    go(frameAt(localX(event.clientX, event.currentTarget), px));
+  const onrulerdown = (event: PointerEvent & { currentTarget: HTMLElement }) => {
+    if (!canMove || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrubbing = true;
+    scrubTo(event);
+  };
+  const onrulermove = (event: PointerEvent & { currentTarget: HTMLElement }) => {
+    if (scrubbing) scrubTo(event);
+  };
+
+  // the wheel over the timeline scrolls it sideways (the node's own area takes it from the canvas — nowheel, and
+  // there is nothing to scroll vertically); Ctrl+wheel zooms around the cursor's frame. Not passive: it must stop
+  // the browser's own Ctrl+wheel page zoom
+  const wheel = (element: HTMLElement) => {
+    const onwheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        if (event.deltaX === 0) element.scrollLeft += event.deltaY;
+        return;
+      }
+      event.preventDefault();
+      const cursor = localX(event.clientX, element);
+      const at = (element.scrollLeft + cursor) / px;
+      const next = zoomPxPerFrame(px, event.deltaY < 0 ? 1 : -1, fit);
+      zoom = next;
+      void tick().then(() => (element.scrollLeft = at * next - cursor));
+    };
+    element.addEventListener("wheel", onwheel, { passive: false });
+    return () => element.removeEventListener("wheel", onwheel);
   };
 
   // Number fields: the graph takes only valid values. The field shows what was taken, or the old one back — set by
@@ -104,7 +155,35 @@
 <fieldset class="frame frame_span-6 animation">
   <legend><h6>{NODE_LABELS.animation}</h6></legend>
 
-  <div class="animation__settings">
+  <!-- blender's timeline header: the transport in the middle, the frame and the range on the right; text buttons
+       instead of its icons, the key in the title -->
+  <div class="animation__header">
+    <div class="animation__transport">
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the first frame (Shift+←)" disabled={!canMove} onclick={() => go(0)}>start</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key before (↓)" disabled={!canMove || prevKey === null} onclick={() => go(prevKey)}>‹ key</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame back (←)" disabled={!canMove} onclick={() => go(session.frame - 1)}>‹</button>
+      <button
+        class="nodrag btn_ai-generated btn-sm_ai-generated animation__play"
+        type="button"
+        title={session.playing ? "stop on this frame (Space)" : "render the frames one after another, from the playhead (Space)"}
+        disabled={!session.playing && (locked || !session.canRender)}
+        onclick={() => session.togglePlay()}>{session.playing ? "stop" : "play"}</button
+      >
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame on (→)" disabled={!canMove} onclick={() => go(session.frame + 1)}>›</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key after (↑)" disabled={!canMove || nextKey === null} onclick={() => go(nextKey)}>key ›</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the last frame (Shift+→)" disabled={!canMove} onclick={() => go(data.frames - 1)}>end</button>
+    </div>
+    <label class="field__label_ai-generated" for="{id}-frame">frame</label>
+    <input
+      id="{id}-frame"
+      class="nodrag input_ai-generated input-sm_ai-generated animation__number"
+      type="number"
+      min="0"
+      max={data.frames - 1}
+      value={session.frame}
+      disabled={!canMove}
+      onchange={numberField(() => session.frame, wholeFrom(0, data.frames - 1), go)}
+    />
     <label class="field__label_ai-generated" for="{id}-fps">fps</label>
     <input
       id="{id}-fps"
@@ -126,6 +205,13 @@
       disabled={locked}
       onchange={numberField(() => data.frames, wholeFrom(1), (frames) => setData({ frames }))}
     />
+    <button
+      class="nodrag btn_ai-generated btn-sm_ai-generated"
+      type="button"
+      title="every frame in view (Home); Ctrl+wheel over the timeline zooms"
+      disabled={zoom === null}
+      onclick={() => (zoom = null)}>fit</button
+    >
   </div>
 
   <div class="animation__body">
@@ -138,14 +224,6 @@
           disabled={locked}
           onclick={() => setTracks(addTrack(data.tracks))}>+ track</button
         >
-        <button
-          class="nodrag btn_ai-generated btn-sm_ai-generated"
-          type="button"
-          title={session.playing ? "stop on this frame" : "render the frames one after another, from the playhead"}
-          disabled={!session.playing && (locked || !session.canRender)}
-          onclick={() => session.togglePlay()}>{session.playing ? "stop" : "play"}</button
-        >
-        <span class="field__hint_ai-generated" style="white-space: nowrap">frame {session.frame}</span>
       </div>
       {#each data.tracks as track, index (track.id)}
         {@const name = trackName(session.nodes, session.edges, id, track.id)}
@@ -198,19 +276,26 @@
       {/each}
     </div>
 
-    <div class="animation__timeline nowheel nodrag nopan" {onwheel}>
-      <div class="animation__content" style:--frame-width="{PX_PER_FRAME}px" style:width="{end * PX_PER_FRAME}px">
-        <button
+    <div class="animation__timeline nowheel nodrag nopan" bind:clientWidth={timelineWidth} {@attach wheel}>
+      <div class="animation__content" style:--frame-width="{px}px" style:width="{end * px}px">
+        <div
           class="animation__row animation__ruler"
-          type="button"
-          aria-label="move the playhead"
-          disabled={!session.connected || session.exporting !== null}
-          onclick={onrulerclick}
+          class:animation__ruler_off={!canMove}
+          role="slider"
+          tabindex="-1"
+          aria-label="the playhead — press and drag"
+          aria-valuemin={0}
+          aria-valuemax={data.frames - 1}
+          aria-valuenow={session.frame}
+          onpointerdown={onrulerdown}
+          onpointermove={onrulermove}
+          onpointerup={() => (scrubbing = false)}
+          onpointercancel={() => (scrubbing = false)}
         >
-          {#each rulerLabels(end) as frame (frame)}
+          {#each rulerLabels(end, px) as frame (frame)}
             <span class="animation__label" style:left="{frameX(frame)}px">{frame}</span>
           {/each}
-        </button>
+        </div>
         {#each data.tracks as track (track.id)}
           <div class="animation__row animation__keys">
             {#if track.keys.length > 1}
@@ -218,7 +303,7 @@
               <div
                 class="animation__span"
                 style:left="{frameX(Math.min(...frames))}px"
-                style:width="{(Math.max(...frames) - Math.min(...frames)) * PX_PER_FRAME}px"
+                style:width="{(Math.max(...frames) - Math.min(...frames)) * px}px"
               ></div>
             {/if}
             {#each track.keys as key (key.frame)}
@@ -236,7 +321,7 @@
           </div>
         {/each}
         <!-- past the rendered frames, only as far as a key goes -->
-        <div class="animation__past" style:left="{data.frames * PX_PER_FRAME}px"></div>
+        <div class="animation__past" style:left="{data.frames * px}px"></div>
         <div class="animation__playhead" style:left="{frameX(session.frame)}px"></div>
       </div>
     </div>

@@ -292,10 +292,20 @@ legend {
 .animation {
   --animation-row: 24px;
 }
-.animation__settings {
+.animation__settings,
+.animation__header {
   display: flex;
   align-items: center;
   gap: var(--GRID-GAP-2);
+}
+/* blender's header: the transport in the middle, the frame / range / fit on the right */
+.animation__transport {
+  margin: 0 auto;
+  display: flex;
+  gap: var(--GRID-GAP-4);
+}
+.animation__play {
+  min-width: 48px;
 }
 .animation__number {
   width: 72px;
@@ -314,8 +324,8 @@ legend {
   gap: var(--GRID-GAP-4);
   box-sizing: border-box;
 }
-.animation__head {
-  justify-content: space-between;
+.animation__ruler_off {
+  cursor: not-allowed;
 }
 .animation__name {
   flex: 1;
@@ -338,7 +348,9 @@ legend {
   width: 100%;
   padding: 0;
   display: block;
-  cursor: pointer;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
   border-bottom: 1px solid var(--LIGHT);
   background-image: repeating-linear-gradient(
     to right,

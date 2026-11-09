@@ -12,6 +12,13 @@ import {
   removeKey,
   removeTrack,
   rulerLabels,
+  rulerStep,
+  fitPxPerFrame,
+  zoomPxPerFrame,
+  ZOOM,
+  frameAt,
+  prevKeyFrame,
+  nextKeyFrame,
   seedTrack,
   setKeyValue,
   timelineEnd,
@@ -92,9 +99,41 @@ describe("timeline", () => {
     expect(nextFrame(0, 1)).toBe(0);
   });
 
-  test("ruler labels: every 5 frames, bounded on a far key", () => {
-    expect(rulerLabels(12)).toEqual([0, 5, 10]);
-    expect(rulerLabels(1_000_000_000).length).toBeLessThanOrEqual(200);
+  test("ruler labels: 1 / 2 / 5 / 10 … frames apart, at least 32 px, bounded on a far key", () => {
+    expect(rulerLabels(12, 12)).toEqual([0, 5, 10]);
+    expect(rulerLabels(4, 40)).toEqual([0, 1, 2, 3]);
+    expect(rulerLabels(10, 16)).toEqual([0, 2, 4, 6, 8]);
+    expect(rulerStep(4, 100)).toBe(10);
+    expect(rulerLabels(1_000_000_000, 12).length).toBeLessThanOrEqual(200);
+  });
+
+  test("zoom: fit fills the width, Ctrl+wheel steps between the bounds or up to the fit", () => {
+    expect(fitPxPerFrame(808, 24)).toBeCloseTo(33.67, 2);
+    expect(fitPxPerFrame(808, 10_000)).toBe(ZOOM.min);
+    expect(zoomPxPerFrame(10, 1, 10)).toBe(12.5);
+    expect(zoomPxPerFrame(10, -1, 10)).toBe(8);
+    expect(zoomPxPerFrame(ZOOM.max, 1, 10)).toBe(ZOOM.max);
+    expect(zoomPxPerFrame(ZOOM.min, -1, 10)).toBe(ZOOM.min);
+    // two frames fit at 404 px: zooming out from there is allowed, past it — not
+    expect(zoomPxPerFrame(404, 1, 404)).toBe(404);
+    expect(frameAt(100, 33)).toBe(3);
+    expect(frameAt(-5, 33)).toBe(0);
+  });
+
+  test("jump to keyframe: the nearest key of any track, only among the rendered frames", () => {
+    const data = {
+      frames: 20,
+      tracks: [
+        { id: "a", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] },
+        { id: "b", keys: [{ frame: 4, value: 0 }, { frame: 30, value: 1 }] },
+      ],
+    };
+    expect(nextKeyFrame(data, 0)).toBe(4);
+    expect(nextKeyFrame(data, 4)).toBe(10);
+    expect(nextKeyFrame(data, 10)).toBeNull(); // 30 is past the rendered frames
+    expect(prevKeyFrame(data, 10)).toBe(4);
+    expect(prevKeyFrame(data, 7)).toBe(4);
+    expect(prevKeyFrame(data, 0)).toBeNull();
   });
 });
 
