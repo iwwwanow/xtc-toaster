@@ -177,9 +177,9 @@ Asked by the user 09.11, after the must was done: these go in **before** the rel
 
 ### the blender timeline, what we take
 
-Blender's timeline / dope sheet, cut to what is quick here. Buttons with text, no icons; each has a `title` with its key.
+Blender's timeline / dope sheet, cut to what is quick here. Buttons with text, no icons. Hotkeys — out of the release (09.11, the user): `docs/backlog/2026-11-09_timeline-hotkeys.md`; the keys below stay as the plan for them.
 
-| blender | here | key (animation node selected) |
+| blender | here | key (animation node selected) — later, backlog |
 |---|---|---|
 | scrub: drag in the ruler | drag the playhead along the ruler, a frame rendered on every whole frame (latest-wins) | — |
 | jump to start / end | `start` / `end` — frame 0 / `frames - 1` | Shift+← / Shift+→ |
@@ -276,12 +276,12 @@ Rules for dragging a key:
 2. **09.11** — widths + the label inside the field, done the same day too
    - 09.11 also: the header, the transport, the playhead drag, zoom. `+ track` stays in the channels' head row (level with the ruler), not in the header — the header holds the transport and the fields
 3. **11.11 wed** — widths + the label inside the field, the handles; the animation node at 6 columns, the header, the transport, the playhead drag, zoom
-4. **12.11 thu** — groups (fieldsets, summary rows, collapse), key drag, the hotkeys, a wire dropped on `+ track`
+4. **12.11 thu** — groups (fieldsets, summary rows, collapse), key drag, a wire dropped on `+ track` (the hotkeys — out, 09.11)
 5. **13.11 fri** — the export dropdown; the headless pass of the DoD
 6. **14.11 sat** — check 2 on prod, `sprint-5.qa.md`, merge to master, release
 7. **15.11 sun** — buffer
 
-cut if behind (extension, in order): the hotkeys → zoom (fit only) → summary drag (summary shows, doesn't drag) → mp4 (gif only, as before)
+cut if behind (extension, in order): zoom (fit only) → summary drag (summary shows, doesn't drag) → mp4 (gif only, as before)
 
 ### decisions (extension)
 
@@ -290,7 +290,7 @@ answered 09.11:
 - the export settings live in the toast, `ToastGraph.export` — not in the animation node, not browser-only (degas keeps its 15 s)
 - a node is one uiu column, 190px; the number field holds its label inside, as blender's nodes
 - the animation node is 6 columns, 1236px
-- from blender, beyond the asked list: the whole transport, hotkeys (only with the animation node selected), timeline zoom, the group summary row and collapse
+- from blender, beyond the asked list: the whole transport, timeline zoom, the group summary row and collapse; hotkeys were taken too, then put off 09.11 (the user) — `docs/backlog/2026-11-09_timeline-hotkeys.md`
 
 set 09.11 while writing this, not asked — change here if wrong:
 

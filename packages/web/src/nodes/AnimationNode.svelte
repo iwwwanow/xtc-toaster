@@ -62,7 +62,7 @@
 
   let end = $derived(timelineEnd(data));
 
-  // zoom — px a frame takes: fit (blender's View All) until Ctrl+wheel sets one; `fit` / Home go back to fit.
+  // zoom — px a frame takes: fit (blender's View All) until Ctrl+wheel sets one; `fit` goes back to fit.
   // The timeline's width in layout px (clientWidth isn't scaled by the canvas zoom)
   let timelineWidth = $state(0);
   let zoom = $state<number | null>(null);
@@ -222,19 +222,19 @@
        instead of its icons, the key in the title -->
   <div class="animation__header">
     <div class="animation__transport">
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the first frame (Shift+←)" disabled={!canMove} onclick={() => go(0)}>start</button>
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key before (↓)" disabled={!canMove || prevKey === null} onclick={() => go(prevKey)}>‹ key</button>
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame back (←)" disabled={!canMove} onclick={() => go(session.frame - 1)}>‹</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the first frame" disabled={!canMove} onclick={() => go(0)}>start</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key before" disabled={!canMove || prevKey === null} onclick={() => go(prevKey)}>‹ key</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame back" disabled={!canMove} onclick={() => go(session.frame - 1)}>‹</button>
       <button
         class="nodrag btn_ai-generated btn-sm_ai-generated animation__play"
         type="button"
-        title={session.playing ? "stop on this frame (Space)" : "render the frames one after another, from the playhead (Space)"}
+        title={session.playing ? "stop on this frame" : "render the frames one after another, from the playhead"}
         disabled={!session.playing && (locked || !session.canRender)}
         onclick={() => session.togglePlay()}>{session.playing ? "stop" : "play"}</button
       >
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame on (→)" disabled={!canMove} onclick={() => go(session.frame + 1)}>›</button>
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key after (↑)" disabled={!canMove || nextKey === null} onclick={() => go(nextKey)}>key ›</button>
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the last frame (Shift+→)" disabled={!canMove} onclick={() => go(data.frames - 1)}>end</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame on" disabled={!canMove} onclick={() => go(session.frame + 1)}>›</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key after" disabled={!canMove || nextKey === null} onclick={() => go(nextKey)}>key ›</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the last frame" disabled={!canMove} onclick={() => go(data.frames - 1)}>end</button>
     </div>
     <label class="field__label_ai-generated" for="{id}-frame">frame</label>
     <input
@@ -271,7 +271,7 @@
     <button
       class="nodrag btn_ai-generated btn-sm_ai-generated"
       type="button"
-      title="every frame in view (Home); Ctrl+wheel over the timeline zooms"
+      title="every frame in view; Ctrl+wheel over the timeline zooms"
       disabled={zoom === null}
       onclick={() => (zoom = null)}>fit</button
     >

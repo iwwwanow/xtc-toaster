@@ -141,7 +141,7 @@
      - [x] 09.11 blender timeline, first half: the header (transport `start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field, fps / frames, `fit`), playhead drag on the ruler, zoom (fit by default, Ctrl+wheel, `fit`); text buttons instead of icons
      - [x] 09.11 key drag (whole frames, an occupied frame refused — the key waits on the last free one) and the summary diamonds' drag (the group's keys of that frame together)
      - [x] 09.11 the export panel keeps its width in every loop mode (asked by the user)
-     - [ ] blender timeline, the rest: hotkeys with the animation node selected (Space, ←/→, ↑/↓, Shift+←/→, Home, I, X/Del — Del deletes the key, not the node), a param wire dropped on `+ track` makes a linked track
+     - [ ] blender timeline, the rest: a param wire dropped on `+ track` makes a linked track
      - [x] 09.11 tracks grouped by source node — a fieldset per group, a summary row, collapse (the summary drag comes with the key drag)
      - [x] 09.11 arrange lines chains up by the nodes' tops, not by the bottom-right output (asked by the user) — only elk's input changes, the handles on screen stay where they are
      - [x] 09.11 export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
