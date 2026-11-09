@@ -24,6 +24,12 @@ const LAYOUT = {
   "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
 };
 
+// A node's own pixel handles (id null) count for the layout as if both sat on its top line: elk lines up the
+// ports of a link, so a chain's nodes line up by their headers, not by the output in the bottom-right corner
+// (asked by the user 09.11) — the wire bends a little instead. Param handles keep their real height: the wires
+// into the layers rows and the tracks still come in their order
+const PIXEL_PORT_Y = 10;
+
 const portId = (node: string, type: ArrangeHandle["type"], handle: string | null | undefined) => `${node}:${type}:${handle ?? ""}`;
 
 // elkjs is ~1.4 MB — loaded on the first arrange, not with the page
@@ -48,7 +54,7 @@ export const arrange = async (nodes: readonly ArrangeNode[], edges: readonly Arr
           width: 0,
           height: 0,
           x: side === "left" ? 0 : width,
-          y: Math.min(height, Math.max(0, y)),
+          y: handle === null ? PIXEL_PORT_Y : Math.min(height, Math.max(0, y)),
           layoutOptions: { "elk.port.side": side === "left" ? "WEST" : "EAST" },
         };
       }),

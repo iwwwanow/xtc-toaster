@@ -43,6 +43,27 @@ describe("arrange", () => {
     expect(right(boxes)).toBeLessThan(right(grid));
   });
 
+  test("a chain lines up by the nodes' tops, not by the output in the bottom-right corner", async () => {
+    const node = (id: string, height: number): ArrangeNode => ({
+      id,
+      width: 190,
+      height,
+      handles: [
+        { id: null, type: "target", side: "left", y: 10 },
+        { id: null, type: "source", side: "right", y: height - 2 },
+      ],
+    });
+    const at = await arrange(
+      [node("a", 60), node("b", 140), node("c", 90)],
+      [
+        { id: "a-b", source: "a", target: "b" },
+        { id: "b-c", source: "b", target: "c" },
+      ],
+    );
+    expect(at.get("b")!.y).toBe(at.get("a")!.y);
+    expect(at.get("c")!.y).toBe(at.get("a")!.y);
+  });
+
   test("a node without measured handles still gets a place", async () => {
     const at = await arrange(
       [
