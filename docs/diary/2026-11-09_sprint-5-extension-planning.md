@@ -19,16 +19,39 @@
 - Для yuv420p в mp4 нужен чётный размер кадра — делаем pad. Ещё надо проверить, что в ffmpeg из debian trixie есть `libx264`; если нет, берём `libopenh264`.
 - Подпись внутри поля шириной 174px длинные метки не вмещает (`x (% of width)` → `x %`), длинная форма уходит в `title`.
 
+## Сделано в тот же день (после планирования)
+
+- **Контракт.** Новое поле `ToastGraph.export?: { format?: "gif" | "mp4"; loop?: AnimationLoop }`. `loop` убран из `AnimationNode.data`. У `{ seconds }` появилось `wholeCycles?: boolean`, по умолчанию `true`. Старый `loop` в ноде zod молча отбрасывает — тест на это есть.
+- **lib** (`assemble-gif.ts`).
+  - `assembleGifFromFrames(dir, fps, out, { plays, frames })`. `frames` повторяет последовательность png через `-stream_loop -1` и обрезает её `-frames:v`. Палитра считается по одному проходу: на зацикленном входе palettegen не закончился бы никогда.
+  - `assembleMp4FromFrames`: кадры кладутся на белый, нечётный размер дополняется до чётного белым, дальше `libx264 -preset veryfast`, yuv420p, `+faststart`.
+- **Сервер.** `animationLength(data, export)` → `{ frames?, plays? }` (бывший `gifPlays`). Файлы называются `<uuid>.gif|mp4`, `findAnimation` возвращает файл с content-type.
+- **web.**
+  - Настройки `exportSettings` хранятся в session и проходят через `toGraph` / `toToastFile` / `fromToastFile` / `toSaved` / `fromSaved`. `withoutAnimation` их выбрасывает, так что смена настройки не запускает рендер.
+  - Кнопка `render gif|mp4` с `▾`, под ней блок настроек (`.export-group` — `TODO(uiu)`, отмечено в `docs/backlog/2026-10-30_uiu-gaps-from-web.md`). Пустое значение для loop называется `forever` у gif и `once` у mp4.
+- **Handle** (пользователь попросил по скриншоту). Пиксельный вход теперь на линии легенды слева сверху (`--legend-line: 0.5lh`), выход остался справа снизу. Обе точки 6px вместо 4px. Выход параметра на 3px ближе к полю (`--param-handle-offset`).
+
+Проверено:
+
+- `bun run typecheck` и `bun run test` зелёные.
+- `docker build --target test .` зелёный: mp4-тесты lib прошли на ffmpeg 7.1 из trixie, libx264 там есть.
+- Headless Chrome на dev-стеке, `?toast=animation`. Открыли `▾`, выбрали mp4: loop показывает `once`, настройки легли в localStorage. `render mp4` скачал `toast-2_signac_<ts>.mp4`: h264, yuv420p, 250×360, 72 кадра (24 × reps 3), 12 fps. Центр входа совпал с линией легенды (±1px).
+- Пользователь руками это ещё не смотрел.
+
+Подводный камень сессии: `pkill -f "remote-debugging-port=9333"` в той же bash-команде убивает и сам shell (паттерн есть в его командной строке). Headless Chrome гасить по PID.
+
+Коммиты: `795489c` (mp4 и настройки экспорта), `2564309` (handle).
+
 ## Что осталось
 
 План по дням — в спеке:
 
-- 10.11 — контракт и mp4 на сервере.
-- 11.11 — ширины нод, шапка таймлайна, транспорт, зум.
+- 10.11 — ширины нод по сетке uiu, подпись внутри числового поля.
+- 11.11 — нода animation на 6 колонок, шапка таймлайна, транспорт, перетаскивание playhead, зум.
 - 12.11 — группы, перетаскивание ключей, горячие клавиши, провод на `+ track`.
-- 13.11 — выпадающий блок экспорта и проверка DoD в headless Chrome.
+- 13.11 — проверка DoD в headless Chrome.
 - 14.11 — проверка 2 на проде, `sprint-5.qa.md`, слияние в master, релиз.
 
 Если не успеваем, режем в таком порядке: горячие клавиши → зум → перетаскивание в сводке → mp4.
 
-Коммиты `b014dd8` и `1d001fc` (docs) в origin пока не запушены.
+Коммиты с `b014dd8` в origin пока не запушены.
