@@ -244,9 +244,9 @@ Rules for dragging a key:
 ### export dropdown
 
 - `render animation` gets `▾` next to it (one button group); `▾` opens a block under it in the actions panel, `▴` closes it; open / closed — ui only
-- in the block: `format` — `gif` / `mp4`; `loop` — `forever` (gif) or `once` (mp4) / `reps` / `seconds`, the other field off, as the node had it. The button reads `render gif` / `render mp4`; the file — `<toast>_<YYYYMMDD-HHmmss>.gif|.mp4`
-- **contract**: the settings leave the animation node into the toast: `ToastGraph.export?: { format?: "gif" | "mp4"; loop?: AnimationLoop }` (absent format — gif, absent loop — the format's default). `AnimationNode.data.loop` goes. Saved with export / import toast and `localStorage`. `TOAST_GRAPH_VERSION` stays 1 — pre-release, no migration (an old file with `loop` in the node: zod drops the unknown key, the loop is lost). The plain `render` message is sent without `export`: a setting changes no picture. Degas's `{ seconds: 15 }` moves to `export`
-- **server**: `render-animation` reads `graph.export`. mp4 — the same frames on disk (and on white, as gif), then ffmpeg `libx264`, `-pix_fmt yuv420p`, `-movflags +faststart`, the size padded to even (yuv420p needs it), `-r fps`. mp4 has no loop flag: `reps` → the cycle repeated in the file (`-stream_loop`), `seconds` → whole cycles as gif (`gifPlays`, renamed), absent → one cycle. Only one cycle is rendered either way. Check the debian trixie ffmpeg has `libx264` (it should), else `libopenh264`
+- in the block: `format` — `gif` / `mp4`; `loop` — `forever` (gif) or `once` (mp4) / `reps` / `seconds`, the other field off, as the node had it. With `seconds` — a checkbox `whole cycles`, on by default (decided 09.11): on — the length rounds to whole cycles (as now); off — exactly `seconds`, the last cycle cut on a frame. The button reads `render gif` / `render mp4`; the file — `<toast>_<YYYYMMDD-HHmmss>.gif|.mp4`
+- **contract**: the settings leave the animation node into the toast: `ToastGraph.export?: { format?: "gif" | "mp4"; loop?: AnimationLoop }` (absent format — gif, absent loop — the format's default). `AnimationLoop`'s seconds variant gets `wholeCycles?: boolean`, absent — `true`. `AnimationNode.data.loop` goes. Saved with export / import toast and `localStorage`. `TOAST_GRAPH_VERSION` stays 1 — pre-release, no migration (an old file with `loop` in the node: zod drops the unknown key, the loop is lost). The plain `render` message is sent without `export`: a setting changes no picture. Degas's `{ seconds: 15 }` moves to `export`
+- **server**: `render-animation` reads `graph.export`. mp4 — the same frames on disk (and on white, as gif), then ffmpeg `libx264`, `-pix_fmt yuv420p`, `-movflags +faststart`, the size padded to even (yuv420p needs it), `-r fps`. mp4 has no loop flag: `reps` → the cycle repeated in the file (`-stream_loop`), `seconds` → whole cycles as gif (`gifPlays`, renamed), absent → one cycle. `seconds` with `wholeCycles: false`: mp4 — repeated and cut to `round(seconds × fps)` frames (`loopVideoTo`, as the degas script); gif — the frames on disk repeated in the sequence up to that count, the file plays once (`-loop -1`) — a longer file, no extra render. Only one cycle is rendered either way. Check the debian trixie ffmpeg has `libx264` (it should), else `libopenh264`
 - `RENDER_MAX_FRAMES` counts rendered frames only — repeats cost no render
 
 ### node widths on the uiu grid
@@ -258,7 +258,7 @@ Rules for dragging a key:
 
 ### definition of done (extension)
 
-- `bun run test` covers: the group derivation (order, numbering, unlinked), key drag rules (occupied frame, summary drag), prev / next key, the mp4 loop arithmetic, the `export` field in the toast schema
+- `bun run test` covers: the group derivation (order, numbering, unlinked), key drag rules (occupied frame, summary drag), prev / next key, the loop arithmetic (reps / seconds, whole cycles on / off) for gif and mp4, the `export` field in the toast schema
 - in a headless browser on the dev stack, degas: the node is 1236px, 6 groups (3 `corners` × 6 tracks, 3 `move` × 2), collapse / expand keeps the wires, a key dragged, the playhead dragged, `‹ key` / `key ›` / `start` / `end` and the keys, Ctrl+wheel and `fit`, a param wire dropped on `+ track` makes a linked track
 - `render mp4` downloads an mp4 that plays (`ffprobe`: h264, yuv420p, even size, the frame count = cycles × frames); gif as before
 - a toast with `export` survives export → import → reload
@@ -289,5 +289,6 @@ set 09.11 while writing this, not asked — change here if wrong:
 - `layers`, `input`, `output` are 2 columns, the rest 1
 - group names `<type> N` only when a type repeats; unlinked tracks — their own group on top
 - collapse state isn't saved; zoom isn't saved
-- mp4 with no loop set — one cycle; `seconds` rounds to whole cycles, as gif
+- mp4 with no loop set — one cycle
+- `seconds` rounds to whole cycles by default; a `whole cycles` checkbox turns it off — exactly `seconds` (asked by the user 09.11)
 - a dragged key never overwrites another key of its track
