@@ -142,6 +142,7 @@
      - [ ] tracks grouped by source node — a fieldset per group, a summary row (drag moves the group's keys), collapse
      - [ ] export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
      - [ ] node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
+     - [ ] handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out ~2 px bigger
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`

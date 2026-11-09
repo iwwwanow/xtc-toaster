@@ -256,6 +256,13 @@ Rules for dragging a key:
 - the column width (190) and the span formula as css custom props here, marked `TODO(uiu)`: uiu has no column-width token (owo writes `190px` in `.grid`) — a backlog note
 - elk arrange reads measured sizes — nothing to change there
 
+### handles (asked by the user 09.11, with the widths)
+
+- a node's pixel **input** — the top-left corner, on the legend's line (now: the middle of the left side); the pixel **output** stays bottom-right (06.11)
+- a **param's output** handle 2–4 px closer to its field (now `--handle-offset` out of the frame) — it belongs to the row, not to the frame
+- the pixel input and output squares ~2 px bigger than the param handles (4 → 6 px); the hit area stays
+- elk arrange: the input port moves with it — the ports are read from the measured handles, nothing to change
+
 ### definition of done (extension)
 
 - `bun run test` covers: the group derivation (order, numbering, unlinked), key drag rules (occupied frame, summary drag), prev / next key, the loop arithmetic (reps / seconds, whole cycles on / off) for gif and mp4, the `export` field in the toast schema
@@ -267,7 +274,7 @@ Rules for dragging a key:
 
 1. **09.11 mon** — this spec, the diary, planning
 2. **10.11 tue** — contract (`export`, `loop` out of the node), server mp4, degas / test toasts moved; tests
-3. **11.11 wed** — widths + the label inside the field; the animation node at 6 columns, the header, the transport, the playhead drag, zoom
+3. **11.11 wed** — widths + the label inside the field, the handles; the animation node at 6 columns, the header, the transport, the playhead drag, zoom
 4. **12.11 thu** — groups (fieldsets, summary rows, collapse), key drag, the hotkeys, a wire dropped on `+ track`
 5. **13.11 fri** — the export dropdown; the headless pass of the DoD
 6. **14.11 sat** — check 2 on prod, `sprint-5.qa.md`, merge to master, release
