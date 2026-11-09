@@ -7,8 +7,10 @@
     SvelteFlow,
     useNodesInitialized,
     useSvelteFlow,
+    useUpdateNodeInternals,
     type Connection,
     type Edge,
+    type OnConnectEnd,
   } from "@xyflow/svelte";
   import { tick, untrack } from "svelte";
   import { arrange, type ArrangeHandle, type ArrangeNode } from "./arrange";
@@ -115,6 +117,23 @@
     return edge;
   };
 
+  const updateNodeInternals = useUpdateNodeInternals();
+  // a param's wire let go over `+ track` (no handle took it) → a new track linked to that param
+  const onconnectend: OnConnectEnd = (event, state) => {
+    const from = state.fromHandle;
+    if (state.isValid || from?.type !== "source" || !from.id) return;
+    const point = "changedTouches" in event ? event.changedTouches[0] : event;
+    if (!point || !document.elementFromPoint(point.clientX, point.clientY)?.closest("[data-track-drop]")) return;
+    const link = session.addLinkedTrack(from.nodeId, from.id);
+    if (!link) return;
+    // the track's handle is mounted (tick), measured — updateNodeInternals runs in a requestAnimationFrame of its
+    // own, queued first — then linked
+    void tick().then(() => {
+      updateNodeInternals(link.target);
+      requestAnimationFrame(() => session.linkTrack(link));
+    });
+  };
+
   // a link end dropped into empty space → unlink
   const onreconnectend = (_: unknown, edge: Edge, __: unknown, { isValid }: { isValid: boolean | null }) => {
     if (!isValid) session.edges = session.edges.filter(({ id }) => id !== edge.id);
@@ -141,6 +160,7 @@
     {onnodecontextmenu}
     {onedgecontextmenu}
     {onreconnectend}
+    {onconnectend}
     isValidConnection={(connection) => session.canConnect(connection)}
     {onbeforeconnect}
     {onbeforereconnect}

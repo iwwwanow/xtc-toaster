@@ -284,6 +284,8 @@
         <button
           class="nodrag btn_ai-generated btn-sm_ai-generated btn-dashed_ai-generated"
           type="button"
+          title="a new track — or drop a param's wire here: a track linked to it"
+          data-track-drop
           disabled={locked}
           onclick={() => setTracks(addTrack(data.tracks))}>+ track</button
         >

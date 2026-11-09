@@ -16,6 +16,7 @@ import {
   dragKeyTo,
   moveKeys,
   trackGroups,
+  linkedTrackIndex,
   groupKeyFrames,
   UNLINKED_GROUP,
   rulerStep,
@@ -255,5 +256,20 @@ describe("dragging keys", () => {
     expect(moveKeys(tracks, ["a", "b"], 0, 15)).toBeNull(); // b has a key on 15
     // the value goes with the key
     expect(moveKeys(tracks, ["a"], 10, 12)![0]!.keys).toEqual([{ frame: 0, value: 0 }, { frame: 12, value: 10 }, { frame: 20, value: 20 }]);
+  });
+});
+
+describe("a track made by a wire dropped on + track", () => {
+  const tracks: AnimationTrack[] = [{ id: "track-1", keys: [] }, { id: "track-2", keys: [] }, { id: "track-3", keys: [] }];
+  const edges = [
+    { id: "e1", source: "m", sourceHandle: "x", target: "a", targetHandle: "track-1" },
+    { id: "e3", source: "c", sourceHandle: "topLeftX", target: "a", targetHandle: "track-3" },
+  ];
+
+  test("goes on top of its node's group, so the group stays in place; a new node's — on top", () => {
+    expect(linkedTrackIndex(edges, "a", tracks, "c")).toBe(2);
+    expect(linkedTrackIndex(edges, "a", tracks, "m")).toBe(0);
+    expect(linkedTrackIndex(edges, "a", tracks, "new")).toBe(0);
+    expect(addTrack(tracks, 2).map(({ id }) => id)).toEqual(["track-1", "track-2", "track-4", "track-3"]);
   });
 });

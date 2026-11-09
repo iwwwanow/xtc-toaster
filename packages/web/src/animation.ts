@@ -13,11 +13,24 @@ const nextId = (tracks: readonly AnimationTrack[]): string => {
   return `track-${n}`;
 };
 
-// a new row goes on top, right under the button
-export const addTrack = (tracks: readonly AnimationTrack[]): AnimationTrack[] => [
+// a new row goes on top, right under the button; `at` — before that row (a linked one: on top of its group)
+export const addTrack = (tracks: readonly AnimationTrack[], at = 0): AnimationTrack[] => [
+  ...tracks.slice(0, at),
   { id: nextId(tracks), keys: [] },
-  ...tracks,
+  ...tracks.slice(at),
 ];
+
+// where a track linked to a param of `source` goes: on top of that node's group, so the group stays in place;
+// the node has no track yet — on top of everything, as `+ track`
+export const linkedTrackIndex = (
+  edges: readonly Edge[],
+  nodeId: string,
+  tracks: readonly AnimationTrack[],
+  source: string,
+): number => {
+  const index = tracks.findIndex((track) => trackLink(edges, nodeId, track.id)?.source === source);
+  return index === -1 ? 0 : index;
+};
 
 export const removeTrack = (tracks: readonly AnimationTrack[], id: string): AnimationTrack[] =>
   tracks.filter((track) => track.id !== id);

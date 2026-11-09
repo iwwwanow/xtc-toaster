@@ -9,7 +9,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { clampPlayhead, hasAnimatedParams, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { addTrack, clampPlayhead, hasAnimatedParams, linkedTrackIndex, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
 import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
@@ -222,6 +222,31 @@ class Session {
     if (node?.id !== target || !sourceHandle || !targetHandle) return;
     const value = paramValue(this.nodes, source, sourceHandle);
     if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
+  }
+
+  // A param's wire dropped on `+ track` (09.11): a new track on top, linked to that param, with its first key.
+  // A param that drives a track already makes none — a second track would take its link and strand the first
+  // one's keys (dropped on a track's handle, the link does move: that is asked for). Two steps: the track, then —
+  // once its handle is measured (`linkTrack`) — the link; a link before its handle is drawn nowhere (xyflow #008)
+  addLinkedTrack(source: string, sourceHandle: string): Link | null {
+    const node = this.animationNode;
+    if (!node || this.animationLocked) return null;
+    if (this.edges.some((edge) => edge.target === node.id && edge.source === source && edge.sourceHandle === sourceHandle))
+      return null;
+    const at = linkedTrackIndex(this.edges, node.id, node.data.tracks, source);
+    const tracks = addTrack(node.data.tracks, at);
+    const link = { source, sourceHandle, target: node.id, targetHandle: tracks[at]!.id };
+    const nodes = this.nodes.map((n) => (n.id === node.id ? ({ ...n, data: { ...node.data, tracks } } as FlowNode) : n));
+    if (!canConnect(nodes, this.edges, link)) return null;
+    this.nodes = nodes;
+    return link;
+  }
+
+  linkTrack(link: Link) {
+    if (!this.canConnect(link)) return;
+    const { source, sourceHandle, target, targetHandle } = link;
+    this.edges = [...this.edges, { id: `xy-edge__${source}${sourceHandle}-${target}${targetHandle}`, ...link }];
+    this.seedTrack(link);
   }
 
   // the param a track drives, its value in the node's own data
