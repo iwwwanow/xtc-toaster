@@ -429,3 +429,13 @@ legend {
 .export-settings {
   min-width: 0;
 }
+
+/* TODO(uiu): hand-written — uiu has no transparency background. Under a picture with alpha: Photoshop's
+   checkerboard, so the picture's edge and its transparent parts show (09.11). The pattern is one token — swap it
+   for another (diagonals: repeating-linear-gradient(45deg, var(--LIGHT) 0 1px, transparent 0 6px)) */
+.transparency {
+  --transparency-cell: 8px;
+  display: block;
+  background: repeating-conic-gradient(var(--LIGHT) 0 25%, var(--WHITE) 0 50%) 0 0 /
+    calc(2 * var(--transparency-cell)) calc(2 * var(--transparency-cell));
+}

@@ -21,6 +21,6 @@
     </div>
   {:else if session.rendered}
     <!-- rendered at the stored image size, shown scaled down -->
-    <img src={session.rendered.url} alt="render" style="width: 100%" />
+    <img class="transparency" src={session.rendered.url} alt="render" style="width: 100%" />
   {/if}
 </fieldset>
