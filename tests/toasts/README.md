@@ -32,6 +32,6 @@ The toasts users get (`packages/toasts/src/toasts/<name>/toast.json`) open by th
 | toast | expect |
 |---|---|
 | [`toast-2_signac`](http://localhost:5173/?toast=toast-2_signac) | the default graph: input → color noise → select color → 3d turn → output |
-| [`toast-1_degas`](http://localhost:5173/?toast=toast-1_degas) | the degas script at t = 0: 7 layers rows (dark gray, blurred, light gray, blue `lch-hue`, purple / red / white select bright), a gray-turquoise picture with magenta and red in the darks. **Needs `RENDER_MAX_LAYERS=8`** in `.env` (the fallback 4 → `over 4 layers` on the layers node). Bit for bit with the script — `packages/server/tests/degas.test.ts` |
+| [`toast-1_degas`](http://localhost:5173/?toast=toast-1_degas) | the degas script: 7 layers rows (dark gray, blurred, light gray, blue `lch-hue`, purple / red / white select bright), a gray-turquoise picture with magenta and red in the darks. **Needs `RENDER_MAX_LAYERS=8`** in `.env` (the fallback 4 → `over 4 layers` on the layers node). At frame 0 — bit for bit with the script (`packages/server/tests/degas.test.ts`). Animated: an animation node with 24 tracks (3 `corners` × 6, 3 `move` × 2), 24 frames at 36 fps, a 15 s loop — `render animation` exports the script's movement |
 
 A new toast: write the json by hand or build it in the ui and export; name it by what it checks, add a row here.
