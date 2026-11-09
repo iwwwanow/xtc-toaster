@@ -6,12 +6,15 @@
   import {
     addKey,
     addTrack,
+    blockedFrames,
     clampPlayhead,
+    dragKeyTo,
     fitPxPerFrame,
     frameAt,
     groupKeyFrames,
     keyValueAt,
     moveKey,
+    moveKeys,
     nextKeyFrame,
     prevKeyFrame,
     removeKey,
@@ -25,6 +28,7 @@
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
   import { moveRow } from "../layers";
   import { session } from "../session.svelte";
+  import { DRAG_THRESHOLD } from "../slider";
   import { RowDrag } from "./row-drag.svelte";
 
   let { id, data }: NodeProps<FlowNodeOf<"animation">> = $props();
@@ -159,6 +163,48 @@
     setData({ tracks });
     selected = { track: selected.track, frame };
   };
+  // Dragging keys: a diamond of a track, or a summary diamond — every key its group has on that frame. Pressed, the
+  // pointer is caught by the timeline's content (the diamonds are re-keyed by frame as they move); past
+  // DRAG_THRESHOLD it's a drag, else a click that selects. Shown moved while dragging, written on release — one
+  // render, not one per frame passed
+  let content = $state<HTMLElement>();
+  type KeyDrag = { ids: string[]; from: number; to: number; x: number; dragging: boolean; blocked: Set<number>; select: string | null };
+  let keyDrag = $state<KeyDrag | null>(null);
+  let shownTracks = $derived(
+    keyDrag?.dragging && keyDrag.to !== keyDrag.from
+      ? (moveKeys(data.tracks, keyDrag.ids, keyDrag.from, keyDrag.to) ?? data.tracks)
+      : data.tracks,
+  );
+  let shownGroups = $derived(trackGroups(session.nodes, session.edges, id, shownTracks));
+
+  const onkeydown = (ids: string[], frame: number, select: string | null) => (event: PointerEvent) => {
+    if (locked || event.button !== 0 || !content) return;
+    event.stopPropagation();
+    content.setPointerCapture(event.pointerId);
+    keyDrag = { ids, from: frame, to: frame, x: event.clientX, dragging: false, blocked: blockedFrames(data.tracks, ids, frame), select };
+  };
+  const onkeysmove = (event: PointerEvent) => {
+    if (!keyDrag || !content) return;
+    if (!keyDrag.dragging && Math.abs(event.clientX - keyDrag.x) < DRAG_THRESHOLD) return;
+    keyDrag.dragging = true;
+    keyDrag.to = dragKeyTo(keyDrag.blocked, keyDrag.to, frameAt(localX(event.clientX, content), px));
+  };
+  const onkeysup = () => {
+    const drag = keyDrag;
+    keyDrag = null;
+    if (!drag) return;
+    if (!drag.dragging) {
+      if (drag.select) selected = { track: drag.select, frame: drag.from };
+      return;
+    }
+    const tracks = drag.to === drag.from ? null : moveKeys(data.tracks, drag.ids, drag.from, drag.to);
+    if (!tracks) return;
+    setData({ tracks });
+    // the selected key goes with it
+    if (selected && drag.ids.includes(selected.track) && selected.frame === drag.from) selected = { ...selected, frame: drag.to };
+    else if (drag.select) selected = { track: drag.select, frame: drag.to };
+  };
+
   // a frame another key of the track holds is refused: a typed number overwrites nothing
   const parseKeyFrame = (value: number) => {
     const frame = wholeFrom(0)(value);
@@ -311,7 +357,17 @@
     </div>
 
     <div class="animation__timeline nowheel nodrag nopan" bind:clientWidth={timelineWidth} {@attach wheel}>
-      <div class="animation__content" style:--frame-width="{px}px" style:width="{end * px}px">
+      <div
+        class="animation__content"
+        style:--frame-width="{px}px"
+        style:width="{end * px}px"
+        role="group"
+        aria-label="tracks' keys — drag a diamond to move it"
+        bind:this={content}
+        onpointermove={onkeysmove}
+        onpointerup={onkeysup}
+        onpointercancel={() => (keyDrag = null)}
+      >
         <div
           class="animation__row animation__ruler"
           class:animation__ruler_off={!canMove}
@@ -330,19 +386,26 @@
             <span class="animation__label" style:left="{frameX(frame)}px">{frame}</span>
           {/each}
         </div>
-        {#each groups as group (group.id)}
+        {#each shownGroups as group (group.id)}
           {@const open = !collapsed.has(group.id)}
           <!-- mirrors the group's fieldset: the summary row on the legend's line, then the tracks -->
           <div class="animation__group-keys">
             <div class="animation__row animation__keys animation__summary">
               {#each groupKeyFrames(group) as frame (frame)}
-                <span
+                <button
                   class="animation__key animation__key_summary"
                   class:animation__key_selected={selected?.frame === frame && group.rows.some(({ track }) => track.id === selected?.track)}
                   class:animation__key_past={frame >= data.frames}
+                  type="button"
                   style:left="{frameX(frame)}px"
-                  title="frame {frame}: keys of {group.name}"
-                ></span>
+                  aria-label="keys of {group.name} on frame {frame}"
+                  title="frame {frame}: every key of {group.name} — drag to move them together"
+                  onpointerdown={onkeydown(
+                    group.rows.map(({ track }) => track.id),
+                    frame,
+                    null,
+                  )}
+                ></button>
               {/each}
             </div>
             {#if open}
@@ -364,8 +427,8 @@
                       type="button"
                       style:left="{frameX(key.frame)}px"
                       aria-label="key on frame {key.frame}"
-                      title="frame {key.frame}: {key.value}"
-                      onclick={() => (selected = { track: track.id, frame: key.frame })}
+                      title="frame {key.frame}: {key.value} — drag to move"
+                      onpointerdown={onkeydown([track.id], key.frame, track.id)}
                     ></button>
                   {/each}
                 </div>

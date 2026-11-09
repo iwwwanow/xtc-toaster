@@ -49,6 +49,38 @@ export const moveKey = (tracks: readonly AnimationTrack[], id: string, from: num
   );
 };
 
+// Dragging keys, blender's G on the dope sheet: a key of one track, or every key a group has on one frame (its
+// summary diamond). Whole frames from 0; a frame another key of a moved track holds is refused — nothing gets
+// overwritten — so the dragged key waits on the last free frame it passed (dragKeyTo)
+
+// the frames the keys moved from `from` may not land on: the other keys of those tracks
+export const blockedFrames = (tracks: readonly AnimationTrack[], ids: readonly string[], from: number): Set<number> =>
+  new Set(
+    tracks
+      .filter(({ id, keys }) => ids.includes(id) && keys.some(({ frame }) => frame === from))
+      .flatMap(({ keys }) => keys.map(({ frame }) => frame).filter((frame) => frame !== from)),
+  );
+
+// where a dragged key stands now: the frame under the pointer, or the last one it stood on if that's taken
+export const dragKeyTo = (blocked: ReadonlySet<number>, current: number, wanted: number): number =>
+  blocked.has(wanted) ? current : Math.max(0, wanted);
+
+// the keys of `ids` on `from` → `to`, together; null — some track has another key on `to`
+export const moveKeys = (
+  tracks: readonly AnimationTrack[],
+  ids: readonly string[],
+  from: number,
+  to: number,
+): AnimationTrack[] | null => {
+  let moved: AnimationTrack[] | null = [...tracks];
+  for (const id of ids) {
+    if (!moved.find((track) => track.id === id)?.keys.some(({ frame }) => frame === from)) continue;
+    moved = moveKey(moved, id, from, to);
+    if (!moved) return null;
+  }
+  return moved;
+};
+
 // a link into an empty track makes its first key; a track with keys keeps them as they are
 export const seedTrack = (tracks: readonly AnimationTrack[], id: string, frame: number, value: number): AnimationTrack[] =>
   withKeys(tracks, id, (keys) => (keys.length === 0 ? [{ frame, value }] : keys));

@@ -421,7 +421,6 @@ legend {
   background-color: color-mix(in srgb, var(--LIGHT) 30%, transparent);
 }
 .animation__key_summary {
-  cursor: default;
   background-color: var(--DARK);
 }
 /* a track's input: out of the node's left edge like a layers row's — past the node's padding and border, then the
@@ -448,7 +447,8 @@ legend {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%) rotate(45deg);
-  cursor: pointer;
+  cursor: ew-resize;
+  touch-action: none;
   background-color: var(--MEDIUM);
 }
 .animation__key:hover {

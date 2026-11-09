@@ -12,6 +12,9 @@ import {
   removeKey,
   removeTrack,
   rulerLabels,
+  blockedFrames,
+  dragKeyTo,
+  moveKeys,
   trackGroups,
   groupKeyFrames,
   UNLINKED_GROUP,
@@ -218,5 +221,39 @@ describe("track groups", () => {
   test("the summary row: every frame a track of the group has a key on, once", () => {
     const corners1 = trackGroups(nodes, edges, "a", tracks).find(({ id }) => id === "c1")!;
     expect(groupKeyFrames(corners1)).toEqual([0, 12, 23]);
+  });
+});
+
+describe("dragging keys", () => {
+  const k = (...frames: number[]) => frames.map((frame) => ({ frame, value: frame }));
+  const tracks: AnimationTrack[] = [
+    { id: "a", keys: k(0, 10, 20) },
+    { id: "b", keys: k(0, 15) },
+    { id: "c", keys: k(5) },
+  ];
+
+  test("blocked: the other keys of the moved tracks that have a key on the frame", () => {
+    expect([...blockedFrames(tracks, ["a"], 10)].toSorted((x, y) => x - y)).toEqual([0, 20]);
+    // a group's summary diamond on 0: a and b move, c has no key there — it doesn't block
+    expect([...blockedFrames(tracks, ["a", "b", "c"], 0)].toSorted((x, y) => x - y)).toEqual([10, 15, 20]);
+  });
+
+  test("a dragged key waits on the last free frame when the pointer is over a taken one, never below 0", () => {
+    const blocked = new Set([0, 20]);
+    expect(dragKeyTo(blocked, 10, 12)).toBe(12);
+    expect(dragKeyTo(blocked, 19, 20)).toBe(19);
+    expect(dragKeyTo(blocked, 19, 21)).toBe(21); // past it — free again
+    expect(dragKeyTo(new Set(), 2, -3)).toBe(0);
+  });
+
+  test("moveKeys moves every track's key on the frame together, or nothing", () => {
+    expect(moveKeys(tracks, ["a", "b", "c"], 0, 3)!.map(({ keys }) => keys.map(({ frame }) => frame))).toEqual([
+      [3, 10, 20],
+      [3, 15],
+      [5],
+    ]);
+    expect(moveKeys(tracks, ["a", "b"], 0, 15)).toBeNull(); // b has a key on 15
+    // the value goes with the key
+    expect(moveKeys(tracks, ["a"], 10, 12)![0]!.keys).toEqual([{ frame: 0, value: 0 }, { frame: 12, value: 10 }, { frame: 20, value: 20 }]);
   });
 });
