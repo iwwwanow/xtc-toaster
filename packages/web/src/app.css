@@ -402,6 +402,10 @@ legend {
   font-style: italic;
   white-space: nowrap;
 }
+.animation__toggle-mark {
+  margin-right: var(--GRID-GAP-4);
+  font-style: normal;
+}
 .animation__toggle:hover {
   color: var(--BLACK);
 }

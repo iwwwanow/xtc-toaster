@@ -253,7 +253,7 @@
               title={open ? "collapse the group" : "expand the group"}
               aria-expanded={open}
               onclick={() => toggleGroup(group.id)}
-              >{open ? "▾" : "▸"} {group.name}{open ? "" : ` (${group.rows.length})`}</button
+              ><span class="animation__toggle-mark">{open ? "▾" : "▸"}</span>{group.name}{open ? "" : ` (${group.rows.length})`}</button
             >
           </legend>
           {#if !open}
