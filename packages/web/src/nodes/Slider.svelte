@@ -141,12 +141,12 @@
     </div>
   {/if}
   {#if node !== undefined && param !== undefined}
-    <!-- out of the node's right edge like every handle (past the frame's padding and 1px border, then the offset) -->
+    <!-- out of the node's right edge (past the frame's padding and 1px border), closer than the node's own handles -->
     <Handle
       type="source"
       position={Position.Right}
       id={param}
-      style="right: calc(-1 * var(--GRID-GAP-2) - 1px - var(--handle-offset))"
+      style="right: calc(-1 * var(--GRID-GAP-2) - 1px - var(--param-handle-offset))"
     />
   {/if}
 </div>
