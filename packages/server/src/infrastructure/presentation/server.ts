@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { findGif, removeLeftoverFrames } from "../repository/animations";
+import { findAnimation, removeLeftoverFrames } from "../repository/animations";
 import { removeExpired, type UploadsLimits } from "../repository/uploads";
 import { createStaticHandler } from "./static";
 import { handleUpload } from "./upload";
@@ -54,11 +54,11 @@ export const createServer = async ({
       "/api/images": {
         POST: (req) => handleUpload(req, uploadsDir, uploads.maxTotalBytes),
       },
-      // a rendered gif, by the url of its animation-rendered message
+      // a rendered gif / mp4, by the url of its animation-rendered message
       "/api/animations/:name": {
         GET: async (req) => {
-          const gif = await findGif(uploadsDir, req.params.name);
-          return gif ? new Response(gif, { headers: { "content-type": "image/gif" } }) : notFound();
+          const found = await findAnimation(uploadsDir, req.params.name);
+          return found ? new Response(found.file, { headers: { "content-type": found.contentType } }) : notFound();
         },
       },
       "/ws": (req, server) =>

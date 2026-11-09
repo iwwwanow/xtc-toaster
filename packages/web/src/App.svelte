@@ -21,7 +21,7 @@
   // the editor survives a reload — saved once a drag / a typing burst settles, not on every frame
   const SAVE_DELAY_MS = 300;
   $effect(() => {
-    const text = toSaved(session.nodes, session.edges);
+    const text = toSaved(session.nodes, session.edges, session.exportSettings);
     const timer = setTimeout(() => save(text), SAVE_DELAY_MS);
     return () => clearTimeout(timer);
   });

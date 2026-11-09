@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type AnimationNode, type ToastGraph } from "@xtc-toaster/contract";
-import { gifPlays, renderAnimation } from "./render-animation";
+import { animationLength, renderAnimation } from "./render-animation";
 import { GraphError } from "./run-graph";
 
 const animation = (data: Partial<AnimationNode["data"]> = {}): AnimationNode => ({
@@ -19,16 +19,32 @@ const graph = (node?: AnimationNode): ToastGraph => ({
   edges: [{ id: "in-out", source: "in", target: "out" }],
 });
 
-describe("gifPlays", () => {
-  test("no loop → forever, reps as is", () => {
-    expect(gifPlays(animation().data)).toBeUndefined();
-    expect(gifPlays(animation({ loop: { reps: 3 } }).data)).toBe(3);
+describe("animationLength", () => {
+  // a cycle of 24 frames at 36 fps is 0.67 s: 15 s → 22.5 → 23 cycles (the degas script's rounding)
+  const degas = { fps: 36, frames: 24 };
+
+  test("gif: no loop → forever, reps and seconds → plays of one cycle", () => {
+    expect(animationLength(degas)).toEqual({});
+    expect(animationLength(degas, { loop: { reps: 3 } })).toEqual({ plays: 3 });
+    expect(animationLength(degas, { format: "gif", loop: { seconds: 15 } })).toEqual({ plays: 23 });
+    expect(animationLength(degas, { loop: { seconds: 15, wholeCycles: true } })).toEqual({ plays: 23 });
+    expect(animationLength({ fps: 12, frames: 24 }, { loop: { seconds: 0.1 } })).toEqual({ plays: 1 });
   });
 
-  test("seconds → whole cycles, at least one", () => {
-    // a cycle of 24 frames at 36 fps is 0.67 s: 15 s → 22.5 → 23 (the degas script's rounding)
-    expect(gifPlays(animation({ fps: 36, frames: 24, loop: { seconds: 15 } }).data)).toBe(23);
-    expect(gifPlays(animation({ fps: 12, frames: 24, loop: { seconds: 0.1 } }).data)).toBe(1);
+  test("mp4: no loop → one cycle, reps and seconds → whole cycles as frames in the file", () => {
+    expect(animationLength(degas, { format: "mp4" })).toEqual({});
+    expect(animationLength(degas, { format: "mp4", loop: { reps: 1 } })).toEqual({});
+    expect(animationLength(degas, { format: "mp4", loop: { reps: 3 } })).toEqual({ frames: 72 });
+    expect(animationLength(degas, { format: "mp4", loop: { seconds: 15 } })).toEqual({ frames: 23 * 24 });
+  });
+
+  test("seconds without whole cycles → exactly that many frames, played once, in both formats", () => {
+    const exact = { seconds: 15, wholeCycles: false };
+    expect(animationLength(degas, { loop: exact })).toEqual({ frames: 540, plays: 1 });
+    expect(animationLength(degas, { format: "mp4", loop: exact })).toEqual({ frames: 540, plays: 1 });
+    // shorter than a cycle — the cycle cut; never zero frames
+    expect(animationLength(degas, { loop: { seconds: 0.25, wholeCycles: false } })).toEqual({ frames: 9, plays: 1 });
+    expect(animationLength(degas, { loop: { seconds: 0.001, wholeCycles: false } })).toEqual({ frames: 1, plays: 1 });
   });
 });
 

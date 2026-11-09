@@ -173,33 +173,81 @@ async function pngSize(path: string): Promise<{ width: number; height: number }>
   return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) };
 }
 
-// the gif's background: a gif pixel is either opaque or fully transparent, so a frame is flattened onto it —
-// a fading layer fades into white instead of blinking out at half opacity (decided 07.11)
-const GIF_BACKGROUND = "white";
+// the background of an exported animation: a gif pixel is either opaque or fully transparent, so a frame is
+// flattened onto it — a fading layer fades into white instead of blinking out at half opacity (decided 07.11).
+// mp4 has no alpha at all, it gets the same white
+const ANIMATION_BACKGROUND = "white";
 
-// A gif from a png sequence on disk (`sequenceFrameName` in `dir`), in two passes: a palette over every frame,
-// then the frames through it. ffmpeg reads one frame at a time — the one-pass split + palettegen holds the
-// whole clip in memory until the palette is ready. The palette goes into `dir` too. Every frame is laid over
-// GIF_BACKGROUND first (overlay in rgb — its default yuv420 would blur the colors)
+export type SequenceOptions = {
+  // how many frames the file holds: the sequence repeated, the last pass cut on a frame. Absent — the sequence
+  // once. Repeats cost no render: ffmpeg reads the same pngs again (-stream_loop)
+  frames?: number;
+};
+
+// a png sequence as ffmpeg's input; `loop` — read it over and over (the output's -frames:v stops it)
+const sequenceInput = (dir: string, fps: number, loop: boolean) => [
+  ...(loop ? ["-stream_loop", "-1"] : []),
+  "-framerate", String(fps),
+  "-i", join(dir, "frame-%04d.png"),
+];
+const fileFrames = (frames: number | undefined) => (frames === undefined ? [] : ["-frames:v", String(frames)]);
+
+// every frame laid over ANIMATION_BACKGROUND, in rgb — overlay's default yuv420 would blur the colors
+const flattenFilter = async (dir: string, fps: number) => {
+  const { width, height } = await pngSize(join(dir, sequenceFrameName(0)));
+  return (
+    `color=c=${ANIMATION_BACKGROUND}:s=${width}x${height}:r=${fps}[bg];` +
+    "[bg][0:v]overlay=shortest=1:format=rgb,format=rgb24"
+  );
+};
+
+export type GifOptions = SequenceOptions & {
+  // how many times the player plays the file, absent — forever (the muxer's -loop, gifLoopArg)
+  plays?: number;
+};
+
+// A gif from a png sequence on disk (`sequenceFrameName` in `dir`), in two passes: a palette over one pass of
+// the sequence, then the frames through it. ffmpeg reads one frame at a time — the one-pass split + palettegen
+// holds the whole clip in memory until the palette is ready. The palette goes into `dir` too
 export async function assembleGifFromFrames(
   dir: string,
   fps: number,
   outputPath: string,
-  plays?: number,
+  { plays, frames }: GifOptions = {},
 ): Promise<void> {
-  const { width, height } = await pngSize(join(dir, sequenceFrameName(0)));
-  const input = ["-framerate", String(fps), "-i", join(dir, "frame-%04d.png")];
-  const flatten =
-    `color=c=${GIF_BACKGROUND}:s=${width}x${height}:r=${fps}[bg];` +
-    "[bg][0:v]overlay=shortest=1:format=rgb,format=rgb24";
+  const flatten = await flattenFilter(dir, fps);
   const palette = join(dir, "palette.png");
-  await runFfmpeg(["-y", ...input, "-filter_complex", `${flatten},palettegen=stats_mode=full`, palette]);
+  // the palette from one pass: a repeated pass has no new colors (and a looped input would never end)
+  await runFfmpeg(["-y", ...sequenceInput(dir, fps, false), "-filter_complex", `${flatten},palettegen=stats_mode=full`, palette]);
   await runFfmpeg([
     "-y",
-    ...input,
+    ...sequenceInput(dir, fps, frames !== undefined),
     "-i", palette,
     "-filter_complex", `${flatten}[flat];[flat][1:v]paletteuse=dither=sierra2_4a`,
+    ...fileFrames(frames),
     "-loop", String(gifLoopArg(plays)),
+    outputPath,
+  ]);
+}
+
+// An mp4 (h264, yuv420p — what every player takes) from a png sequence on disk, in one pass. yuv420p needs an
+// even size: an odd side is padded by a white pixel. mp4 has no loop flag — repeats are frames in the file
+export async function assembleMp4FromFrames(
+  dir: string,
+  fps: number,
+  outputPath: string,
+  { frames }: SequenceOptions = {},
+): Promise<void> {
+  const flatten = await flattenFilter(dir, fps);
+  await runFfmpeg([
+    "-y",
+    ...sequenceInput(dir, fps, frames !== undefined),
+    "-filter_complex", `${flatten},pad=ceil(iw/2)*2:ceil(ih/2)*2:color=${ANIMATION_BACKGROUND},format=yuv420p`,
+    ...fileFrames(frames),
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-pix_fmt", "yuv420p",
+    "-movflags", "+faststart",
     outputPath,
   ]);
 }

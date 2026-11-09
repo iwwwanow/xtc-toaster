@@ -250,9 +250,6 @@
       "data": {
         "fps": 36,
         "frames": 24,
-        "loop": {
-          "seconds": 15
-        },
         "tracks": [
           {
             "id": "track-24",
@@ -901,5 +898,10 @@
       "target": "anim",
       "targetHandle": "track-1"
     }
-  ]
+  ],
+  "export": {
+    "loop": {
+      "seconds": 15
+    }
+  }
 }

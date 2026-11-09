@@ -26,6 +26,13 @@ describe("toSaved / fromSaved", () => {
     expect(restored!.nodes.find(({ type }) => type === "output")?.deletable).toBe(false);
   });
 
+  test("the export settings survive a reload", () => {
+    const { nodes, edges } = withImage();
+    const settings = { format: "mp4" as const, loop: { reps: 2 } };
+    expect(fromSaved(toSaved(nodes, edges, settings))?.export).toEqual(settings);
+    expect(fromSaved(toSaved(nodes, edges, {}))).not.toHaveProperty("export");
+  });
+
   test("a node without a saved position gets the auto layout", () => {
     const { nodes, edges } = withImage();
     const saved = JSON.parse(toSaved(nodes, edges));

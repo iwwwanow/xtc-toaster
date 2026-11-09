@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import {
   assembleGif,
   assembleGifFromFrames,
+  assembleMp4FromFrames,
   assembleVideo,
   gifLoopArg,
   decodePixels,
@@ -160,15 +161,43 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     expect(await loopCount(forever)).toBe(0);
 
     const three = resolve(outDir, "sequence-3.gif");
-    await assembleGifFromFrames(dir, 6, three, 3);
+    await assembleGifFromFrames(dir, 6, three, { plays: 3 });
     expect(await loopCount(three)).toBe(2);
 
     const once = resolve(outDir, "sequence-once.gif");
-    await assembleGifFromFrames(dir, 6, once, 1);
+    await assembleGifFromFrames(dir, 6, once, { plays: 1 });
     expect(await loopCount(once)).toBeNull();
   });
 
-  // the first frame of a gif as rgba
+  test("assembleGifFromFrames: `frames` repeats the sequence and cuts it on a frame", async () => {
+    const dir = resolve(outDir, "sequence");
+    const path = resolve(outDir, "sequence-15-frames.gif");
+    await assembleGifFromFrames(dir, 6, path, { frames: 15, plays: 1 });
+    expect(probe(path)).toMatchObject({ width, height, frames: 15 });
+    expect(probe(path).duration).toBeCloseTo(2.5, 1);
+    expect(await loopCount(path)).toBeNull();
+  });
+
+  test("assembleMp4FromFrames: h264 yuv420p, an odd size padded to even, one pass of the sequence", async () => {
+    const dir = resolve(outDir, "sequence");
+    const path = resolve(outDir, "sequence.mp4");
+    await assembleMp4FromFrames(dir, 6, path); // 125×180 → 126×180
+    const info = probe(path);
+    expect([info.width, info.height]).toEqual([126, 180]);
+    expect(info.frames).toBe(6);
+    expect(info.duration).toBeCloseTo(1, 1);
+    const stream = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt", "-of", "csv=p=0", path]);
+    expect(stream.stdout.toString().trim()).toBe("h264,yuv420p");
+  });
+
+  test("assembleMp4FromFrames: `frames` repeats the sequence and cuts it on a frame", async () => {
+    const path = resolve(outDir, "sequence-14-frames.mp4");
+    await assembleMp4FromFrames(resolve(outDir, "sequence"), 6, path, { frames: 14 });
+    expect(probe(path).frames).toBe(14);
+  });
+
+
+  // the first frame of a gif (or any video) as rgba
   const firstGifFrame = (path: string) =>
     spawnSync("ffmpeg", ["-v", "error", "-i", path, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"]).stdout;
 
@@ -195,6 +224,16 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     // red at 128 / 255 over white: g = b ≈ 127
     expect(Math.abs(g! - 127)).toBeLessThan(12);
     expect(Math.abs(b! - 127)).toBeLessThan(12);
+  });
+
+  test("assembleMp4FromFrames: a semi-transparent frame is flattened onto white", async () => {
+    const path = resolve(outDir, "sequence-alpha.mp4");
+    await assembleMp4FromFrames(resolve(outDir, "sequence-alpha"), 6, path);
+    const [r, g, b] = firstGifFrame(path);
+    expect(r).toBeGreaterThan(230);
+    // red at 128 / 255 over white, through yuv420p: g = b ≈ 127, give or take the chroma rounding
+    expect(Math.abs(g! - 127)).toBeLessThan(20);
+    expect(Math.abs(b! - 127)).toBeLessThan(20);
   });
 
   test("assembleVideo pads odd dimensions to even for libx264", async () => {

@@ -5,6 +5,7 @@ import {
   parseToastGraph,
   TOAST_GRAPH_VERSION,
   validateGraph,
+  type AnimationExport,
   type GraphEdge,
   type GraphNode,
   type NodeId,
@@ -119,7 +120,14 @@ const toGraphEdge = ({ id, source, sourceHandle, target, targetHandle }: Edge | 
 // what the input reaches by columns, the rest in a row below everything. A node takes the row of what it
 // pulls when that cell is free — parallel chains (a layers node's rows) run straight, not crossing — else the
 // next free row below
-export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } => {
+// the editor's whole state that a toast holds: the graph as xyflow takes it, the export settings beside it
+export type Flow = { nodes: FlowNode[]; edges: Edge[]; export?: AnimationExport };
+
+// export settings as the toast keeps them: nothing set — no field
+const exportField = (settings: AnimationExport | undefined) =>
+  settings && Object.keys(settings).length > 0 ? { export: settings } : {};
+
+export const toFlow = (graph: ToastGraph): Flow => {
   const column = columns(graph);
   const sources = new Map<NodeId, NodeId[]>();
   for (const { source, target } of pixelLinks(graph.edges)) sources.set(target, [...(sources.get(target) ?? []), source]);
@@ -154,7 +162,7 @@ export const toFlow = (graph: ToastGraph): { nodes: FlowNode[]; edges: Edge[] } 
     const position = place(node);
     return { ...node, position, ...(isFixed(node.type) && { deletable: false }) } as FlowNode;
   });
-  return { nodes, edges: graph.edges.map(toGraphEdge) };
+  return { nodes, edges: graph.edges.map(toGraphEdge), ...exportField(graph.export) };
 };
 
 // «clear graph»: input → output, the picture stays
@@ -176,11 +184,12 @@ export const createNode =(type: MenuNodeType, position: XYPosition): FlowNode =>
 };
 
 // strips ui fields (position, selected, measured, …) — server does not depend on xyflow
-export const toGraph = (nodes: FlowNode[], edges: Edge[]): ToastGraph =>
+export const toGraph = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): ToastGraph =>
   parseToastGraph({
     version: TOAST_GRAPH_VERSION,
     nodes: nodes.map(({ id, type, data }) => ({ id, type, data })),
     edges: edges.map(toGraphEdge),
+    ...exportField(settings),
   });
 
 // a drawn link — xyflow's Connection or an Edge being moved
@@ -207,8 +216,8 @@ export const canConnect = (nodes: FlowNode[], edges: Edge[], link: Link): boolea
 
 // toast file: the graph only, imageId: null — a toast is a preset, not a picture.
 // whether to save the picture too is open — docs/backlog/2026-10-13_toast-export-with-image.md
-export const toToastFile = (nodes: FlowNode[], edges: Edge[]): string => {
-  const graph = toGraph(nodes, edges);
+export const toToastFile = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string => {
+  const graph = toGraph(nodes, edges, settings);
   const withoutImage = graph.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId: null } } : node));
   return `${JSON.stringify({ ...graph, nodes: withoutImage }, null, 2)}\n`;
 };
@@ -218,7 +227,7 @@ export class ToastFileError extends Error {}
 
 // same schema as ws messages, plus what the editor relies on: one input, one output, unique ids.
 // the picture stays — the current imageId goes into the input
-export const fromToastFile = (text: string, imageId: string | null): { nodes: FlowNode[]; edges: Edge[] } => {
+export const fromToastFile = (text: string, imageId: string | null): Flow => {
   let graph: ToastGraph;
   try {
     graph = parseToastGraph(JSON.parse(text));

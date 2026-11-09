@@ -135,9 +135,7 @@ describe("the animation node in parseToastGraph", () => {
   const base = { fps: 24, frames: 48, tracks: [] };
 
   test.each([
-    ["no loop", base],
-    ["reps", { ...base, loop: { reps: 3 } }],
-    ["seconds", { ...base, loop: { seconds: 15 } }],
+    ["no tracks", base],
     ["keys", { ...base, tracks: [{ id: "t1", keys: [{ frame: 47, value: 10 }, { frame: 0, value: 0.5 }] }] }],
   ])("round-trips %s", (_, data) => {
     expect<unknown>(parseToastGraph(nodeWith(data)).nodes[0]!.data).toEqual(data);
@@ -149,11 +147,6 @@ describe("the animation node in parseToastGraph", () => {
   });
 
   test.each([
-    ["reps and seconds together", { ...base, loop: { reps: 3, seconds: 15 } }],
-    ["an empty loop", { ...base, loop: {} }],
-    ["zero reps", { ...base, loop: { reps: 0 } }],
-    ["fractional reps", { ...base, loop: { reps: 1.5 } }],
-    ["zero seconds", { ...base, loop: { seconds: 0 } }],
     ["zero fps", { ...base, fps: 0 }],
     ["fps over the max", { ...base, fps: 101 }],
     ["fractional fps", { ...base, fps: 23.976 }],
@@ -163,6 +156,43 @@ describe("the animation node in parseToastGraph", () => {
     ["a duplicate track id", { ...base, tracks: [{ id: "t1", keys: [] }, { id: "t1", keys: [] }] }],
   ])("rejects %s", (_, data) => {
     expect(() => parseToastGraph(nodeWith(data))).toThrow();
+  });
+});
+
+describe("export settings in parseToastGraph", () => {
+  const withExport = (exp: unknown) => ({ version: TOAST_GRAPH_VERSION, nodes: [], edges: [], export: exp });
+
+  test.each([
+    ["nothing", {}],
+    ["a format", { format: "mp4" }],
+    ["reps", { format: "gif", loop: { reps: 3 } }],
+    ["seconds", { loop: { seconds: 15 } }],
+    ["exact seconds", { format: "mp4", loop: { seconds: 2.5, wholeCycles: false } }],
+  ])("round-trips %s", (_, exp) => {
+    expect<unknown>(parseToastGraph(withExport(exp)).export).toEqual(exp);
+  });
+
+  test("absent stays absent", () => {
+    expect(parseToastGraph({ version: TOAST_GRAPH_VERSION, nodes: [], edges: [] })).not.toHaveProperty("export");
+  });
+
+  // pre-release, no migration: a loop in the animation node (before 09.11) is dropped, the file still opens
+  test("a loop left in the animation node is dropped", () => {
+    const data = { fps: 24, frames: 48, tracks: [], loop: { reps: 3 } };
+    const graph = parseToastGraph({ version: TOAST_GRAPH_VERSION, nodes: [{ id: "anim", type: "animation", data }], edges: [] });
+    expect(graph.nodes[0]!.data).not.toHaveProperty("loop");
+  });
+
+  test.each([
+    ["an unknown format", { format: "webm" }],
+    ["reps and seconds together", { loop: { reps: 3, seconds: 15 } }],
+    ["an empty loop", { loop: {} }],
+    ["zero reps", { loop: { reps: 0 } }],
+    ["fractional reps", { loop: { reps: 1.5 } }],
+    ["zero seconds", { loop: { seconds: 0 } }],
+    ["wholeCycles with reps", { loop: { reps: 2, wholeCycles: false } }],
+  ])("rejects %s", (_, exp) => {
+    expect(() => parseToastGraph(withExport(exp))).toThrow();
   });
 });
 

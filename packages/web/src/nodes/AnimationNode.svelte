@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
-  import { ANIMATION_FPS, paramBounds, type AnimationLoop, type AnimationTrack } from "@xtc-toaster/contract";
+  import { ANIMATION_FPS, paramBounds, type AnimationTrack } from "@xtc-toaster/contract";
   import {
     addKey,
     addTrack,
@@ -64,19 +64,6 @@
   const wholeFrom = (min: number, max = Infinity) => (value: number) =>
     Number.isInteger(value) && value >= min && value <= max ? value : null;
 
-  // the loop: reps or seconds or neither (the gif's default: forever)
-  type LoopMode = "forever" | "reps" | "seconds";
-  const LOOP_INITIAL = { reps: { reps: 3 }, seconds: { seconds: 15 } } as const satisfies Record<string, AnimationLoop>;
-  let loopMode = $derived<LoopMode>(!data.loop ? "forever" : "reps" in data.loop ? "reps" : "seconds");
-  const setLoop = (loop: AnimationLoop | undefined) => {
-    const { loop: _, ...rest } = data;
-    session.setNodeData(id, loop ? { ...rest, loop } : rest);
-  };
-  const onloopmode = ({ currentTarget }: Event & { currentTarget: HTMLSelectElement }) => {
-    const mode = currentTarget.value as LoopMode;
-    setLoop(mode === "forever" ? undefined : LOOP_INITIAL[mode]);
-  };
-
   // the selected key; it is gone once its track or frame is
   let selected = $state<{ track: string; frame: number } | null>(null);
   let selectedTrack = $derived(data.tracks.find((track) => track.id === selected?.track));
@@ -139,43 +126,6 @@
       disabled={locked}
       onchange={numberField(() => data.frames, wholeFrom(1), (frames) => setData({ frames }))}
     />
-    <label class="field__label_ai-generated" for="{id}-loop">loop</label>
-    <select
-      id="{id}-loop"
-      class="nodrag select_ai-generated input-sm_ai-generated"
-      style="width: auto"
-      value={loopMode}
-      disabled={locked}
-      onchange={onloopmode}
-    >
-      <option value="forever">forever</option>
-      <option value="reps">reps</option>
-      <option value="seconds">seconds</option>
-    </select>
-    {#if data.loop && "reps" in data.loop}
-      {@const { reps } = data.loop}
-      <input
-        class="nodrag input_ai-generated input-sm_ai-generated animation__number"
-        type="number"
-        min="1"
-        aria-label="reps"
-        value={reps}
-        disabled={locked}
-        onchange={numberField(() => reps, wholeFrom(1), (reps) => setLoop({ reps }))}
-      />
-    {:else if data.loop}
-      {@const { seconds } = data.loop}
-      <input
-        class="nodrag input_ai-generated input-sm_ai-generated animation__number"
-        type="number"
-        step="any"
-        min="0"
-        aria-label="seconds"
-        value={seconds}
-        disabled={locked}
-        onchange={numberField(() => seconds, (value) => (value > 0 ? value : null), (seconds) => setLoop({ seconds }))}
-      />
-    {/if}
   </div>
 
   <div class="animation__body">

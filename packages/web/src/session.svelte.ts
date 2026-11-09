@@ -3,6 +3,8 @@ import {
   animatedValues,
   graphAtFrame,
   UPLOAD_MAX_MEGAPIXELS,
+  type AnimationExport,
+  type AnimationFormat,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
@@ -41,6 +43,9 @@ const UPLOAD_ERRORS: Record<string, string> = {
   "unsupported-format": "png or jpeg only",
 };
 
+// the file's extension from the url the server made — the format the file was rendered in
+const extensionOf = (url: string) => url.slice(url.lastIndexOf(".") + 1);
+
 class Session {
   nodes = $state.raw<FlowNode[]>(initial.nodes);
   edges = $state.raw<Edge[]>(initial.edges);
@@ -63,6 +68,10 @@ class Session {
   // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
 
+  // how render-animation writes the file (format, loop) — the toast's, saved with it; {} — the defaults
+  exportSettings = $state.raw<AnimationExport>(initial.export ?? {});
+  exportFormat = $derived<AnimationFormat>(this.exportSettings.format ?? "gif");
+
   // a render-animation running: frames done of frames; null — no export
   exporting = $state.raw<{ frame: number; frames: number } | null>(null);
   // shown under the export button
@@ -82,7 +91,7 @@ class Session {
   private playhead = $state(0);
   frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
 
-  private graph = $derived(toGraph(this.nodes, this.edges));
+  private graph = $derived(toGraph(this.nodes, this.edges, this.exportSettings));
   private animated = $derived(animatedValues(this.graph, this.frame));
   // what one render needs: the frame under the playhead, without the animation node
   private frameGraph = $derived(withoutAnimation(graphAtFrame(this.graph, this.frame)));
@@ -242,7 +251,12 @@ class Session {
     this.canRender && !this.uploading && this.exporting === null && hasAnimatedParams(this.graph),
   );
 
-  // One cycle of the animation node as a gif, rendered on the server frame by frame, then downloaded. Renders
+  // the export settings change no picture: frameGraph drops them, no render is sent
+  setExportSettings(settings: AnimationExport) {
+    this.exportSettings = settings;
+  }
+
+  // One cycle of the animation node as a gif / mp4, rendered on the server frame by frame, then downloaded. Renders
   // wait until it's done (App), the editor is locked; a render already sent still comes back under its own id
   exportAnimation() {
     const node = this.animationNode;
@@ -263,11 +277,11 @@ class Session {
         try {
           const response = await fetch(message.url);
           if (!response.ok) throw new Error(`GET ${message.url}: ${response.status}`);
-          saveBlob(await response.blob(), outputFileName(TOAST, "gif"));
+          saveBlob(await response.blob(), outputFileName(TOAST, extensionOf(message.url)));
           this.endExport(null);
         } catch (error) {
-          console.error("gif download failed", error);
-          this.endExport("gif download failed");
+          console.error("animation download failed", error);
+          this.endExport("download failed");
         }
         return;
       case "render-error": {
@@ -292,7 +306,8 @@ class Session {
   }
 
   exportToast() {
-    saveBlob(new Blob([toToastFile(this.nodes, this.edges)], { type: "application/json" }), outputFileName(TOAST, "json"));
+    const file = toToastFile(this.nodes, this.edges, this.exportSettings);
+    saveBlob(new Blob([file], { type: "application/json" }), outputFileName(TOAST, "json"));
   }
 
   // input → output, the picture stays
@@ -300,6 +315,7 @@ class Session {
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
+    this.exportSettings = {};
     this.stop();
     this.playhead = 0;
     this.replaced++;
@@ -308,9 +324,10 @@ class Session {
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
   async importToast(file: File): Promise<boolean> {
     try {
-      const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
+      const { nodes, edges, export: settings } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.exportSettings = settings ?? {};
       this.stop();
       this.playhead = 0;
       this.replaced++;

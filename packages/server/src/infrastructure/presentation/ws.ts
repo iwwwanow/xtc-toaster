@@ -6,9 +6,9 @@ import {
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
-import { renderAnimation } from "../../application/render-animation";
+import { animationFormat, renderAnimation } from "../../application/render-animation";
 import { GraphError } from "../../application/run-graph";
-import { createAnimationJob, removeFrames, removeGif } from "../repository/animations";
+import { createAnimationJob, removeFile, removeFrames } from "../repository/animations";
 import { render } from "../workers/render-queue";
 
 // Renders run in a worker and can't be aborted → per connection one render
@@ -49,23 +49,23 @@ type Send = (message: ServerMessage) => void;
 // each frame is its own entry in the render queue: renders of other connections wait one frame, not the clip
 const animate = async (graph: ClientMessage["graph"], requestId: number, send: Send, options: RenderOptions) => {
   const { uploadsDir, maxLayers, maxFrames } = options;
-  const job = await createAnimationJob(uploadsDir);
+  const job = await createAnimationJob(uploadsDir, animationFormat(graph));
   try {
     await renderAnimation({
       graph,
       renderFrameTo: (graph, outPath) => render({ graph, uploadsDir, maxLayers, outPath }).then(() => {}),
       framesDir: job.framesDir,
-      outputPath: job.gifPath,
+      outputPath: job.filePath,
       maxFrames,
       onFrame: (frame, frames) => send({ type: "animation-progress", requestId, frame, frames }),
     });
   } catch (e) {
-    await removeGif(job);
+    await removeFile(job);
     throw e;
   } finally {
     await removeFrames(job);
   }
-  return `/api/animations/${job.id}.gif`;
+  return `/api/animations/${job.name}`;
 };
 
 const handleMessage = async (text: string, send: Send, options: RenderOptions): Promise<ServerMessage> => {

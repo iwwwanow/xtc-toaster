@@ -376,3 +376,17 @@ legend {
   top: auto;
   bottom: 0;
 }
+
+/* TODO(uiu): hand-written — uiu has no button group / dropdown: the export button with its ▾, the settings
+   under it in a node frame */
+.export-group {
+  display: flex;
+  gap: var(--GRID-GAP-4);
+}
+.export-group__main,
+.export-group__main > .btn_ai-generated {
+  flex: 1;
+}
+.export-settings {
+  min-width: 0;
+}

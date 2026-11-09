@@ -294,17 +294,22 @@ describe("param links", () => {
     expect(toGraph(nodes, edges).edges).toEqual(animated().edges);
   });
 
-  test("survive export → import, keys and loop too", () => {
-    const graph = animated();
+  test("survive export → import, keys and the export settings too", () => {
+    const graph = { ...animated(), export: { format: "mp4" as const, loop: { seconds: 2.5, wholeCycles: false } } };
     const node = graph.nodes.find(({ type }) => type === "animation")!;
-    if (node.type === "animation") {
-      node.data.loop = { seconds: 2.5 };
-      node.data.tracks[0]!.keys = [{ frame: 9, value: 3 }];
-    }
-    const { nodes, edges } = toFlow(graph);
-    const imported = fromToastFile(toToastFile(nodes, edges), null);
+    if (node.type === "animation") node.data.tracks[0]!.keys = [{ frame: 9, value: 3 }];
+    const flow = toFlow(graph);
+    expect(flow.export).toEqual(graph.export);
+    const imported = fromToastFile(toToastFile(flow.nodes, flow.edges, flow.export), null);
     expect(toGraph(imported.nodes, imported.edges).edges).toEqual(graph.edges);
     expect(imported.nodes.find(({ id }) => id === "a")!.data).toEqual(node.data);
+    expect(imported.export).toEqual(graph.export);
+  });
+
+  test("no export settings — no field in the toast", () => {
+    const { nodes, edges } = toFlow(animated());
+    expect(JSON.parse(toToastFile(nodes, edges, {}))).not.toHaveProperty("export");
+    expect(toGraph(nodes, edges, {})).not.toHaveProperty("export");
   });
 
   test("don't move the chain, the animation node gets a row below it", () => {

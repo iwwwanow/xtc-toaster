@@ -43,7 +43,9 @@ describe("toast-1_degas graph", () => {
 
   test("animated as the script: 24 linked tracks, 24 frames at 36 fps, a 15 s loop", () => {
     const anim = toast1degas.nodes.find((node) => node.type === "animation");
-    expect(anim?.type === "animation" && anim.data).toMatchObject({ fps: 36, frames: 24, loop: { seconds: 15 } });
+    expect(anim?.type === "animation" && anim.data).toMatchObject({ fps: 36, frames: 24 });
+    // the loop is the toast's export setting: whole cycles, as the script rounds it
+    expect(toast1degas.export).toEqual({ loop: { seconds: 15 } });
     const tracks = anim?.type === "animation" ? anim.data.tracks : [];
     expect(tracks).toHaveLength(24);
     const linked = new Set(toast1degas.edges.filter(({ target }) => target === anim?.id).map(({ targetHandle }) => targetHandle));

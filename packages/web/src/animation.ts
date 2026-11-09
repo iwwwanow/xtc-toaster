@@ -93,7 +93,7 @@ export const nextFrame = (frame: number, frames: number): number => (clampPlayhe
 
 // what one frame's render needs: no animation node, no param links. Fps, keys elsewhere, track order don't touch
 // the picture, so they don't change this graph and don't start a render
-export const withoutAnimation = (graph: ToastGraph): ToastGraph => ({
+export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGraph => ({
   ...graph,
   nodes: graph.nodes.filter(({ type }) => type !== "animation"),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),

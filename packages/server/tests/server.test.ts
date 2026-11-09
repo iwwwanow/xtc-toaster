@@ -7,6 +7,7 @@ import {
   ServerMessageSchema,
   TOAST_GRAPH_VERSION,
   UploadResponseSchema,
+  type AnimationExport,
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { decodePixels } from "@xtc-toaster/lib";
@@ -470,10 +471,11 @@ describe("ws latest-wins", () => {
 
 describe("ws render-animation", () => {
   // colorNoise's deviation keyed 0 → 0.4 over 3 frames
-  const animated = (frames: number, loop?: { reps: number }) => {
+  const animated = (frames: number, exp?: AnimationExport) => {
     const base = graph(imageId, 0);
     return {
       ...base,
+      ...(exp && { export: exp }),
       nodes: [
         ...base.nodes,
         {
@@ -482,7 +484,6 @@ describe("ws render-animation", () => {
           data: {
             fps: 6,
             frames,
-            ...(loop && { loop }),
             tracks: [{ id: "t1", keys: [{ frame: 0, value: 0 }, { frame: 2, value: 0.4 }] }],
           },
         },
@@ -492,7 +493,7 @@ describe("ws render-animation", () => {
   };
 
   test("progress per frame, then a gif to fetch: every frame, the plays in its loop block", async () => {
-    send({ type: "render-animation", requestId: 100, graph: animated(3, { reps: 2 }) });
+    send({ type: "render-animation", requestId: 100, graph: animated(3, { loop: { reps: 2 } }) });
     for (const frame of [1, 2, 3]) {
       expect(await nextMessage()).toEqual({ type: "animation-progress", requestId: 100, frame, frames: 3 });
     }
@@ -510,6 +511,23 @@ describe("ws render-animation", () => {
 
     // the sequence is gone, only the gif stays
     expect(await readdir(resolve(UPLOADS_DIR, "animations"))).toEqual([url.split("/").pop()!]);
+  });
+
+  test("mp4: one cycle rendered, repeated in the file by reps, served as video/mp4", async () => {
+    send({ type: "render-animation", requestId: 102, graph: animated(3, { format: "mp4", loop: { reps: 2 } }) });
+    for (const frame of [1, 2, 3]) expect(await nextMessage()).toMatchObject({ type: "animation-progress", frame, frames: 3 });
+    const done = await nextMessage();
+    expect(done).toMatchObject({ type: "animation-rendered", requestId: 102 });
+    const { url } = done as Extract<ServerMessage, { type: "animation-rendered" }>;
+    expect(url).toEndWith(".mp4");
+
+    const response = await fetch(new URL(url, server.url));
+    expect(response.headers.get("content-type")).toBe("video/mp4");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
+    const path = resolve(UPLOADS_DIR, "animations", url.split("/").pop()!);
+    const probe = Bun.spawnSync(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt,nb_read_frames", "-of", "csv=p=0", path]);
+    expect(probe.stdout.toString().trim()).toBe("h264,yuv420p,6");
   });
 
   test("more frames than RENDER_MAX_FRAMES → render-error on the animation node, no progress", async () => {

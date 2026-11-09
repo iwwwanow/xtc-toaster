@@ -1,15 +1,16 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
-import { fromToastFile, toGraph, type FlowNode } from "./graph";
+import type { AnimationExport } from "@xtc-toaster/contract";
+import { fromToastFile, toGraph, type Flow, type FlowNode } from "./graph";
 
-// the editor survives a page reload: the graph with its picture and where the nodes stand.
+// the editor survives a page reload: the graph with its picture and export settings, and where the nodes stand.
 // the picture lives on the server for UPLOADS_TTL_HOURS — an expired one is the input's `image not found`
 export const STORAGE_KEY = "xtc-toaster:editor";
 
 type Saved = { graph: unknown; positions: Record<string, XYPosition> };
 
-export const toSaved = (nodes: FlowNode[], edges: Edge[]): string =>
+export const toSaved = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string =>
   JSON.stringify({
-    graph: toGraph(nodes, edges),
+    graph: toGraph(nodes, edges, settings),
     positions: Object.fromEntries(nodes.map(({ id, position: { x, y } }) => [id, { x, y }])),
   } satisfies Saved);
 
@@ -26,7 +27,7 @@ const isPosition = (value: unknown): value is XYPosition =>
   Number.isFinite((value as XYPosition).y);
 
 // the same checks as an imported toast file; anything off (an old format, a hand edit) → null, the default graph
-export const fromSaved = (text: string | null): { nodes: FlowNode[]; edges: Edge[] } | null => {
+export const fromSaved = (text: string | null): Flow | null => {
   if (!text) return null;
   try {
     const { graph, positions } = JSON.parse(text) as Partial<Saved>;
@@ -35,7 +36,7 @@ export const fromSaved = (text: string | null): { nodes: FlowNode[]; edges: Edge
       const position = positions?.[node.id];
       return isPosition(position) ? { ...node, position } : node;
     });
-    return { nodes, edges: flow.edges };
+    return { ...flow, nodes };
   } catch (error) {
     console.error("saved editor dropped", error);
     return null;

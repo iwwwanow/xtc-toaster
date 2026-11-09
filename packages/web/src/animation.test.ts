@@ -134,8 +134,11 @@ test("withoutAnimation keeps only what the picture depends on", () => {
       { id: "2", source: "m", target: "out" },
       { id: "3", source: "m", sourceHandle: "x", target: "a", targetHandle: "t" },
     ],
+    export: { format: "mp4" },
   };
   const stripped = withoutAnimation(graph);
   expect(stripped.nodes.map(({ id }) => id)).toEqual(["in", "m", "out"]);
   expect(stripped.edges.map(({ id }) => id)).toEqual(["1", "2"]);
+  // export settings change no picture — no render for them
+  expect(stripped).not.toHaveProperty("export");
 });

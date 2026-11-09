@@ -11,7 +11,6 @@
       "data": {
         "fps": 12,
         "frames": 24,
-        "loop": { "reps": 3 },
         "tracks": [
           { "id": "track-4", "keys": [] },
           { "id": "track-3", "keys": [{ "frame": 0, "value": 1 }, { "frame": 23, "value": 0.2 }] },
@@ -28,5 +27,6 @@
     { "id": "t1", "source": "move-1", "sourceHandle": "x", "target": "anim", "targetHandle": "track-1" },
     { "id": "t2", "source": "move-1", "sourceHandle": "y", "target": "anim", "targetHandle": "track-2" },
     { "id": "t3", "source": "opacity-1", "sourceHandle": "opacity", "target": "anim", "targetHandle": "track-3" }
-  ]
+  ],
+  "export": { "loop": { "reps": 3 } }
 }
