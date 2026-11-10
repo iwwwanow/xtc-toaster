@@ -33,7 +33,7 @@
   14. homography: перспективное искажение по готовой матрице 3×3.
   15. perspective: перспективное искажение по 4 углам.
   16. yRotation: перспективный поворот вокруг оси Y (angle в градусах, focalLength в px) — подключён к Layer 15.10, нода y-rotation в ui.
-- [ ] project renders animation
+- [ ] project renders animation — 10.11: done in code, `feat/animation-server` merged → `v0.9.0` (animation node, timeline, gif / mp4); left — `v0.9.0` on prod + check 2
 - [ ] 3 toasts available for usage (ready, portfolio works too) — 01.11: 2 of 3 as graphs: `toast-2_signac` (default) and `toast-1_degas` at t = 0 (bit for bit with the script); degas animated — sprint 5
 
 ## sprints:
@@ -150,13 +150,16 @@
      - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
    - [x] 10.11 the user's look at the new ui — all ok
    - [x] 10.11 the DoD of the extension in headless Chrome on degas — every item passed; found: every download is named `toast-2_signac_*` whatever toast is open → 10.11 every download is `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>` (decided by the user); dev `.env` needs `RENDER_MAX_LAYERS=8` for degas — `docs/diary/2026-11-10_extension-dod-headless.md`
-   - [ ] the prod-limits check (check 2), release — after the extension, 14.11
+   - [x] 10.11 merged `feat/animation-server` → master, CI green → `v0.9.0` (ghcr image); the branch deleted locally and on origin
+   - [x] 10.11 every download is named `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>` (decided by the user; was always `toast-2_signac_*`)
+   - [ ] `v0.9.0` on prod — the image tag in `iwwwanow_infrastructure` (`stacks/ru-timeweb/xtc-toaster/compose.yml`)
+   - [ ] check 2 on prod — degas at prod limits, then `RENDER_MAX_FRAMES` in the stack (fallback 48) — 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
    - [x] extend contract
    - without live-preview
    - [x] render current frame view
-   - [ ] export animated picture: gif (done 07.11) + mp4 (09.11: from stretch into the extension)
+   - [x] export animated picture: gif (done 07.11) + mp4 (09.11, the DoD passed 10.11)
    - not here: time-window — `docs/backlog/2026-11-03_timeline-time-windows.md`
    - cut if behind:
      - (#1) export gif only, no mp4 — applied up front on 03.11
@@ -183,6 +186,9 @@
 
 1. animation node with live-preview
    - live preview animated picture
+     - play at the real fps: frames rendered ahead and cached on the client — `docs/backlog/2026-11-06_play-frame-cache-on-client.md`
+   - timeline hotkeys (blender-like, put off 09.11) — `docs/backlog/2026-11-09_timeline-hotkeys.md`
+   - one track drives many params, of different nodes too — `docs/backlog/2026-11-09_one-track-many-params.md` (changes the toast format — before 1.0)
    - time-window: a vertical cut of the timeline, a show reel — `docs/backlog/2026-11-03_timeline-time-windows.md`
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
