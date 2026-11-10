@@ -17,6 +17,8 @@ import {
   moveKeys,
   trackGroups,
   linkedTrackIndex,
+  paramOf,
+  trackParam,
   groupKeyFrames,
   UNLINKED_GROUP,
   rulerStep,
@@ -32,6 +34,7 @@ import {
   trackName,
   withoutAnimation,
 } from "./animation";
+import { delayRowName, withFreeRow } from "./delay";
 import type { FlowNode } from "./graph";
 
 const track = (): AnimationTrack => ({ id: "t", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 10 }] });
@@ -266,10 +269,59 @@ describe("a track made by a wire dropped on + track", () => {
     { id: "e3", source: "c", sourceHandle: "topLeftX", target: "a", targetHandle: "track-3" },
   ];
 
+  const nodes = [
+    { id: "m", type: "move", position: { x: 0, y: 0 }, data: { x: 0, y: 0 } },
+    { id: "c", type: "corners", position: { x: 0, y: 0 }, data: {} },
+  ] as unknown as FlowNode[];
+
   test("goes on top of its node's group, so the group stays in place; a new node's — on top", () => {
-    expect(linkedTrackIndex(edges, "a", tracks, "c")).toBe(2);
-    expect(linkedTrackIndex(edges, "a", tracks, "m")).toBe(0);
-    expect(linkedTrackIndex(edges, "a", tracks, "new")).toBe(0);
+    expect(linkedTrackIndex(nodes, edges, "a", tracks, "c")).toBe(2);
+    expect(linkedTrackIndex(nodes, edges, "a", tracks, "m")).toBe(0);
+    expect(linkedTrackIndex(nodes, edges, "a", tracks, "new")).toBe(0);
     expect(addTrack(tracks, 2).map(({ id }) => id)).toEqual(["track-1", "track-2", "track-4", "track-3"]);
+  });
+});
+
+describe("tracks behind a delay", () => {
+  const nodes = [
+    { id: "m", type: "move", position: { x: 0, y: 0 }, data: { x: 0, y: 0 } },
+    { id: "d", type: "delay", position: { x: 0, y: 0 }, data: { frames: 3, rows: [{ id: "r1" }, { id: "r2" }] } },
+    { id: "d2", type: "delay", position: { x: 0, y: 0 }, data: { frames: -1, rows: [{ id: "r1" }] } },
+  ] as unknown as FlowNode[];
+  const edges = [
+    { id: "1", source: "m", sourceHandle: "x", target: "d", targetHandle: "r1" },
+    { id: "2", source: "d", sourceHandle: "r1", target: "a", targetHandle: "track-1" },
+    { id: "3", source: "m", sourceHandle: "y", target: "d", targetHandle: "r2" },
+    { id: "4", source: "d", sourceHandle: "r2", target: "d2", targetHandle: "r1" },
+    { id: "5", source: "d2", sourceHandle: "r1", target: "a", targetHandle: "track-2" },
+  ];
+  const tracks: AnimationTrack[] = [{ id: "track-1", keys: [] }, { id: "track-2", keys: [] }, { id: "track-3", keys: [] }];
+
+  test("the param behind the delays, their shift summed; a free row — none", () => {
+    expect(trackParam(nodes, edges, "a", "track-2")).toMatchObject({ node: { id: "m" }, param: "y", shift: 2 });
+    expect(paramOf(nodes, edges, "d", "r1")).toMatchObject({ node: { id: "m" }, param: "x", shift: 3 });
+    expect(paramOf(nodes, [], "d", "r1")).toBeNull();
+  });
+
+  test("they join the group of the param's node, the row shows the shift", () => {
+    const groups = trackGroups(nodes, edges, "a", tracks);
+    expect(groups.map(({ id, name }) => [id, name])).toEqual([[UNLINKED_GROUP, "unlinked"], ["m", "move"]]);
+    expect(groups[1]!.rows.map(({ name }) => name)).toEqual(["x +3", "y +2"]);
+    expect(trackName(nodes, edges, "a", "track-1")).toBe("move.x +3");
+  });
+
+  test("a delay keeps one free row at the bottom: added when the last is linked, extra free ones dropped", () => {
+    const rows = [{ id: "row-1" }, { id: "row-2" }];
+    const linked = (...ids: string[]) => ids.map((id) => ({ id, source: "m", sourceHandle: "x", target: "d", targetHandle: id }));
+    expect(withFreeRow(rows, linked("row-1"), "d")).toBe(rows); // nothing to change — the same array
+    expect(withFreeRow(rows, linked("row-1", "row-2"), "d")).toEqual([...rows, { id: "row-3" }]);
+    expect(withFreeRow([...rows, { id: "row-3" }], linked("row-1"), "d")).toEqual(rows);
+    expect(withFreeRow(rows, linked("row-2"), "d")).toEqual([...rows, { id: "row-3" }]); // a free row between stays
+    expect(withFreeRow([], [], "d")).toEqual([{ id: "row-1" }]);
+  });
+
+  test("a row shows the param wired into it, a free one — a hint", () => {
+    expect(delayRowName(nodes, edges, "d2", "r1")).toBe("move.y +3");
+    expect(delayRowName(nodes, [], "d", "r1")).toBe("wire a param here");
   });
 });

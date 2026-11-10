@@ -20,15 +20,16 @@ export const addTrack = (tracks: readonly AnimationTrack[], at = 0): AnimationTr
   ...tracks.slice(at),
 ];
 
-// where a track linked to a param of `source` goes: on top of that node's group, so the group stays in place;
-// the node has no track yet — on top of everything, as `+ track`
+// where a track linked to a param of `source` (the node behind any delays) goes: on top of that node's group, so the
+// group stays in place; the node has no track yet — on top of everything, as `+ track`
 export const linkedTrackIndex = (
+  nodes: readonly FlowNode[],
   edges: readonly Edge[],
   nodeId: string,
   tracks: readonly AnimationTrack[],
   source: string,
 ): number => {
-  const index = tracks.findIndex((track) => trackLink(edges, nodeId, track.id)?.source === source);
+  const index = tracks.findIndex((track) => trackParam(nodes, edges, nodeId, track.id)?.node.id === source);
   return index === -1 ? 0 : index;
 };
 
@@ -101,24 +102,58 @@ export const seedTrack = (tracks: readonly AnimationTrack[], id: string, frame: 
 export const trackLink = (edges: readonly Edge[], nodeId: string, trackId: string): Edge | undefined =>
   edges.find(({ target, targetHandle }) => target === nodeId && targetHandle === trackId);
 
+// The param behind a param output — itself, or through the delays on the way back: its node, name and the frames
+// the delays shift it by (contract's paramSources over the flow). Null — a delay row nothing is wired into
+export type ParamOf = { node: FlowNode; param: string; shift: number };
+export const paramOf = (
+  nodes: readonly FlowNode[],
+  edges: readonly Edge[],
+  source: string,
+  sourceHandle: string | null | undefined,
+): ParamOf | null => {
+  let shift = 0;
+  // bounded: a loop of delays is refused (canConnect), an unchecked one mustn't hang
+  for (let step = 0; sourceHandle && step <= nodes.length; step++) {
+    const node = nodes.find(({ id }) => id === source);
+    if (!node) return null;
+    if (node.type !== "delay") return { node, param: sourceHandle, shift };
+    shift += node.data.frames;
+    const row = sourceHandle;
+    const link = edges.find(({ target, targetHandle }) => target === node.id && targetHandle === row);
+    if (!link) return null;
+    ({ source, sourceHandle } = link);
+  }
+  return null;
+};
+
+// the param a track drives, through any delays
+export const trackParam = (nodes: readonly FlowNode[], edges: readonly Edge[], nodeId: string, trackId: string): ParamOf | null => {
+  const link = trackLink(edges, nodeId, trackId);
+  return link ? paramOf(nodes, edges, link.source, link.sourceHandle) : null;
+};
+
+// `move.x`; a shift shows after it — `move.x +3`
+export const paramLabel = ({ node, param, shift }: ParamOf): string =>
+  `${NODE_LABELS[node.type as MenuNodeType] ?? node.type}.${param}${shiftLabel(shift)}`;
+const shiftLabel = (shift: number) => (shift === 0 ? "" : ` ${shift > 0 ? "+" : "−"}${Math.abs(shift)}`);
+
 // the value a param has in the node's own data
 export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string): number | null => {
   const value = (nodes.find(({ id }) => id === nodeId)?.data as Record<string, unknown> | undefined)?.[param];
   return typeof value === "number" ? value : null;
 };
 
-// the param's name from the link (`move.x`), no link — from the id (`track 3`)
+// the param's name from the link (`move.x`, through a delay `move.x +3`), no link — from the id (`track 3`)
 export const trackName = (nodes: readonly FlowNode[], edges: readonly Edge[], nodeId: string, trackId: string): string => {
-  const link = trackLink(edges, nodeId, trackId);
-  const type = link && nodes.find(({ id }) => id === link.source)?.type;
-  if (!type || !link?.sourceHandle) return trackId.replaceAll("-", " ");
-  return `${NODE_LABELS[type as MenuNodeType] ?? type}.${link.sourceHandle}`;
+  const param = trackParam(nodes, edges, nodeId, trackId);
+  return param ? paramLabel(param) : trackId.replaceAll("-", " ");
 };
 
 // Tracks grouped by the node they animate, as blender's channel groups: a group per source node, in the order
 // of its first track; tracks inside in their own order. Unlinked tracks — a group of their own, on top (where
 // `+ track` puts a new one). A group is named by its node's type, numbered when the type repeats (`corners 2`);
-// a row by its param. Derived from the links — nothing of it is in the toast
+// a row by its param (`x`, through a delay `x +3`). A track behind a delay goes to the group of the param's node.
+// Derived from the links — nothing of it is in the toast
 export const UNLINKED_GROUP = "unlinked";
 export type TrackRow = { track: AnimationTrack; index: number; name: string };
 export type TrackGroup = { id: string; name: string; rows: TrackRow[] };
@@ -131,12 +166,10 @@ export const trackGroups = (
 ): TrackGroup[] => {
   const groups = new Map<string, { type: string | null; rows: TrackRow[] }>();
   tracks.forEach((track, index) => {
-    const link = trackLink(edges, nodeId, track.id);
-    const type = link && nodes.find(({ id }) => id === link.source)?.type;
-    const linked = type !== undefined && link?.sourceHandle !== undefined && link.sourceHandle !== null;
-    const id = linked ? link.source : UNLINKED_GROUP;
-    const name = linked ? link.sourceHandle! : track.id.replaceAll("-", " ");
-    const group = groups.get(id) ?? { type: linked ? type : null, rows: [] };
+    const param = trackParam(nodes, edges, nodeId, track.id);
+    const id = param ? param.node.id : UNLINKED_GROUP;
+    const name = param ? `${param.param}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
+    const group = groups.get(id) ?? { type: param ? param.node.type : null, rows: [] };
     group.rows.push({ track, index, name });
     groups.set(id, group);
   });
@@ -216,11 +249,11 @@ export const clampPlayhead = (frame: number, frames: number): number => Math.max
 // play: the frame after this one, the last goes back to the first
 export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
 
-// what one frame's render needs: no animation node, no param links. Fps, keys elsewhere, track order don't touch
-// the picture, so they don't change this graph and don't start a render
+// what one frame's render needs: no animation node, no delays, no param links. Fps, keys elsewhere, track order,
+// a delay's shift once applied don't touch the picture, so they don't change this graph and don't start a render
 export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGraph => ({
   ...graph,
-  nodes: graph.nodes.filter(({ type }) => type !== "animation"),
+  nodes: graph.nodes.filter(({ type }) => type !== "animation" && type !== "delay"),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),
 });
 

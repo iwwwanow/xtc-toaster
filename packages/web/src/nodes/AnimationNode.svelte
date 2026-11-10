@@ -23,6 +23,7 @@
     timelineEnd,
     trackGroups,
     trackLink,
+    trackParam,
     zoomPxPerFrame,
   } from "../animation";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
@@ -143,9 +144,8 @@
 
   // typed values stop at the bounds of the linked param; an unlinked track has none
   let selectedBounds = $derived.by(() => {
-    const link = selectedTrack && trackLink(session.edges, id, selectedTrack.id);
-    const type = link && session.nodes.find((node) => node.id === link.source)?.type;
-    return type && link?.sourceHandle ? paramBounds(type, link.sourceHandle) : null;
+    const param = selectedTrack && trackParam(session.nodes, session.edges, id, selectedTrack.id);
+    return param ? paramBounds(param.node.type, param.param) : null;
   });
   const clampToParam = (value: number) =>
     selectedBounds ? Math.min(selectedBounds.max, Math.max(selectedBounds.min, value)) : value;

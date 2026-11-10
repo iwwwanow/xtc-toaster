@@ -9,7 +9,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { addTrack, clampPlayhead, hasAnimatedParams, linkedTrackIndex, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { addTrack, clampPlayhead, hasAnimatedParams, linkedTrackIndex, nextFrame, paramOf, paramValue, removeTrack, seedTrack, trackParam, withoutAnimation } from "./animation";
 import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
@@ -282,7 +282,8 @@ class Session {
   seedTrack({ source, sourceHandle, target, targetHandle }: Link) {
     const node = this.animationNode;
     if (node?.id !== target || !sourceHandle || !targetHandle) return;
-    const value = paramValue(this.nodes, source, sourceHandle);
+    const param = paramOf(this.nodes, this.edges, source, sourceHandle);
+    const value = param && paramValue(this.nodes, param.node.id, param.param);
     if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
   }
 
@@ -295,7 +296,7 @@ class Session {
     if (!node || this.animationLocked) return null;
     if (this.edges.some((edge) => edge.target === node.id && edge.source === source && edge.sourceHandle === sourceHandle))
       return null;
-    const at = linkedTrackIndex(this.edges, node.id, node.data.tracks, source);
+    const at = linkedTrackIndex(this.nodes, this.edges, node.id, node.data.tracks, paramOf(this.nodes, this.edges, source, sourceHandle)?.node.id ?? source);
     const tracks = addTrack(node.data.tracks, at);
     const link = { source, sourceHandle, target: node.id, targetHandle: tracks[at]!.id };
     const nodes = this.nodes.map((n) => (n.id === node.id ? ({ ...n, data: { ...node.data, tracks } } as FlowNode) : n));
@@ -313,8 +314,8 @@ class Session {
 
   // the param a track drives, its value in the node's own data
   trackParamValue(nodeId: string, trackId: string): number | null {
-    const link = trackLink(this.edges, nodeId, trackId);
-    return link?.sourceHandle ? paramValue(this.nodes, link.source, link.sourceHandle) : null;
+    const param = trackParam(this.nodes, this.edges, nodeId, trackId);
+    return param ? paramValue(this.nodes, param.node.id, param.param) : null;
   }
 
   // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused

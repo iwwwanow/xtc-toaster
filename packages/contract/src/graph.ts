@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LAYER_NAME_MAX, TOAST_GRAPH_VERSION } from "./constants";
-import { ANIMATION_FPS, BLEND_MODES, CHANNELS, PARAMS, type ParamBounds } from "./params";
+import { ANIMATION_FPS, BLEND_MODES, CHANNELS, DELAY_FRAMES, PARAMS, type ParamBounds } from "./params";
 
 const ranged = ({ min, max }: ParamBounds) => z.number().min(min).max(max);
 
@@ -189,6 +189,21 @@ export const AnimationNodeSchema = z.object({
   }),
 });
 
+// a row: one param in, one track (or the next delay) out, both handles named by the row's id
+export const DelayRowSchema = z.object({ id: z.string().min(1) });
+
+// shifts the animation of the params wired through it: param → a row → a track, the param reads the track
+// `frames` later (graphAtFrame). One shift for every row — several params under one delay. No pixels in or out:
+// like the animation node, the output's ancestry never reaches it. An unlinked row is allowed, like a layers row
+export const DelayNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("delay"),
+  data: z.object({
+    frames: z.int().min(DELAY_FRAMES.min).max(DELAY_FRAMES.max),
+    rows: z.array(DelayRowSchema).superRefine(uniqueIds("row")),
+  }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -215,6 +230,7 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   OpacityNodeSchema,
   LayersNodeSchema,
   AnimationNodeSchema,
+  DelayNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -244,15 +260,19 @@ export type AnimationKey = z.infer<typeof AnimationKeySchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
+export type DelayNode = z.infer<typeof DelayNodeSchema>;
+export type DelayRow = z.infer<typeof DelayRowSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: NodeIdSchema,
   target: NodeIdSchema,
-  // a param link into the animation node: the param's name; a pixel link has no field
+  // a param link (into the animation node or a delay): the param's name, or the delay row it leaves; a pixel link has
+  // no field
   sourceHandle: z.string().min(1).optional(),
-  // a layers edge: the layer row it goes into; a param link: the track; every other node has one unnamed handle (no field)
+  // a layers edge: the layer row it goes into; a param link: the track or the delay row; every other node has one
+  // unnamed handle (no field)
   targetHandle: z.string().min(1).optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;

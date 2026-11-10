@@ -1,4 +1,4 @@
-import type { AnimationNode, GraphEdge, GraphNode, NodeId, ToastGraph } from "./graph";
+import type { AnimationNode, DelayNode, GraphEdge, GraphNode, NodeId, ToastGraph } from "./graph";
 import { paramBounds } from "./params";
 
 // what is wrong and where — server sends it as render-error, web refuses the link
@@ -11,10 +11,14 @@ export type GraphIssue = { message: string; nodeId?: NodeId };
 // The first issue found or null.
 // TODO: call it from ToastGraphSchema.superRefine — one entry point, fromToastFile's own checks go; stays a
 // plain function for web canConnect, nodeId must reach the issue — docs/backlog/2026-11-01_validate-graph-into-zod.md
-// a param link: from a numeric param of the source's type, into a track
-const paramLinkIssue = (from: GraphNode, to: AnimationNode, { sourceHandle, targetHandle }: GraphEdge): GraphIssue | null => {
+// a param link: from a numeric param of the source's type or out of a delay row, into a track or a delay row
+const paramLinkIssue = (from: GraphNode, to: AnimationNode | DelayNode, { sourceHandle, targetHandle }: GraphEdge): GraphIssue | null => {
   if (sourceHandle === undefined) return { message: "link a param", nodeId: to.id };
-  if (!paramBounds(from.type, sourceHandle)) return { message: "only a numeric param can be animated", nodeId: from.id };
+  if (from.type === "delay") {
+    if (!from.data.rows.some(({ id }) => id === sourceHandle)) return { message: "link out of a delay row", nodeId: from.id };
+  } else if (!paramBounds(from.type, sourceHandle)) return { message: "only a numeric param can be animated", nodeId: from.id };
+  if (to.type === "delay")
+    return to.data.rows.some(({ id }) => id === targetHandle) ? null : { message: "link a delay row", nodeId: to.id };
   const track = to.data.tracks.find(({ id }) => id === targetHandle);
   if (!track) return { message: "link a track", nodeId: to.id };
   return null;
@@ -59,17 +63,19 @@ export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null =
     if (from.type === "output") return { message: "nothing links out of the output", nodeId: source };
     if (from.type === "animation") return { message: "nothing links out of the animation node", nodeId: source };
 
-    if (to.type === "animation") {
+    if (to.type === "animation" || to.type === "delay") {
       const issue = paramLinkIssue(from, to, link);
       if (issue) return issue;
+      // a param (or a delay row) feeds one track: a second would fight it for the value
       const param = `${source}\0${sourceHandle}`;
       if (animated.has(param)) return { message: "one track per param", nodeId: target };
       animated.add(param);
-    } else if (sourceHandle !== undefined) return { message: "a param links only into the animation node", nodeId: source };
+    } else if (from.type === "delay") return { message: "a delay links only into a track or a delay", nodeId: source };
+    else if (sourceHandle !== undefined) return { message: "a param links only into the animation node", nodeId: source };
 
     if (to.type === "layers") {
       if (!to.data.layers.some(({ id }) => id === targetHandle)) return { message: "link a layer row", nodeId: target };
-    } else if (to.type !== "animation" && targetHandle !== undefined)
+    } else if (to.type !== "animation" && to.type !== "delay" && targetHandle !== undefined)
       return { message: "only layers rows and animation tracks take a handle", nodeId: target };
 
     // a node's input, each layers row and each track take one link

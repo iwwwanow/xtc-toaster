@@ -44,6 +44,7 @@ export const NODE_LABELS = {
   matrix: "matrix",
   layers: "layers",
   animation: "animation",
+  delay: "delay",
 } as const satisfies Record<MenuNodeType, string>;
 
 // one phrase «what the node does» — a tooltip on the menu item
@@ -66,6 +67,7 @@ export const NODE_HINTS = {
   matrix: "a raw 3×3 transform, for experts",
   layers: "stacks pictures with blend modes",
   animation: "changes numeric params from frame to frame, one per graph",
+  delay: "plays the params wired through it some frames later",
 } as const satisfies Record<MenuNodeType, string>;
 
 // the left menu, a rule between groups; every menu type in exactly one (graph.test.ts)
@@ -75,7 +77,7 @@ export const NODE_CATEGORIES = [
   { name: "effect", types: ["blur"] },
   { name: "move", types: ["move", "rotate", "scale", "skew", "turn3d", "corners", "matrix"] },
   { name: "layers", types: ["layers"] },
-  { name: "animation", types: ["animation"] },
+  { name: "animation", types: ["animation", "delay"] },
 ] as const satisfies readonly { name: string; types: readonly MenuNodeType[] }[];
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 

@@ -78,6 +78,9 @@ export const paramBounds = (type: string, param: string): ParamBounds | null => 
 // an animation node's fps: a gif stores delays in 1/100 s, so 100 is the most it can hold
 export const ANIMATION_FPS = { min: 1, max: 100, initial: 24 } as const satisfies ParamBounds;
 
+// a delay node's shift in frames: the params wired through it play this much later, a negative one — earlier
+export const DELAY_FRAMES = { min: -240, max: 240, initial: 3 } as const satisfies ParamBounds;
+
 // channel picks one of these — not a range: the ui shows a select
 export const CHANNELS = ["red", "green", "blue", "alpha"] as const;
 
@@ -102,4 +105,6 @@ export const INITIAL_DATA = {
   },
   // two seconds at the initial fps; no tracks — they are added by hand, like layers rows
   animation: { fps: ANIMATION_FPS.initial, frames: 48, tracks: [] },
+  // one free row: a param wired into it is shifted; the ui keeps a free row at the bottom
+  delay: { frames: DELAY_FRAMES.initial, rows: [{ id: "row-1" }] },
 } as const;

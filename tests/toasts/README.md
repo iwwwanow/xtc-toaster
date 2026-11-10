@@ -20,6 +20,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | `unlinked-row` | the top row unlinked — skipped; poppies over the picture |
 | `empty-layers` | no row linked → `render-error` on the layers node |
 | `animation` | input → move → opacity → output with an animation node below: 4 tracks (a new one on top, empty and unlinked — `track 4`; `opacity.opacity`; `move.y` with a dimmed key past the end; `move.x`). Dashed wires; `x`, `y`, `opacity` fields read-only; a ruler click changes the output picture |
+| `delay` | `move.x` through a delay of 6 frames, `opacity` straight: the delay shows `move.x` and a free row under it; the track group `move` names its row `x +6`; `x` stays −50 up to frame 6 while opacity already fades; wiring `move.y` into the free row makes a new free row |
 | `broken-animation-two-nodes` | import refused: only one animation node |
 | `broken-animation-pixel-link` | import refused: a pixel link into a track |
 | `broken-cycle` | import refused: a cycle (off the output path) |

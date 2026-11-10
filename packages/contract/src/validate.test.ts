@@ -130,6 +130,73 @@ describe("validateGraph, the animation node", () => {
   });
 });
 
+describe("validateGraph, a delay", () => {
+  const move: GraphNode = { id: "mv", type: "move", data: { x: 0, y: 0 } };
+  const animation: GraphNode = {
+    id: "anim",
+    type: "animation",
+    data: { fps: 24, frames: 10, tracks: [{ id: "t1", keys: [] }, { id: "t2", keys: [] }] },
+  };
+  const delay = (id = "dl", rows = ["r1", "r2"]): GraphNode => ({
+    id,
+    type: "delay",
+    data: { frames: 3, rows: rows.map((row) => ({ id: row })) },
+  });
+  const link = (source: string, sourceHandle: string | undefined, target: string, targetHandle?: string): GraphEdge => ({
+    id: `${source}.${sourceHandle}-${target}.${targetHandle}`,
+    source,
+    target,
+    ...(sourceHandle && { sourceHandle }),
+    ...(targetHandle && { targetHandle }),
+  });
+  const g = (edges: GraphEdge[], extra: GraphNode[] = []) => graph([input, move, delay(), animation, output, ...extra], edges);
+
+  test.each([
+    ["an unlinked delay", g([])],
+    ["param → delay → track", g([link("mv", "x", "dl", "r1"), link("dl", "r1", "anim", "t1")])],
+    [
+      "two params through one delay",
+      g([link("mv", "x", "dl", "r1"), link("dl", "r1", "anim", "t1"), link("mv", "y", "dl", "r2"), link("dl", "r2", "anim", "t2")]),
+    ],
+    ["a row linked on one side only", g([link("mv", "x", "dl", "r1"), link("dl", "r2", "anim", "t1")])],
+    [
+      "delay → delay",
+      g([link("mv", "x", "dl", "r1"), link("dl", "r1", "dl2", "r1"), link("dl2", "r1", "anim", "t1")], [delay("dl2")]),
+    ],
+  ])("accepts %s", (_, graph) => {
+    expect(validateGraph(graph)).toBeNull();
+  });
+
+  test.each([
+    ["a pixel link into it", g([link("in", undefined, "dl", "r1")]), "dl"],
+    ["a pixel link out of it", g([link("dl", "r1", "out")]), "dl"],
+    ["a link into a missing row", g([link("mv", "x", "dl", "ghost")]), "dl"],
+    ["a link out of a missing row", g([link("dl", "ghost", "anim", "t1")]), "dl"],
+    ["a non-param into a row", g([link("mv", "z", "dl", "r1")]), "mv"],
+    ["two params into one row", g([link("mv", "x", "dl", "r1"), link("mv", "y", "dl", "r1")]), "dl"],
+    ["one param into a row and a track", g([link("mv", "x", "dl", "r1"), link("mv", "x", "anim", "t1")]), "anim"],
+    ["one row into two tracks", g([link("dl", "r1", "anim", "t1"), link("dl", "r1", "anim", "t2")]), "anim"],
+    [
+      "two delays in a loop",
+      g([link("dl", "r1", "dl2", "r1"), link("dl2", "r1", "dl", "r1")], [delay("dl2")]),
+      "dl",
+    ],
+  ])("rejects %s, pointing at the node", (_, graph, nodeId) => {
+    expect(validateGraph(graph)).toMatchObject({ nodeId });
+  });
+
+  test("a new delay starts with one free row and a shift of 3", () => {
+    expect(INITIAL_DATA.delay).toEqual({ frames: 3, rows: [{ id: "row-1" }] });
+  });
+
+  test("its shift is whole frames within the bounds", () => {
+    const file = (frames: number) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ ...delay(), data: { frames, rows: [] } }], edges: [] });
+    expect(() => parseToastGraph(file(-12))).not.toThrow();
+    expect(() => parseToastGraph(file(1.5))).toThrow();
+    expect(() => parseToastGraph(file(5000))).toThrow();
+  });
+});
+
 describe("the animation node in parseToastGraph", () => {
   const nodeWith = (data: unknown) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ id: "anim", type: "animation", data }], edges: [] });
   const base = { fps: 24, frames: 48, tracks: [] };

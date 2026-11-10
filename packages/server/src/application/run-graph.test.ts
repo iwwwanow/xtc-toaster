@@ -208,6 +208,18 @@ describe("runGraph: the animation node", () => {
     const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
     expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
   });
+
+  test("a frame through a delay renders the value of `frames` earlier; the delay is never reached either", async () => {
+    const delay: GraphNode = { id: "dl", type: "delay", data: { frames: 3, rows: [{ id: "r1" }] } };
+    const links: GraphEdge[] = [
+      { id: "in-dl", source: "op", sourceHandle: "opacity", target: "dl", targetHandle: "r1" },
+      { id: "dl-anim", source: "dl", sourceHandle: "r1", target: "anim", targetHandle: "t1" },
+    ];
+    const frame = graphAtFrame(graph([input, opacity("op", 1), delay, animation, output], [...chain, ...links]), 8);
+    const { data } = await runGraph(frame, loadImage);
+    const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
+    expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
+  });
 });
 
 describe("runGraph: layer cap", () => {

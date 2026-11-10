@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "move-1", "type": "move", "data": { "x": 0, "y": 0 } },
+    { "id": "opacity-1", "type": "opacity", "data": { "opacity": 1 } },
+    { "id": "out", "type": "output", "data": {} },
+    { "id": "delay-1", "type": "delay", "data": { "frames": 6, "rows": [{ "id": "row-1" }, { "id": "row-2" }] } },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 12,
+        "frames": 24,
+        "tracks": [
+          { "id": "track-2", "keys": [{ "frame": 0, "value": 1 }, { "frame": 23, "value": 0.2 }] },
+          { "id": "track-1", "keys": [{ "frame": 0, "value": -50 }, { "frame": 23, "value": 50 }] }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "in-move", "source": "in", "target": "move-1" },
+    { "id": "move-opacity", "source": "move-1", "target": "opacity-1" },
+    { "id": "opacity-out", "source": "opacity-1", "target": "out" },
+    { "id": "x-delay", "source": "move-1", "sourceHandle": "x", "target": "delay-1", "targetHandle": "row-1" },
+    { "id": "delay-t1", "source": "delay-1", "sourceHandle": "row-1", "target": "anim", "targetHandle": "track-1" },
+    { "id": "t2", "source": "opacity-1", "sourceHandle": "opacity", "target": "anim", "targetHandle": "track-2" }
+  ]
+}

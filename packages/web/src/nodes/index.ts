@@ -4,6 +4,7 @@ import BlurNode from "./BlurNode.svelte";
 import ChannelNode from "./ChannelNode.svelte";
 import ColorNoiseNode from "./ColorNoiseNode.svelte";
 import CornersNode from "./CornersNode.svelte";
+import DelayNode from "./DelayNode.svelte";
 import FillNode from "./FillNode.svelte";
 import InputNode from "./InputNode.svelte";
 import LayersNode from "./LayersNode.svelte";
@@ -41,5 +42,6 @@ export const nodeTypes = {
   matrix: MatrixNode,
   layers: LayersNode,
   animation: AnimationNode,
+  delay: DelayNode,
   output: OutputNode,
 } satisfies NodeTypes;

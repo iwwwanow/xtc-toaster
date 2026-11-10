@@ -529,3 +529,19 @@ legend {
   background: repeating-conic-gradient(var(--LIGHT) 0 25%, var(--WHITE) 0 50%) 0 0 /
     calc(2 * var(--transparency-cell)) calc(2 * var(--transparency-cell));
 }
+
+/* TODO(uiu): hand-written — uiu has no list row with handles: a delay row, the param's name between its in and out
+   (like a layers row) */
+.delay-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 24px; /* an animation track's row */
+}
+.delay-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
