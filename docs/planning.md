@@ -160,6 +160,8 @@
      - [ ] a node dropped onto a link goes into it (A → node → B) — `docs/backlog/2026-10-28_drop-node-onto-link.md`
      - [ ] a link dropped onto a whole node connects to its input — `docs/backlog/2026-10-30_drop-link-onto-node.md`
      - [ ] Alt + drag a node — a copy (the selection: all of it with the links between; no outside links); Shift-box selection stays as is — `docs/backlog/2026-10-28_box-select-like-illustrator.md`
+     - [ ] deleting a node linked on both sides keeps the chain: A → node → B becomes A → B (pixel links; a fan-out → A to each; param links to tracks go with the node) — `docs/backlog/2026-11-10_delete-node-keeps-chain.md`
+     - [ ] action zones while dragging a node: at the bottom of the screen, one for now — `delete`; not for input / output; the whole selection if several — `docs/backlog/2026-11-10_node-drag-action-zones.md`
    - [ ] 10.11 **groups + value** into the release (the user: the fattest feature) — 13–20.11, after the four above; v1 (scope agreed 10.11): group from a selection (a toolbar over the selection — agreed; the right-click menu on a selection — maybe, no hotkeys), one pixel in / out, crossing param wires → the group's params, open by double click / `open`, back by the breadcrumb, instances from the left menu (linked), ungroup; `value` — one number wired into many params; the toast gets an optional `groups` field (`TOAST_GRAPH_VERSION` stays 1); ~4–6 days — `docs/backlog/2026-11-09_node-groups-variables.md`. Moves QA (sprint 6) to ~21–25.11, the buffer shrinks to 26–27.11
      - cut if behind: groups → 1.1, no migration needed (an optional field)
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
