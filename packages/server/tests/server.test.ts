@@ -1,12 +1,13 @@
 // Integration: real Bun.serve on a random port, uploads into tests/output/uploads
 // (gitignored, wiped every run).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   ServerMessageSchema,
   TOAST_GRAPH_VERSION,
   UploadResponseSchema,
+  type AnimationExport,
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { decodePixels } from "@xtc-toaster/lib";
@@ -465,5 +466,77 @@ describe("ws latest-wins", () => {
     for (const requestId of [6, 7, 8]) send({ type: "render", requestId, graph: graph(imageId) });
     expect((await nextMessage()).requestId).toBe(6);
     expect((await nextMessage()).requestId).toBe(8);
+  });
+});
+
+describe("ws render-animation", () => {
+  // colorNoise's deviation keyed 0 → 0.4 over 3 frames
+  const animated = (frames: number, exp?: AnimationExport) => {
+    const base = graph(imageId, 0);
+    return {
+      ...base,
+      ...(exp && { export: exp }),
+      nodes: [
+        ...base.nodes,
+        {
+          id: "anim",
+          type: "animation",
+          data: {
+            fps: 6,
+            frames,
+            tracks: [{ id: "t1", keys: [{ frame: 0, value: 0 }, { frame: 2, value: 0.4 }] }],
+          },
+        },
+      ],
+      edges: [...base.edges, { id: "nz-anim", source: "nz", sourceHandle: "deviationCoefficient", target: "anim", targetHandle: "t1" }],
+    };
+  };
+
+  test("progress per frame, then a gif to fetch: every frame, the plays in its loop block", async () => {
+    send({ type: "render-animation", requestId: 100, graph: animated(3, { loop: { reps: 2 } }) });
+    for (const frame of [1, 2, 3]) {
+      expect(await nextMessage()).toEqual({ type: "animation-progress", requestId: 100, frame, frames: 3 });
+    }
+    const done = await nextMessage();
+    expect(done).toMatchObject({ type: "animation-rendered", requestId: 100 });
+    const { url } = done as Extract<ServerMessage, { type: "animation-rendered" }>;
+
+    const response = await fetch(new URL(url, server.url));
+    expect(response.headers.get("content-type")).toBe("image/gif");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.subarray(0, 6).toString()).toBe("GIF89a");
+    // three image descriptors (0x2c after a graphic control block) — one per frame
+    expect(bytes.toString("latin1").match(/\x21\xf9\x04[\s\S]{5}\x2c/g)?.length).toBe(3);
+    expect(bytes.readUInt16LE(bytes.indexOf("NETSCAPE2.0") + 13)).toBe(1); // 2 plays = 1 repeat
+
+    // the sequence is gone, only the gif stays
+    expect(await readdir(resolve(UPLOADS_DIR, "animations"))).toEqual([url.split("/").pop()!]);
+  });
+
+  test("mp4: one cycle rendered, repeated in the file by reps, served as video/mp4", async () => {
+    send({ type: "render-animation", requestId: 102, graph: animated(3, { format: "mp4", loop: { reps: 2 } }) });
+    for (const frame of [1, 2, 3]) expect(await nextMessage()).toMatchObject({ type: "animation-progress", frame, frames: 3 });
+    const done = await nextMessage();
+    expect(done).toMatchObject({ type: "animation-rendered", requestId: 102 });
+    const { url } = done as Extract<ServerMessage, { type: "animation-rendered" }>;
+    expect(url).toEndWith(".mp4");
+
+    const response = await fetch(new URL(url, server.url));
+    expect(response.headers.get("content-type")).toBe("video/mp4");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
+    const path = resolve(UPLOADS_DIR, "animations", url.split("/").pop()!);
+    const probe = Bun.spawnSync(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt,nb_read_frames", "-of", "csv=p=0", path]);
+    expect(probe.stdout.toString().trim()).toBe("h264,yuv420p,6");
+  });
+
+  test("more frames than RENDER_MAX_FRAMES → render-error on the animation node, no progress", async () => {
+    send({ type: "render-animation", requestId: 101, graph: animated(49) });
+    expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 101, nodeId: "anim", message: "frames: at most 48" });
+  });
+
+  test("a gif that isn't there → 404", async () => {
+    expect((await fetch(new URL(`/api/animations/${MISSING_IMAGE_ID}.gif`, server.url))).status).toBe(404);
+    expect((await fetch(new URL("/api/animations/..%2Fx.gif", server.url))).status).toBe(404);
   });
 });

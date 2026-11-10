@@ -33,6 +33,22 @@ legend {
 .frame > * {
   grid-column: 1 / -1;
 }
+
+/* TODO(uiu): hand-written — uiu has no column-width token (owo writes 190px into .grid). A node is one column of
+   owo's desktop grid, as a card; a wide node spans whole columns with the gaps between them (09.11) */
+.svelte-flow {
+  --grid-column: 190px;
+}
+.svelte-flow__node > .frame {
+  width: var(--grid-column);
+  box-sizing: border-box;
+}
+.svelte-flow__node > .frame_span-2 {
+  width: calc(2 * var(--grid-column) + var(--GRID-GAP));
+}
+.svelte-flow__node > .frame_span-6 {
+  width: calc(6 * var(--grid-column) + 5 * var(--GRID-GAP));
+}
 .frame > legend {
   padding: 0 4px;
   color: var(--MEDIUM);
@@ -52,6 +68,7 @@ legend {
 
 /* TODO(uiu): hand-written — uiu has no label | control row; blender-like: the label right-aligned */
 .param {
+  position: relative; /* a param's handle sits in its own row */
   display: grid;
   grid-template-columns: subgrid;
   align-items: center;
@@ -62,11 +79,15 @@ legend {
 }
 
 /* TODO(uiu): hand-written — uiu has no number field (only .range_ai-generated, a 1px track under a 16px
-   thumb). Blender's: drag / ‹ › / click to type (nodes/Slider.svelte); sized like .input-sm_ai-generated,
-   the fill — where the value sits in the range */
-.drag-field,
+   thumb). Blender's node field: the label inside on the left, the value on the right, the row's whole width;
+   drag / ‹ › / click to type (nodes/Slider.svelte); sized like .input-sm_ai-generated, the fill — where the
+   value sits in the range */
+.param-field {
+  position: relative; /* the param's handle sits in its row */
+}
 .drag-field__input {
-  min-width: 128px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .drag-field {
   height: 24px;
@@ -92,13 +113,24 @@ legend {
   pointer-events: none;
   background-color: var(--LIGHT);
 }
+.drag-field__label,
 .drag-field__value {
-  flex: 1;
   position: relative;
-  text-align: center;
+  white-space: nowrap;
+}
+.drag-field__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--MEDIUM);
+}
+.drag-field__value {
+  padding-left: var(--GRID-GAP-4);
 }
 .drag-field__arrow {
   width: 16px;
+  flex: none;
   height: 100%;
   position: relative;
   visibility: hidden;
@@ -122,7 +154,7 @@ legend {
   visibility: hidden !important;
 }
 .drag-field__input {
-  text-align: center;
+  text-align: right;
 }
 
 /* TODO(uiu): hand-written — uiu has no color input; sized like .input-sm_ai-generated */
@@ -151,7 +183,7 @@ legend {
 
 /* TODO(uiu): hand-written — uiu has no file input; its button looks like .btn-sm_ai-generated */
 .file-input {
-  max-width: 240px;
+  max-width: 100%;
   font-size: 1.4rem;
   color: var(--MEDIUM);
 }
@@ -189,6 +221,10 @@ legend {
   --xy-edge-stroke: var(--MEDIUM);
   /* a handle sits this far out of the frame — away from the fields at the frame's edge */
   --handle-offset: var(--GRID-GAP-4);
+  /* a param's output sits closer: it belongs to its row, not to the frame (09.11) */
+  --param-handle-offset: 1px;
+  /* the fieldset's top border runs through the legend's middle: the pixel input sits on that line */
+  --legend-line: 0.5lh;
 }
 
 /* TODO(uiu): hand-written — handles: a 4px square out of the frame, caught in a square around it (the
@@ -249,4 +285,243 @@ legend {
   to {
     visibility: visible;
   }
+}
+
+/* TODO(uiu): hand-written — uiu has no timeline. The animation node: 3 grid columns wide, channels — one column,
+   keys — the rest, scrolled sideways; a row's height is shared so both sides line up */
+.animation {
+  --animation-row: 24px;
+}
+.animation__settings,
+.animation__header {
+  display: flex;
+  align-items: center;
+  gap: var(--GRID-GAP-2);
+}
+/* blender's header: the transport in the middle, the frame / range / fit on the right */
+.animation__transport {
+  margin: 0 auto;
+  display: flex;
+  gap: var(--GRID-GAP-4);
+}
+.animation__play {
+  min-width: 48px;
+}
+.animation__number {
+  width: 72px;
+}
+.animation__body {
+  display: grid;
+  /* channels — 2 columns of the grid, the timeline — the other 4 */
+  grid-template-columns: calc(2 * var(--grid-column) + var(--GRID-GAP)) minmax(0, 1fr);
+  column-gap: var(--GRID-GAP-2);
+}
+.animation__row {
+  height: var(--animation-row);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--GRID-GAP-4);
+  box-sizing: border-box;
+}
+.animation__ruler_off {
+  cursor: not-allowed;
+}
+.animation__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animation__timeline {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--LIGHT) transparent;
+  border: 1px solid var(--LIGHT);
+}
+.animation__content {
+  min-width: 100%;
+  position: relative;
+}
+.animation__ruler {
+  width: 100%;
+  padding: 0;
+  display: block;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+  border-bottom: 1px solid var(--LIGHT);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0 calc(var(--frame-width) - 1px),
+    var(--LIGHT) calc(var(--frame-width) - 1px) var(--frame-width)
+  );
+  background-size: 100% 4px;
+  background-position: bottom;
+  background-repeat: no-repeat;
+}
+.animation__label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  line-height: 1.6rem;
+  color: var(--MEDIUM);
+  pointer-events: none;
+}
+.animation__keys {
+  display: block;
+}
+
+/* TODO(uiu): hand-written — a group of tracks: the node frame's look (.frame), nested. Its legend is one row
+   tall, so the timeline mirrors the group exactly: the summary row on the legend's line, the rows, then the
+   group's bottom padding and border (--group-bottom) */
+.animation {
+  --group-gap: var(--GRID-GAP-4);
+  --group-pad: var(--GRID-GAP-4);
+  --group-bottom: calc(var(--group-pad) + 1px);
+}
+.animation__group {
+  margin: var(--group-gap) 0 0;
+  padding: 0 var(--group-pad) var(--group-pad);
+  min-width: 0;
+  position: relative;
+  border: 1px solid var(--LIGHT);
+}
+.animation__group-legend {
+  height: var(--animation-row);
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+}
+.animation__toggle {
+  padding: 0;
+  cursor: pointer;
+  color: var(--MEDIUM);
+  font-style: italic;
+  white-space: nowrap;
+}
+.animation__toggle-mark {
+  margin-right: var(--GRID-GAP-4);
+  font-style: normal;
+}
+.animation__toggle:hover {
+  color: var(--BLACK);
+}
+/* the timeline has a 1px border on top: the channels go down with it, row for row */
+.animation__channels {
+  padding-top: 1px;
+}
+.animation__group-keys {
+  margin-top: var(--group-gap);
+  padding-bottom: var(--group-bottom);
+}
+.animation__summary {
+  background-color: color-mix(in srgb, var(--LIGHT) 30%, transparent);
+}
+.animation__key_summary {
+  background-color: var(--DARK);
+}
+/* a track's input: out of the node's left edge like a layers row's — past the node's padding and border, then the
+   group's border and padding */
+.animation__track-handle {
+  left: calc(-1 * (var(--GRID-GAP-2) + 1px + var(--handle-offset) + 1px + var(--group-pad)));
+}
+/* a collapsed group's inputs, one over another on the legend's line — a fieldset's padding box starts under its
+   legend, so up by half a row */
+.animation__group-handle {
+  top: calc(var(--animation-row) / -2);
+  left: calc(-1 * (var(--GRID-GAP-2) + 1px + var(--handle-offset) + 1px));
+}
+.animation__span {
+  height: 1px;
+  position: absolute;
+  top: 50%;
+  background-color: var(--LIGHT);
+}
+.animation__key {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: ew-resize;
+  touch-action: none;
+  background-color: var(--MEDIUM);
+}
+.animation__key:hover {
+  background-color: var(--DARK);
+}
+.animation__key_selected {
+  background-color: var(--BLUE);
+}
+/* past the last rendered frame: still pulls the interpolation, still selectable */
+.animation__key_past {
+  opacity: 0.4;
+}
+.animation__past {
+  position: absolute;
+  inset: 0 0 0 auto;
+  right: 0;
+  pointer-events: none;
+  background-color: var(--WHITE);
+  opacity: 0.6;
+}
+.animation__playhead {
+  width: 1px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-color: var(--BLUE);
+}
+
+/* a node's own pixel handles (a param's sits in its row, deeper), the same 4px as a param's — 6px looked heavy
+   (tried 09.11, dropped). The output in the bottom-right corner — its param rows have handles of their own on the
+   same edge, at the node's middle it would land on one of them (a one-param node); the input in the top-left, on
+   the legend's line (09.11) */
+.svelte-flow__node > .svelte-flow__handle-right {
+  top: auto;
+  bottom: 0;
+}
+.svelte-flow__node > .svelte-flow__handle-left {
+  top: var(--legend-line);
+}
+
+/* TODO(uiu): hand-written — uiu has no button group / dropdown: the export button with its ▾, the settings
+   under it in a node frame */
+.export-group {
+  display: flex;
+  gap: var(--GRID-GAP-4);
+}
+.export-group__main,
+.export-group__main > .btn_ai-generated {
+  flex: 1;
+}
+/* the panel keeps the width of its buttons whatever the loop mode: a number input's own width (~20 characters)
+   would widen it (the panel is sized to its content's max-content, a percentage width doesn't stop that), so an
+   input asks for no width of its own and stretches to the column (09.11, asked by the user) */
+.export-settings {
+  min-width: 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+.export-settings input:not([type="checkbox"]) {
+  width: 0;
+  min-width: 100%;
+}
+/* the selects keep their width — it is the panel's in every mode */
+.export-settings select {
+  width: 100%;
+}
+
+/* TODO(uiu): hand-written — uiu has no transparency background. Under a picture with alpha: Photoshop's
+   checkerboard, so the picture's edge and its transparent parts show (09.11). The pattern is one token — swap it
+   for another (diagonals: repeating-linear-gradient(45deg, var(--LIGHT) 0 1px, transparent 0 6px)) */
+.transparency {
+  --transparency-cell: 8px;
+  display: block;
+  background: repeating-conic-gradient(var(--LIGHT) 0 25%, var(--WHITE) 0 50%) 0 0 /
+    calc(2 * var(--transparency-cell)) calc(2 * var(--transparency-cell));
 }

@@ -5,7 +5,7 @@
 import { GraphError } from "../../application/run-graph";
 import type { RenderReply, RenderRequest } from "./render-worker";
 
-type Rendered = Extract<RenderReply, { png: string }>;
+type Rendered = Exclude<RenderReply, { error: unknown }>;
 
 export const createRenderQueue = (workerUrl: URL) => {
   let worker: Worker | null = null;
@@ -36,7 +36,7 @@ export const createRenderQueue = (workerUrl: URL) => {
       worker ??= startWorker();
       failRender = reject;
       worker.onmessage = ({ data: reply }: MessageEvent<RenderReply>) => {
-        if ("png" in reply) return resolve(reply);
+        if (!("error" in reply)) return resolve(reply);
         const { message, nodeId } = reply.error;
         reject(nodeId ? new GraphError(message, nodeId) : new Error(message));
       };

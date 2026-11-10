@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Panel } from "@xyflow/svelte";
   import { NODE_CATEGORIES, NODE_HINTS, NODE_LABELS, NODE_TYPE_MIME, type MenuNodeType } from "../graph";
+  import { session } from "../session.svelte";
 
   const ondragstart = (event: DragEvent, type: string) => {
     hint = null;
@@ -27,12 +28,16 @@
       <!-- a labeled rule (uiu) over each group, the first included -->
       <fieldset class="hr_fieldset"><legend><h6>{name}</h6></legend></fieldset>
       {#each types as type (type)}
-        <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included -->
+        <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included.
+             One animation node per graph (contract) -->
+        {@const taken = type === "animation" && session.animationNode !== undefined}
         <div
           class="btn_ai-generated btn-sm_ai-generated"
-          draggable="true"
+          draggable={!taken}
           role="listitem"
-          style="justify-content: flex-start; cursor: grab"
+          style="justify-content: flex-start"
+          style:cursor={taken ? "not-allowed" : "grab"}
+          style:opacity={taken ? 0.4 : 1}
           ondragstart={(event) => ondragstart(event, type)}
           onmouseenter={(event) => onenter(type, event)}
           onmouseleave={() => (hint = null)}

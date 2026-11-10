@@ -153,18 +153,29 @@ export const LayersNodeSchema = z.object({
   }),
 });
 
-// a value on a frame; frames count from 0, as the playhead. Whether the frame fits the node's `frames` and the
-// value fits the linked param — validateGraph
+// a value on a frame; frames count from 0, as the playhead. May lie past the node's `frames` and out of the linked
+// param's bounds: see validateGraph, graphAtFrame
 export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
 
 // keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
 export const AnimationTrackSchema = z.object({ id: z.string().min(1), keys: z.array(AnimationKeySchema) });
 
-// one or the other, absent — the format's default. Strict: a plain object would drop one of the two in silence
+// one or the other, absent — the format's default. Strict: a plain object would drop one of the two in silence.
+// `seconds` rounds to whole cycles unless `wholeCycles` is false — then exactly `seconds`, the last cycle cut
 export const AnimationLoopSchema = z.union([
   z.strictObject({ reps: z.int().min(1) }),
-  z.strictObject({ seconds: z.number().positive() }),
+  z.strictObject({ seconds: z.number().positive(), wholeCycles: z.boolean().optional() }),
 ]);
+
+export const ANIMATION_FORMATS = ["gif", "mp4"] as const;
+export const AnimationFormatSchema = z.enum(ANIMATION_FORMATS);
+
+// how `render-animation` writes the file — the toast's, not the animation node's: the node is the timeline.
+// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle)
+export const AnimationExportSchema = z.object({
+  format: AnimationFormatSchema.optional(),
+  loop: AnimationLoopSchema.optional(),
+});
 
 // no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
 // (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render
@@ -174,7 +185,6 @@ export const AnimationNodeSchema = z.object({
   data: z.object({
     fps: z.int().min(ANIMATION_FPS.min).max(ANIMATION_FPS.max),
     frames: z.int().min(1),
-    loop: AnimationLoopSchema.optional(),
     tracks: z.array(AnimationTrackSchema).superRefine(uniqueIds("track")),
   }),
 });
@@ -232,6 +242,8 @@ export type AnimationNode = z.infer<typeof AnimationNodeSchema>;
 export type AnimationTrack = z.infer<typeof AnimationTrackSchema>;
 export type AnimationKey = z.infer<typeof AnimationKeySchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
+export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
+export type AnimationExport = z.infer<typeof AnimationExportSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
@@ -251,6 +263,7 @@ export const ToastGraphSchema = z.object({
   version: z.literal(TOAST_GRAPH_VERSION),
   nodes: z.array(GraphNodeSchema),
   edges: z.array(GraphEdgeSchema),
+  export: AnimationExportSchema.optional(),
 });
 export type ToastGraph = z.infer<typeof ToastGraphSchema>;
 

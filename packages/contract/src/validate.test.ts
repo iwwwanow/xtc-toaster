@@ -103,7 +103,8 @@ describe("validateGraph, the animation node", () => {
       "a param link next to the node's pixel links",
       withAnimation(animation([t1]), [edge("in", "mv"), edge("mv", "out"), param("mv", "x", "t1")]),
     ],
-    ["a key on the last frame and on the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 9, value: 100 }] }]), [param("mv", "x", "t1")])],
+    ["a key past the last frame — frames is only what gets rendered", withAnimation(animation([{ id: "t1", keys: [{ frame: 10, value: 0 }] }]), [param("mv", "x", "t1")])],
+    ["a key out of the param's bounds — graphAtFrame clamps", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: 101 }] }]), [param("mv", "x", "t1")])],
   ])("accepts %s", (_, g) => {
     expect(validateGraph(g)).toBeNull();
   });
@@ -123,9 +124,6 @@ describe("validateGraph, the animation node", () => {
     ["a link into a missing track", withAnimation(animation([t1]), [param("mv", "x", "ghost")]), "anim"],
     ["two tracks on one param", withAnimation(animation([t1, t2]), [param("mv", "x", "t1"), { ...param("mv", "x", "t2"), id: "again" }]), "anim"],
     ["two params on one track", withAnimation(animation([t1]), [param("mv", "x", "t1"), param("mv", "y", "t1")]), "anim"],
-    ["a key under the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: -101 }] }]), [param("mv", "x", "t1")]), "anim"],
-    ["a key over the param's bound", withAnimation(animation([{ id: "t1", keys: [{ frame: 0, value: 101 }] }]), [param("mv", "x", "t1")]), "anim"],
-    ["a key past the last frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 10, value: 0 }] }]), []), "anim"],
     ["two keys on one frame", withAnimation(animation([{ id: "t1", keys: [{ frame: 1, value: 0 }, { frame: 1, value: 5 }] }]), []), "anim"],
   ])("rejects %s, pointing at the node", (_, g, nodeId) => {
     expect(validateGraph(g)).toMatchObject({ nodeId });
@@ -137,9 +135,7 @@ describe("the animation node in parseToastGraph", () => {
   const base = { fps: 24, frames: 48, tracks: [] };
 
   test.each([
-    ["no loop", base],
-    ["reps", { ...base, loop: { reps: 3 } }],
-    ["seconds", { ...base, loop: { seconds: 15 } }],
+    ["no tracks", base],
     ["keys", { ...base, tracks: [{ id: "t1", keys: [{ frame: 47, value: 10 }, { frame: 0, value: 0.5 }] }] }],
   ])("round-trips %s", (_, data) => {
     expect<unknown>(parseToastGraph(nodeWith(data)).nodes[0]!.data).toEqual(data);
@@ -151,11 +147,6 @@ describe("the animation node in parseToastGraph", () => {
   });
 
   test.each([
-    ["reps and seconds together", { ...base, loop: { reps: 3, seconds: 15 } }],
-    ["an empty loop", { ...base, loop: {} }],
-    ["zero reps", { ...base, loop: { reps: 0 } }],
-    ["fractional reps", { ...base, loop: { reps: 1.5 } }],
-    ["zero seconds", { ...base, loop: { seconds: 0 } }],
     ["zero fps", { ...base, fps: 0 }],
     ["fps over the max", { ...base, fps: 101 }],
     ["fractional fps", { ...base, fps: 23.976 }],
@@ -165,6 +156,43 @@ describe("the animation node in parseToastGraph", () => {
     ["a duplicate track id", { ...base, tracks: [{ id: "t1", keys: [] }, { id: "t1", keys: [] }] }],
   ])("rejects %s", (_, data) => {
     expect(() => parseToastGraph(nodeWith(data))).toThrow();
+  });
+});
+
+describe("export settings in parseToastGraph", () => {
+  const withExport = (exp: unknown) => ({ version: TOAST_GRAPH_VERSION, nodes: [], edges: [], export: exp });
+
+  test.each([
+    ["nothing", {}],
+    ["a format", { format: "mp4" }],
+    ["reps", { format: "gif", loop: { reps: 3 } }],
+    ["seconds", { loop: { seconds: 15 } }],
+    ["exact seconds", { format: "mp4", loop: { seconds: 2.5, wholeCycles: false } }],
+  ])("round-trips %s", (_, exp) => {
+    expect<unknown>(parseToastGraph(withExport(exp)).export).toEqual(exp);
+  });
+
+  test("absent stays absent", () => {
+    expect(parseToastGraph({ version: TOAST_GRAPH_VERSION, nodes: [], edges: [] })).not.toHaveProperty("export");
+  });
+
+  // pre-release, no migration: a loop in the animation node (before 09.11) is dropped, the file still opens
+  test("a loop left in the animation node is dropped", () => {
+    const data = { fps: 24, frames: 48, tracks: [], loop: { reps: 3 } };
+    const graph = parseToastGraph({ version: TOAST_GRAPH_VERSION, nodes: [{ id: "anim", type: "animation", data }], edges: [] });
+    expect(graph.nodes[0]!.data).not.toHaveProperty("loop");
+  });
+
+  test.each([
+    ["an unknown format", { format: "webm" }],
+    ["reps and seconds together", { loop: { reps: 3, seconds: 15 } }],
+    ["an empty loop", { loop: {} }],
+    ["zero reps", { loop: { reps: 0 } }],
+    ["fractional reps", { loop: { reps: 1.5 } }],
+    ["zero seconds", { loop: { seconds: 0 } }],
+    ["wholeCycles with reps", { loop: { reps: 2, wholeCycles: false } }],
+  ])("rejects %s", (_, exp) => {
+    expect(() => parseToastGraph(withExport(exp))).toThrow();
   });
 });
 

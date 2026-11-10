@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { RENDER_MAX_FRAMES_DEFAULT } from "./application/render-animation";
 import { RENDER_MAX_LAYERS_DEFAULT } from "./application/run-graph";
 import { createServer } from "./infrastructure/presentation/server";
 
@@ -22,6 +23,8 @@ const server = await createServer({
   },
   // per render, over all layers nodes; the prod value comes from the memory measurement (sprint 4)
   maxLayers: positive("RENDER_MAX_LAYERS", RENDER_MAX_LAYERS_DEFAULT),
+  // frames of one gif export; each costs a full render — the cap bounds how long one export holds the worker
+  maxFrames: positive("RENDER_MAX_FRAMES", RENDER_MAX_FRAMES_DEFAULT),
   staticDir: env.STATIC_DIR || undefined,
 });
 

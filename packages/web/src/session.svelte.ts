@@ -1,11 +1,16 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
+  animatedValues,
+  graphAtFrame,
   UPLOAD_MAX_MEGAPIXELS,
+  type AnimationExport,
+  type AnimationFormat,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { removeLayer, removeLayerEdges } from "./layers";
+import { addTrack, clampPlayhead, hasAnimatedParams, linkedTrackIndex, nextFrame, paramValue, removeTrack, seedTrack, trackLink, withoutAnimation } from "./animation";
+import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
   canConnect,
@@ -26,8 +31,6 @@ import { fromSaved, loadSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
-// toast directory name — prefix of downloaded files
-const TOAST = "toast-2_signac";
 // the editor as it was before the reload, else the default toast
 const initial = fromSaved(loadSaved()) ?? toFlow(toast2signac);
 
@@ -37,6 +40,9 @@ const UPLOAD_ERRORS: Record<string, string> = {
   "too-large": `too large: max ≈ ${UPLOAD_MAX_MEGAPIXELS * 0.5} MB`,
   "unsupported-format": "png or jpeg only",
 };
+
+// the file's extension from the url the server made — the format the file was rendered in
+const extensionOf = (url: string) => url.slice(url.lastIndexOf(".") + 1);
 
 class Session {
   nodes = $state.raw<FlowNode[]>(initial.nodes);
@@ -57,17 +63,43 @@ class Session {
   // shown in the right panel under the import button
   importError = $state<string | null>(null);
 
-  // bumped when the graph is replaced as a whole (import, clear) — Editor fits the view to the new layout
+  // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
 
-  locked = $derived(!this.connected || this.uploading || this.rendering);
+  // how render-animation writes the file (format, loop) — the toast's, saved with it; {} — the defaults
+  exportSettings = $state.raw<AnimationExport>(initial.export ?? {});
+  exportFormat = $derived<AnimationFormat>(this.exportSettings.format ?? "gif");
+
+  // a render-animation running: frames done of frames; null — no export
+  exporting = $state.raw<{ frame: number; frames: number } | null>(null);
+  // shown under the export button
+  exportError = $state<string | null>(null);
+
+  locked = $derived(!this.connected || this.uploading || this.rendering || this.exporting !== null);
+  // the animation node stays live during a render: scrubbing and setting keys would otherwise wait for every frame's
+  // render, and latest-wins already drops what they make stale. Not during an export: the server takes one message
+  // at a time, and a render sent now would replace the waiting export
+  animationLocked = $derived(!this.connected || this.uploading || this.exporting !== null);
   imageId = $derived(
     this.nodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
   );
-  // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
-  graphKey = $derived(JSON.stringify(toGraph(this.nodes, this.edges)));
+  animationNode = $derived(this.nodes.find((node): node is FlowNodeOf<"animation"> => node.type === "animation"));
 
+  // ui state, not in the toast; the wanted frame stays while `frames` shrinks and grows back
+  private playhead = $state(0);
+  frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
+
+  private graph = $derived(toGraph(this.nodes, this.edges, this.exportSettings));
+  private animated = $derived(animatedValues(this.graph, this.frame));
+  // what one render needs: the frame under the playhead, without the animation node
+  private frameGraph = $derived(withoutAnimation(graphAtFrame(this.graph, this.frame)));
+  // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
+  graphKey = $derived(JSON.stringify(this.frameGraph));
+
+  // ids grow across renders and exports; requestId — the last render, exportId — the running export
+  private lastRequestId = 0;
   private requestId = 0;
+  private exportId: number | null = null;
   private socket: ReturnType<typeof connectSocket> | null = null;
 
   connect() {
@@ -82,6 +114,8 @@ class Session {
         this.serverUnavailable = true;
         // an in-flight response is lost — the graph is re-sent after reconnect
         this.rendering = false;
+        this.stop();
+        if (this.exporting) this.endExport("connection lost — render the animation again");
       },
       onMessage: (message) => this.receive(message),
     });
@@ -106,6 +140,7 @@ class Session {
 
   // a node from the left menu, dropped at a flow position — unlinked until the user links it
   addNode(type: MenuNodeType, position: XYPosition) {
+    if (type === "animation" && this.animationNode) return; // one per graph (contract)
     this.nodes = [...this.nodes, createNode(type, position)];
   }
 
@@ -118,8 +153,104 @@ class Session {
   removeLayerRow(nodeId: string, layerId: string) {
     const node = this.nodes.find((node): node is FlowNodeOf<"layers"> => node.id === nodeId && node.type === "layers");
     if (!node) return;
-    this.edges = removeLayerEdges(this.edges, nodeId, layerId);
+    this.edges = removeRowEdges(this.edges, nodeId, layerId);
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
+  }
+
+  // a param's value at the playhead; null — no track with keys drives it
+  animatedValue(nodeId: string, param: string): number | null {
+    return this.animated.get(nodeId)?.[param] ?? null;
+  }
+
+  // a moved playhead is a new frame → App sends a new render, if the picture changes on it
+  setPlayhead(frame: number) {
+    this.playhead = frame;
+  }
+
+  // Play, one frame at a time: a frame is rendered, then the playhead moves on and the next one is rendered. A frame
+  // is shown no shorter than 1 / fps, but as long as its render takes — no frames rendered ahead yet
+  // (`docs/backlog/2026-11-06_play-frame-cache-on-client.md`)
+  playing = $state(false);
+  canRender = $derived(this.connected && this.imageId !== null);
+  private playTimer: ReturnType<typeof setTimeout> | undefined;
+  private frameShownAt = 0;
+
+  togglePlay() {
+    if (this.playing) return this.stop();
+    if (!this.animationNode || !this.canRender) return;
+    this.playing = true;
+    this.frameShownAt = performance.now();
+    this.nextAfterFrame();
+  }
+
+  stop() {
+    this.playing = false;
+    clearTimeout(this.playTimer);
+  }
+
+  private nextAfterFrame() {
+    const node = this.animationNode;
+    if (!this.playing || !node || !this.canRender) return this.stop();
+    const wait = Math.max(0, 1000 / node.data.fps - (performance.now() - this.frameShownAt));
+    clearTimeout(this.playTimer);
+    this.playTimer = setTimeout(() => this.advance(), wait);
+  }
+
+  private advance() {
+    const node = this.animationNode;
+    if (!this.playing || !node) return this.stop();
+    const before = this.graphKey;
+    this.playhead = nextFrame(this.frame, node.data.frames);
+    this.frameShownAt = performance.now();
+    // the same picture (keys hold still here) — no render to wait for, App sends nothing
+    if (this.graphKey === before) this.nextAfterFrame();
+  }
+
+  // a track goes away with its link and keys
+  removeTrack(nodeId: string, trackId: string) {
+    const node = this.animationNode;
+    if (node?.id !== nodeId) return;
+    this.edges = removeRowEdges(this.edges, nodeId, trackId);
+    this.setNodeData(nodeId, { ...node.data, tracks: removeTrack(node.data.tracks, trackId) });
+  }
+
+  // a param linked into an empty track: the first key, at the playhead with the param's value
+  seedTrack({ source, sourceHandle, target, targetHandle }: Link) {
+    const node = this.animationNode;
+    if (node?.id !== target || !sourceHandle || !targetHandle) return;
+    const value = paramValue(this.nodes, source, sourceHandle);
+    if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
+  }
+
+  // A param's wire dropped on `+ track` (09.11): a new track on top, linked to that param, with its first key.
+  // A param that drives a track already makes none — a second track would take its link and strand the first
+  // one's keys (dropped on a track's handle, the link does move: that is asked for). Two steps: the track, then —
+  // once its handle is measured (`linkTrack`) — the link; a link before its handle is drawn nowhere (xyflow #008)
+  addLinkedTrack(source: string, sourceHandle: string): Link | null {
+    const node = this.animationNode;
+    if (!node || this.animationLocked) return null;
+    if (this.edges.some((edge) => edge.target === node.id && edge.source === source && edge.sourceHandle === sourceHandle))
+      return null;
+    const at = linkedTrackIndex(this.edges, node.id, node.data.tracks, source);
+    const tracks = addTrack(node.data.tracks, at);
+    const link = { source, sourceHandle, target: node.id, targetHandle: tracks[at]!.id };
+    const nodes = this.nodes.map((n) => (n.id === node.id ? ({ ...n, data: { ...node.data, tracks } } as FlowNode) : n));
+    if (!canConnect(nodes, this.edges, link)) return null;
+    this.nodes = nodes;
+    return link;
+  }
+
+  linkTrack(link: Link) {
+    if (!this.canConnect(link)) return;
+    const { source, sourceHandle, target, targetHandle } = link;
+    this.edges = [...this.edges, { id: `xy-edge__${source}${sourceHandle}-${target}${targetHandle}`, ...link }];
+    this.seedTrack(link);
+  }
+
+  // the param a track drives, its value in the node's own data
+  trackParamValue(nodeId: string, trackId: string): number | null {
+    const link = trackLink(this.edges, nodeId, trackId);
+    return link?.sourceHandle ? paramValue(this.nodes, link.source, link.sourceHandle) : null;
   }
 
   // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused
@@ -133,17 +264,73 @@ class Session {
   }
 
   render() {
-    this.requestId += 1;
+    this.requestId = ++this.lastRequestId;
     this.rendering = true;
-    this.socket?.send({ type: "render", requestId: this.requestId, graph: toGraph(this.nodes, this.edges) });
+    this.socket?.send({ type: "render", requestId: this.requestId, graph: this.frameGraph });
+  }
+
+  // the button: a picture to render and keys that move something
+  canExport = $derived(
+    this.canRender && !this.uploading && this.exporting === null && hasAnimatedParams(this.graph),
+  );
+
+  // the export settings change no picture: frameGraph drops them, no render is sent
+  setExportSettings(settings: AnimationExport) {
+    this.exportSettings = settings;
+  }
+
+  // One cycle of the animation node as a gif / mp4, rendered on the server frame by frame, then downloaded. Renders
+  // wait until it's done (App), the editor is locked; a render already sent still comes back under its own id
+  exportAnimation() {
+    const node = this.animationNode;
+    if (!this.canExport || !node) return;
+    this.stop();
+    this.exportId = ++this.lastRequestId;
+    this.exporting = { frame: 0, frames: node.data.frames };
+    this.exportError = null;
+    this.socket?.send({ type: "render-animation", requestId: this.exportId, graph: this.graph });
+  }
+
+  private async receiveExport(message: ServerMessage) {
+    switch (message.type) {
+      case "animation-progress":
+        this.exporting = { frame: message.frame, frames: message.frames };
+        return;
+      case "animation-rendered":
+        try {
+          const response = await fetch(message.url);
+          if (!response.ok) throw new Error(`GET ${message.url}: ${response.status}`);
+          saveBlob(await response.blob(), outputFileName(extensionOf(message.url)));
+          this.endExport(null);
+        } catch (error) {
+          console.error("animation download failed", error);
+          this.endExport("download failed");
+        }
+        return;
+      case "render-error": {
+        console.error("render-animation error", message);
+        const type = this.nodes.find(({ id }) => id === message.nodeId)?.type;
+        this.endExport(type ? `${type}: ${message.message}` : message.message);
+        return;
+      }
+      case "rendered":
+        return; // never for a render-animation
+    }
+  }
+
+  private endExport(error: string | null) {
+    this.exportId = null;
+    this.exporting = null;
+    this.exportError = error;
   }
 
   download() {
-    if (this.rendered) saveBlob(this.rendered.blob, outputFileName(TOAST, "png"));
+    if (this.rendered) saveBlob(this.rendered.blob, outputFileName("png"));
   }
 
   exportToast() {
-    saveBlob(new Blob([toToastFile(this.nodes, this.edges)], { type: "application/json" }), outputFileName(TOAST, "json"));
+    const file = toToastFile(this.nodes, this.edges, this.exportSettings);
+    saveBlob(new Blob([file], { type: "application/json" }), outputFileName("json"));
   }
 
   // input → output, the picture stays
@@ -151,15 +338,21 @@ class Session {
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
+    this.exportSettings = {};
+    this.stop();
+    this.playhead = 0;
     this.replaced++;
   }
 
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
   async importToast(file: File): Promise<boolean> {
     try {
-      const { nodes, edges } = fromToastFile(await file.text(), this.imageId);
+      const { nodes, edges, export: settings } = fromToastFile(await file.text(), this.imageId);
       this.nodes = nodes;
       this.edges = edges;
+      this.exportSettings = settings ?? {};
+      this.stop();
+      this.playhead = 0;
       this.replaced++;
       this.importError = null;
       return true;
@@ -172,13 +365,19 @@ class Session {
 
   private receive(message: ServerMessage) {
     if (message.requestId === null) return console.error("render-error", message);
+    if (message.requestId === this.exportId) return void this.receiveExport(message);
     if (message.requestId !== this.requestId) return; // stale — a newer request was sent
+    if (message.type === "animation-progress" || message.type === "animation-rendered") return; // an old export's
 
     this.rendering = false;
     if (message.type === "rendered") {
       this.renderError = null;
-      return this.setRendered(base64ToBlob(message.png, "image/png"));
+      this.setRendered(base64ToBlob(message.png, "image/png"));
+      if (this.playing) this.nextAfterFrame();
+      return;
     }
+
+    this.stop();
 
     // TODO: notify the user (notification toast or something else) — to be designed
     console.error("render-error", message);

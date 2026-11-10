@@ -100,4 +100,6 @@ export const INITIAL_DATA = {
       { id: "layer-1", blendMode: "normal" },
     ],
   },
+  // two seconds at the initial fps; no tracks — they are added by hand, like layers rows
+  animation: { fps: ANIMATION_FPS.initial, frames: 48, tracks: [] },
 } as const;

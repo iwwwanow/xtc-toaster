@@ -19,6 +19,9 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | `hidden-row` | fork-3 with names (`poppies`, `hue noise`) and the green `add` row hidden: poppies over hue noise, no green; the hidden row dimmed, its checkbox off |
 | `unlinked-row` | the top row unlinked — skipped; poppies over the picture |
 | `empty-layers` | no row linked → `render-error` on the layers node |
+| `animation` | input → move → opacity → output with an animation node below: 4 tracks (a new one on top, empty and unlinked — `track 4`; `opacity.opacity`; `move.y` with a dimmed key past the end; `move.x`). Dashed wires; `x`, `y`, `opacity` fields read-only; a ruler click changes the output picture |
+| `broken-animation-two-nodes` | import refused: only one animation node |
+| `broken-animation-pixel-link` | import refused: a pixel link into a track |
 | `broken-cycle` | import refused: a cycle (off the output path) |
 | `broken-double-link` | import refused: two links into one layers row |
 
@@ -29,6 +32,6 @@ The toasts users get (`packages/toasts/src/toasts/<name>/toast.json`) open by th
 | toast | expect |
 |---|---|
 | [`toast-2_signac`](http://localhost:5173/?toast=toast-2_signac) | the default graph: input → color noise → select color → 3d turn → output |
-| [`toast-1_degas`](http://localhost:5173/?toast=toast-1_degas) | the degas script at t = 0: 7 layers rows (dark gray, blurred, light gray, blue `lch-hue`, purple / red / white select bright), a gray-turquoise picture with magenta and red in the darks. **Needs `RENDER_MAX_LAYERS=8`** in `.env` (the fallback 4 → `over 4 layers` on the layers node). Bit for bit with the script — `packages/server/tests/degas.test.ts` |
+| [`toast-1_degas`](http://localhost:5173/?toast=toast-1_degas) | the degas script: 7 layers rows (dark gray, blurred, light gray, blue `lch-hue`, purple / red / white select bright), a gray-turquoise picture with magenta and red in the darks. **Needs `RENDER_MAX_LAYERS=8`** in `.env` (the fallback 4 → `over 4 layers` on the layers node). At frame 0 — bit for bit with the script (`packages/server/tests/degas.test.ts`). Animated: an animation node with 24 tracks (3 `corners` × 6, 3 `move` × 2), 24 frames at 36 fps, a 15 s loop — `render animation` exports the script's movement |
 
 A new toast: write the json by hand or build it in the ui and export; name it by what it checks, add a row here.

@@ -257,8 +257,11 @@ describe("toFlow rows", () => {
     const { toast1degas } = await import("@xtc-toaster/toasts");
     const { nodes, edges } = toFlow(toast1degas);
     const y = Object.fromEntries(nodes.map(({ id, position }) => [id, position.y]));
-    // every link between two chain nodes is horizontal; only the links out of the input and into the layers node bend
-    const bent = edges.filter(({ source, target }) => source !== "in" && target !== "cmp" && y[source] !== y[target]);
+    // every pixel link between two chain nodes is horizontal; only the links out of the input and into the layers
+    // node bend (param links into the animation node have a sourceHandle — not part of the chains)
+    const bent = edges.filter(
+      ({ source, target, sourceHandle }) => !sourceHandle && source !== "in" && target !== "cmp" && y[source] !== y[target],
+    );
     expect(bent).toEqual([]);
   });
 });
@@ -267,5 +270,84 @@ describe("NODE_CATEGORIES", () => {
   test("every menu type in exactly one category", () => {
     const listed = NODE_CATEGORIES.flatMap(({ types }) => types as readonly string[]);
     expect(listed.toSorted()).toEqual([...MENU_NODE_TYPES].toSorted());
+  });
+});
+
+describe("param links", () => {
+  const animated = () => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "in", type: "input", data: { imageId: null } },
+      { id: "m", type: "move", data: { x: 1, y: 2 } },
+      { id: "a", type: "animation", data: { fps: 24, frames: 4, tracks: [{ id: "t1", keys: [] }, { id: "t2", keys: [] }] } },
+      { id: "out", type: "output", data: {} },
+    ] as GraphNode[],
+    edges: [
+      { id: "1", source: "in", target: "m" },
+      { id: "2", source: "m", target: "out" },
+      { id: "3", source: "m", sourceHandle: "x", target: "a", targetHandle: "t1" },
+    ] as GraphEdge[],
+  });
+
+  test("survive toFlow → toGraph", () => {
+    const { nodes, edges } = toFlow(animated());
+    expect(toGraph(nodes, edges).edges).toEqual(animated().edges);
+  });
+
+  test("survive export → import, keys and the export settings too", () => {
+    const graph = { ...animated(), export: { format: "mp4" as const, loop: { seconds: 2.5, wholeCycles: false } } };
+    const node = graph.nodes.find(({ type }) => type === "animation")!;
+    if (node.type === "animation") node.data.tracks[0]!.keys = [{ frame: 9, value: 3 }];
+    const flow = toFlow(graph);
+    expect(flow.export).toEqual(graph.export);
+    const imported = fromToastFile(toToastFile(flow.nodes, flow.edges, flow.export), null);
+    expect(toGraph(imported.nodes, imported.edges).edges).toEqual(graph.edges);
+    expect(imported.nodes.find(({ id }) => id === "a")!.data).toEqual(node.data);
+    expect(imported.export).toEqual(graph.export);
+  });
+
+  test("no export settings — no field in the toast", () => {
+    const { nodes, edges } = toFlow(animated());
+    expect(JSON.parse(toToastFile(nodes, edges, {}))).not.toHaveProperty("export");
+    expect(toGraph(nodes, edges, {})).not.toHaveProperty("export");
+  });
+
+  test("don't move the chain, the animation node gets a row below it", () => {
+    const { nodes } = toFlow(animated());
+    const at = Object.fromEntries(nodes.map(({ id, position }) => [id, position]));
+    expect(at.out!.y).toBe(at.in!.y);
+    expect(at.out!.x).toBeGreaterThan(at.m!.x);
+    expect(at.a!.y).toBeGreaterThan(at.in!.y);
+    expect(at.a!.x).toBeGreaterThan(at.m!.x); // right of its params: the wires don't loop back
+  });
+
+  test("the animation node doesn't overlap unlinked nodes", () => {
+    const graph = animated();
+    graph.nodes.push({ id: "b", type: "blur", data: { radius: 1 } });
+    const at = Object.fromEntries(toFlow(graph).nodes.map(({ id, position }) => [id, position]));
+    expect(at.a!.y).toBeGreaterThan(at.b!.y);
+  });
+
+  test("canConnect: a param into a track yes, into a pixel input or a pixel link into a track no", () => {
+    const { nodes, edges } = toFlow(animated());
+    const param = { source: "m", sourceHandle: "y", target: "a", targetHandle: "t2" };
+    expect(canConnect(nodes, edges, param)).toBe(true);
+    expect(canConnect(nodes, edges, { source: "m", sourceHandle: "y", target: "out", targetHandle: null })).toBe(false);
+    expect(canConnect(nodes, edges, { source: "m", sourceHandle: null, target: "a", targetHandle: "t2" })).toBe(false);
+  });
+
+  test("a param already linked moves to the new track, the old link goes", () => {
+    const { nodes, edges } = toFlow(animated());
+    const link = { source: "m", sourceHandle: "x", target: "a", targetHandle: "t2" };
+    expect(canConnect(nodes, edges, link)).toBe(true);
+    expect(withoutTaken(edges, link).map(({ id }) => id)).toEqual(["1", "2"]);
+    // moved by its end: it stays, it isn't taken by itself
+    expect(withoutTaken(edges, link, "3").map(({ id }) => id)).toEqual(["1", "2", "3"]);
+  });
+
+  test("another param's link stays", () => {
+    const { edges } = toFlow(animated());
+    const link = { source: "m", sourceHandle: "y", target: "a", targetHandle: "t2" };
+    expect(withoutTaken(edges, link).map(({ id }) => id)).toEqual(["1", "2", "3"]);
   });
 });

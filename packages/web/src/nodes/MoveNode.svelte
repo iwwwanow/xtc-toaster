@@ -9,21 +9,27 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.move}</h6></legend>
   <Slider
-    label="x (% of width)"
+    label="x %"
+    hint="x, % of the width"
+    node={id}
+    param="x"
     bounds={PARAMS.move.x}
     step={1}
     value={data.x}
     onchange={(x) => session.setNodeData(id, { ...data, x })}
   />
   <Slider
-    label="y (% of height)"
+    label="y %"
+    hint="y, % of the height"
+    node={id}
+    param="y"
     bounds={PARAMS.move.y}
     step={1}
     value={data.y}
     onchange={(y) => session.setNodeData(id, { ...data, y })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

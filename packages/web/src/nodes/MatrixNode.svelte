@@ -14,10 +14,11 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.matrix}</h6></legend>
   <!-- raw 3×3, row-major, px of the image: [x, y, 1] · H — the last row is the translation -->
-  <div style="display: grid; grid-template-columns: repeat(3, 72px); gap: var(--GRID-GAP-4)">
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--GRID-GAP-4)">
     {#each data.matrix as value, index (index)}
       <input
         class="nodrag input_ai-generated input-sm_ai-generated"
@@ -30,4 +31,3 @@
     {/each}
   </div>
 </fieldset>
-<Handle type="source" position={Position.Right} />

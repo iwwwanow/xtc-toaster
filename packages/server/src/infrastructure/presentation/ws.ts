@@ -1,15 +1,20 @@
 import type { ServerWebSocket, WebSocketHandler } from "bun";
 import {
   ClientMessageSchema,
+  type ClientMessage,
   RequestIdSchema,
   type RenderErrorMessage,
   type ServerMessage,
 } from "@xtc-toaster/contract";
+import { animationFormat, renderAnimation } from "../../application/render-animation";
 import { GraphError } from "../../application/run-graph";
+import { createAnimationJob, removeFile, removeFrames } from "../repository/animations";
 import { render } from "../workers/render-queue";
 
 // Renders run in a worker and can't be aborted → per connection one render
-// runs, at most one waits; a newer message replaces the waiting one.
+// runs, at most one waits; a newer message replaces the waiting one. A render-animation is one long entry:
+// a render sent during it waits, and a later message replaces a waiting render-animation — the client sends
+// nothing while it exports.
 export type WsData = {
   busy: boolean;
   pending: string | null;
@@ -31,7 +36,39 @@ const readNodeId = (raw: unknown, path: PropertyKey[]): string | undefined => {
   return typeof id === "string" ? id : undefined;
 };
 
-const handleMessage = async (text: string, uploadsDir: string, maxLayers?: number): Promise<ServerMessage> => {
+export type RenderOptions = {
+  uploadsDir: string;
+  // linked layers rows over one render; unset — RENDER_MAX_LAYERS_DEFAULT
+  maxLayers?: number;
+  // frames of one render-animation; unset — RENDER_MAX_FRAMES_DEFAULT
+  maxFrames?: number;
+};
+
+type Send = (message: ServerMessage) => void;
+
+// each frame is its own entry in the render queue: renders of other connections wait one frame, not the clip
+const animate = async (graph: ClientMessage["graph"], requestId: number, send: Send, options: RenderOptions) => {
+  const { uploadsDir, maxLayers, maxFrames } = options;
+  const job = await createAnimationJob(uploadsDir, animationFormat(graph));
+  try {
+    await renderAnimation({
+      graph,
+      renderFrameTo: (graph, outPath) => render({ graph, uploadsDir, maxLayers, outPath }).then(() => {}),
+      framesDir: job.framesDir,
+      outputPath: job.filePath,
+      maxFrames,
+      onFrame: (frame, frames) => send({ type: "animation-progress", requestId, frame, frames }),
+    });
+  } catch (e) {
+    await removeFile(job);
+    throw e;
+  } finally {
+    await removeFrames(job);
+  }
+  return `/api/animations/${job.name}`;
+};
+
+const handleMessage = async (text: string, send: Send, options: RenderOptions): Promise<ServerMessage> => {
   const error = (e: RenderError): ServerMessage => ({ type: "render-error", ...e });
 
   let raw: unknown;
@@ -53,16 +90,22 @@ const handleMessage = async (text: string, uploadsDir: string, maxLayers?: numbe
     return error({ requestId, ...(nodeId && { nodeId }), message: `${path.join(".")}: ${message}` });
   }
 
+  const { graph } = parsed.data;
   try {
-    const { width, height, png } = await render({ graph: parsed.data.graph, uploadsDir, maxLayers });
-    return { type: "rendered", requestId: parsed.data.requestId, width, height, png };
+    if (parsed.data.type === "render-animation") {
+      const url = await animate(graph, parsed.data.requestId, send, options);
+      return { type: "animation-rendered", requestId: parsed.data.requestId, url };
+    }
+    const { width, height, png } = await render({ graph, uploadsDir: options.uploadsDir, maxLayers: options.maxLayers });
+    // never without png: no outPath
+    return { type: "rendered", requestId: parsed.data.requestId, width, height, png: png! };
   } catch (e) {
     if (e instanceof GraphError) return error({ requestId, ...(e.nodeId && { nodeId: e.nodeId }), message: e.message });
     return error({ requestId, message: e instanceof Error ? e.message : String(e) });
   }
 };
 
-type Handle = (text: string) => Promise<ServerMessage>;
+type Handle = (text: string, send: Send) => Promise<ServerMessage>;
 type Socket = Pick<ServerWebSocket<WsData>, "data" | "readyState" | "send">;
 
 const drain = async (ws: Socket, handle: Handle) => {
@@ -72,9 +115,11 @@ const drain = async (ws: Socket, handle: Handle) => {
     while (ws.data.pending !== null) {
       const text = ws.data.pending;
       ws.data.pending = null;
-      const response = await handle(text);
       // the client may be gone — its response is lost, server is stateless
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(response));
+      const send = (message: ServerMessage) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+      };
+      send(await handle(text, send));
     }
   } finally {
     ws.data.busy = false;
@@ -87,10 +132,10 @@ export const enqueue = (ws: Socket, text: string, handle: Handle): void => {
   void drain(ws, handle);
 };
 
-export const createWsHandler = (uploadsDir: string, maxLayers?: number): WebSocketHandler<WsData> => ({
+export const createWsHandler = (options: RenderOptions): WebSocketHandler<WsData> => ({
   data: initialWsData(),
   message(ws, message) {
     const text = typeof message === "string" ? message : message.toString();
-    enqueue(ws, text, (t) => handleMessage(t, uploadsDir, maxLayers));
+    enqueue(ws, text, (t, send) => handleMessage(t, send, options));
   },
 });

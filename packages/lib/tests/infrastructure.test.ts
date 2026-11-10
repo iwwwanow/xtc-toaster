@@ -3,15 +3,20 @@
 // перезаписываются при каждом прогоне. Без ffmpeg/ffprobe в PATH ffmpeg-часть пропускается.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   assembleGif,
+  assembleGifFromFrames,
+  assembleMp4FromFrames,
   assembleVideo,
+  gifLoopArg,
   decodePixels,
   encodePng,
   imageFileToRawData,
   loopVideoTo,
   rawDataToImageFile,
+  sequenceFrameName,
   speedUpVideo,
 } from "../infrastructure";
 import { colorNoise } from "../domain/services";
@@ -137,6 +142,100 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
     expect(probe(path)).toMatchObject({ width, height, frames: 6 });
   });
 
+  // the gif's NETSCAPE2.0 block holds the repeat count; no block — the gif plays once
+  const loopCount = async (path: string) => {
+    const bytes = Buffer.from(await Bun.file(path).arrayBuffer());
+    const at = bytes.indexOf("NETSCAPE2.0");
+    return at === -1 ? null : bytes.readUInt16LE(at + 13);
+  };
+
+  test("assembleGifFromFrames: a png sequence on disk → every frame, the plays in the loop block", async () => {
+    const dir = resolve(outDir, "sequence");
+    await mkdir(dir, { recursive: true });
+    await Promise.all(frames.map((frame, i) => rawDataToImageFile(frame, { width, height }, resolve(dir, sequenceFrameName(i)))));
+
+    const forever = resolve(outDir, "sequence-forever.gif");
+    await assembleGifFromFrames(dir, 6, forever);
+    expect(probe(forever)).toMatchObject({ width, height, frames: 6 });
+    expect(probe(forever).duration).toBeCloseTo(1, 1);
+    expect(await loopCount(forever)).toBe(0);
+
+    const three = resolve(outDir, "sequence-3.gif");
+    await assembleGifFromFrames(dir, 6, three, { plays: 3 });
+    expect(await loopCount(three)).toBe(2);
+
+    const once = resolve(outDir, "sequence-once.gif");
+    await assembleGifFromFrames(dir, 6, once, { plays: 1 });
+    expect(await loopCount(once)).toBeNull();
+  });
+
+  test("assembleGifFromFrames: `frames` repeats the sequence and cuts it on a frame", async () => {
+    const dir = resolve(outDir, "sequence");
+    const path = resolve(outDir, "sequence-15-frames.gif");
+    await assembleGifFromFrames(dir, 6, path, { frames: 15, plays: 1 });
+    expect(probe(path)).toMatchObject({ width, height, frames: 15 });
+    expect(probe(path).duration).toBeCloseTo(2.5, 1);
+    expect(await loopCount(path)).toBeNull();
+  });
+
+  test("assembleMp4FromFrames: h264 yuv420p, an odd size padded to even, one pass of the sequence", async () => {
+    const dir = resolve(outDir, "sequence");
+    const path = resolve(outDir, "sequence.mp4");
+    await assembleMp4FromFrames(dir, 6, path); // 125×180 → 126×180
+    const info = probe(path);
+    expect([info.width, info.height]).toEqual([126, 180]);
+    expect(info.frames).toBe(6);
+    expect(info.duration).toBeCloseTo(1, 1);
+    const stream = spawnSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,pix_fmt", "-of", "csv=p=0", path]);
+    expect(stream.stdout.toString().trim()).toBe("h264,yuv420p");
+  });
+
+  test("assembleMp4FromFrames: `frames` repeats the sequence and cuts it on a frame", async () => {
+    const path = resolve(outDir, "sequence-14-frames.mp4");
+    await assembleMp4FromFrames(resolve(outDir, "sequence"), 6, path, { frames: 14 });
+    expect(probe(path).frames).toBe(14);
+  });
+
+
+  // the first frame of a gif (or any video) as rgba
+  const firstGifFrame = (path: string) =>
+    spawnSync("ffmpeg", ["-v", "error", "-i", path, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"]).stdout;
+
+  test("assembleGifFromFrames: a semi-transparent frame is flattened onto white, the gif has no holes", async () => {
+    const dir = resolve(outDir, "sequence-alpha");
+    await mkdir(dir, { recursive: true });
+    const [w, h] = [8, 8];
+    // half-transparent red, then almost transparent red — the second used to come out as an empty frame
+    const alphas = [128, 40];
+    await Promise.all(
+      alphas.map((alpha, i) => {
+        const frame = new Uint8ClampedArray(w * h * 4);
+        for (let p = 0; p < frame.length; p += 4) frame.set([255, 0, 0, alpha], p);
+        return rawDataToImageFile(frame, { width: w, height: h }, resolve(dir, sequenceFrameName(i)));
+      }),
+    );
+    const path = resolve(outDir, "sequence-alpha.gif");
+    await assembleGifFromFrames(dir, 6, path);
+    expect(probe(path)).toMatchObject({ width: w, height: h, frames: 2 });
+
+    const [r, g, b, a] = firstGifFrame(path);
+    expect(a).toBe(255);
+    expect(r).toBeGreaterThan(240);
+    // red at 128 / 255 over white: g = b ≈ 127
+    expect(Math.abs(g! - 127)).toBeLessThan(12);
+    expect(Math.abs(b! - 127)).toBeLessThan(12);
+  });
+
+  test("assembleMp4FromFrames: a semi-transparent frame is flattened onto white", async () => {
+    const path = resolve(outDir, "sequence-alpha.mp4");
+    await assembleMp4FromFrames(resolve(outDir, "sequence-alpha"), 6, path);
+    const [r, g, b] = firstGifFrame(path);
+    expect(r).toBeGreaterThan(230);
+    // red at 128 / 255 over white, through yuv420p: g = b ≈ 127, give or take the chroma rounding
+    expect(Math.abs(g! - 127)).toBeLessThan(20);
+    expect(Math.abs(b! - 127)).toBeLessThan(20);
+  });
+
   test("assembleVideo pads odd dimensions to even for libx264", async () => {
     const path = resolve(outDir, "noise.mp4");
     await assembleVideo(frames, width, height, 6, path); // 125×180 → 126×180
@@ -165,4 +264,10 @@ describe.skipIf(!hasFfmpeg)("ffmpeg assembly", () => {
   test("ffmpeg failures reject with its stderr", async () => {
     expect(loopVideoTo(resolve(outDir, "missing.mp4"), 1, resolve(outDir, "never.mp4"))).rejects.toThrow(/ffmpeg exited/);
   });
+});
+
+test("gifLoopArg: forever → 0, once → -1, n plays → n - 1 repeats", () => {
+  expect(gifLoopArg(undefined)).toBe(0);
+  expect(gifLoopArg(1)).toBe(-1);
+  expect(gifLoopArg(3)).toBe(2);
 });

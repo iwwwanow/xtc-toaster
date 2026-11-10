@@ -9,21 +9,26 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
+<Handle type="source" position={Position.Right} />
 <fieldset class="frame">
   <legend><h6>{NODE_LABELS.turn3d}</h6></legend>
   <Slider
     label="angle"
+    node={id}
+    param="angle"
     bounds={PARAMS.turn3d.angle}
     step={1}
     value={data.angle}
     onchange={(angle) => session.setNodeData(id, { ...data, angle })}
   />
   <Slider
-    label="focal length (mm)"
+    label="focal mm"
+    hint="focal length, mm (35 mm equivalent)"
+    node={id}
+    param="focalLength"
     bounds={PARAMS.turn3d.focalLength}
     step={1}
     value={data.focalLength}
     onchange={(focalLength) => session.setNodeData(id, { ...data, focalLength })}
   />
 </fieldset>
-<Handle type="source" position={Position.Right} />

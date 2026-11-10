@@ -7,10 +7,9 @@
      - (#1 of `docs/planning.md`) gif only, no mp4 — **applied up front on 03.11**
      - (#6) last resort: animation → 1.1, release static toasts
 
-### status (2026-11-04) — contract done (no ws messages yet), next — web
+### status (2026-11-09) — must done (contract, web, server, gif export, degas animated); extended 09.11 before the release — see «extension 09.11»
 
-- the 29.10 sketch reviewed, its open points answered — see the decisions at the end; the discussion — `docs/diary/2026-11-03_sprint-5-planning.md`
-- technical checks (memory, gif on the prod limits) are left for the implementation, on purpose — "to check while implementing" below
+Done to 08.11: contract, web (tracks, keys, playhead, `play`), server (`render-animation`, frames on disk, gif in two ffmpeg passes), `render animation` in the ui, gif on white, degas animated (24 tracks), arrange with elk. The user ran animated degas locally 09.11 — works. 09.11: the user asked for a blender-like timeline, an export dropdown with mp4, tracks grouped by node and node widths on the uiu grid **before** the release — «extension 09.11» below; the release, the prod check and the QA list come after it.
 
 ---
 
@@ -39,8 +38,8 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
   } }
   ```
 - `GraphEdgeSchema` gets an optional `sourceHandle` — the param's name. A param link: `{ source: "move-1", sourceHandle: "x", target: "anim", targetHandle: "t1" }`, built like the `layers` rows
-- `validateGraph`: a link with `sourceHandle` goes only into the animation node, the node takes only such links; the handle is a numeric param of the source node's type; one track per param; `value` within the param's `PARAMS` bounds; `frame` within `0..frames-1`; keys of a track on different frames; nothing links out of the animation node
-- `graphAtFrame(graph, frame)` in contract — one pure function for web and server: linear between keys, the nearest key's value outside them (blender's constant extrapolation), a track without keys leaves `data` as is
+- `validateGraph`: a link with `sourceHandle` goes only into the animation node, the node takes only such links; the handle is a numeric param of the source node's type; one track per param; keys of a track on different frames; nothing links out of the animation node. Not rules: a key past `frames`, a key out of the param's bounds, a track without a link
+- `graphAtFrame(graph, frame)` in contract — one pure function for web and server: linear between keys, the nearest key's value outside them (blender's constant extrapolation), a track without keys leaves `data` as is, a value is clamped to the param's `PARAMS` bounds (the keys stay as they are)
 - `TOAST_GRAPH_VERSION` stays `1`, the old `number | Keyframes` plan is dropped
 - ws: `render-animation` from the client, `animation-progress` (`frame` / `frames`) and the result from the server
 
@@ -56,18 +55,20 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
 #### web
 
 - a handle on every numeric param row
-- a link dropped from a param onto the animation node creates a track, its first key — at the playhead with the param's current value. Removing the link removes the track; removing a param's node removes its links, so its tracks too
+- tracks work as the `layers` rows: `+ track` adds an empty row with its handle — on top, right under the button; rows are dragged to reorder (the order doesn't change the picture); `×` removes the row with its link and keys. Nothing is created by dropping a link onto the node
+- a link into an empty track makes its first key — at the playhead with the param's current value. Removing the link, or the param's node, keeps the row and its keys; relinked to another param the keys stay as they are, the frame clamps them to its bounds. No link — no `+ key`
 - `AnimationNode`, inside the node, blender as the base:
   - **width** — 3 uiu grid columns, `190 × 3 + 16 × 2 = 602px`: channels — 1 column (190), keys — 2 (396)
   - **height** — grows with the tracks, as the `layers` node; no vertical scroll (removed 04.11 — `docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`)
   - **handles** — the current style: one in each channel row, out of the node's frame, as the `layers` rows; the link's `targetHandle` is the track's id
   - **scroll** — only horizontal over the timeline with the ruler moving along; the channels column stays outside it, so its handles aren't clipped. The area is `nowheel nodrag nopan`, or the canvas takes the wheel and the drag
+  - **frames** — only what gets rendered: keys past the end stay, dimmed on the timeline so they can be selected and removed, and still pull the interpolation; the playhead stops at `frames - 1`
   - **top** — `fps`, `frames`, `loop` (`reps` / `seconds` / off — a switch, the other field is off), the ruler, the playhead (click on the ruler)
-  - **a track row** — the param's name, keys as diamonds, `+ key` at the playhead (the value — interpolated at that frame)
+  - **a track row** — the param's name from the link (`move.x`), no link — `track 3`; no visibility checkbox, no blend mode; keys as diamonds, `+ key` at the playhead (the value — interpolated at that frame)
   - **the selected key** — number fields `frame` and `value`, `× key`
 - a param with a track: its field is read-only and shows the value at the playhead — values are edited in the animation node
 - moving the playhead → the usual render of that frame (latest-wins holds); `download png` saves that frame
-- `render animation` in the actions panel: off without an animation node or with no keys; while it runs — the editor is locked (as `session.locked`), `frame n / N` on the button; when done — the gif is downloaded as `<toast>_<YYYYMMDD-HHmmss>.gif`
+- `render animation` in the actions panel: off without an animation node or with no keys; while it runs — the editor is locked (as `session.locked`), `frame n / N` on the button; when done — the gif is downloaded as `<toast>_<YYYYMMDD-HHmmss>.gif` (10.11: `xtc-toaster_<YYYYMMDD-HHmmss>` for every download)
 - a hand-written style → `TODO(uiu)` + a backlog note, as usual
 
 #### toasts
@@ -87,7 +88,7 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 ### definition of done
 
 - `docker build --target test .` green, `bun run test` covers `graphAtFrame` and the new `validateGraph` rules
-- a param wired to the node makes a track; keys added and removed by hand; the playhead changes the output picture
+- `+ track` makes a row, a wired param gets its first key; keys added and removed by hand; the playhead changes the output picture
 - `render animation` downloads a gif that plays the keys, `reps` / `seconds` work and exclude each other
 - degas animated exports on the prod limits with no OOM (`docker compose` with `mem_limit` or prod), the numbers in the diary
 - a toast with animation survives export → import → reload
@@ -105,6 +106,7 @@ Not decided, on purpose. Each one first, before the code that depends on it:
 
 ### stretch (if time is left, in order)
 
+0. **manual ui pass** (added 07.11) — the next step once everything above is done: the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»)
 1. **wires by selection** — the animation node selected: its param wires highlighted; not selected: grey, maybe thinner
 2. **tracks grouped by node** — a header per source node. With 24 tracks in degas this is what makes the list readable
 3. **a key indicator on number fields + autokey**, blender-like — an indicator / button of a key on the field; changing an animated field creates or updates a key at the current frame. The field stops being read-only
@@ -139,12 +141,162 @@ answered 03.11:
 - keys are added and removed by hand in the ui; autokey → stretch
 - `fps`, `frames`, `loop` live in the animation node; `reps` and `seconds` exclude each other; only one cycle is rendered
 - export minimum: gif only
+- 04.11: tracks as the `layers` rows, by hand, a new one on top; keys outlive a shorter `frames` and a removed or rewired link (the frame clamps the value) — nothing is destroyed by a setting or a wire
 - keys count in frames, not seconds (as blender): a changed `fps` changes the speed — confirmed 04.11
+
+set 05.11 with the web, not asked separately — change here if wrong (`docs/diary/2026-11-05_animation-web.md`):
+
+- ~~a node's pixel output moved to the legend's line, in every node: at the node's middle it lands on a one-param node's row handle~~ → the bottom-right corner, 06.11
+- the render message carries the frame without the animation node and its links: fps, track order or a key elsewhere don't change the picture and don't start a render
+- the animation node isn't locked by a running render (`session.animationLocked`), only by no connection and an upload: else every playhead move blocks `+ key` until its frame is rendered. `render animation` will have to lock it
+- the loop switch reads `forever` / `reps` / `seconds`, not `off`: an absent `loop` is a gif that loops forever
+- a key's frame typed onto another key of the track is refused, the field goes back: nothing gets overwritten
+- a key's typed value stops at the linked param's bounds; an unlinked track has none
+- the animation node is placed right of the params it animates, in a row of its own: wires run forward
+- a track with a link but no keys drives nothing, its param stays editable
+
+answered 06.11, after the user's look:
+
+- a node's pixel output goes to the **bottom-right corner**, not the legend's line (`docs/backlog/2026-11-05_node-output-bottom-right.md`)
+- **`play`** in the animation node, next to `+ track`: one frame rendered → the playhead moves on → the next one rendered, the last frame goes back to the first; a frame stays no shorter than `1 / fps`, but as long as its render takes. A render error or a lost connection stops it. Rendering ahead and keeping the frames on the client — later, `docs/backlog/2026-11-06_play-frame-cache-on-client.md`
+- check 1: **frames go to disk** first, not into ffmpeg's stdin or memory — 512 MiB with a ~430 MiB render peak leaves no room for the clip; in memory / streaming — later, `docs/backlog/2026-11-06_animation-frames-in-memory.md`
+- QA isn't run during the sprint: `sprint-5.qa.md` is only written, run at the end of the release (`CLAUDE.md`)
 
 defaults (set 03.11 while fixing the plan, not asked separately — change here if wrong):
 
 - a param with a track is read-only until stretch 3
 - `loop` absent — gif loops forever
-- removing a link removes its track with its keys
 - the stretch order above, and matrix as stretch, not must
 - set 04.11 with the contract: `fps` — an integer 1–100 (gif delays are 1/100 s, can widen for mp4); `loop` is strict — a file with both `reps` and `seconds` is refused; a track without a link is allowed and changes nothing, like an unlinked `layers` row
+
+---
+
+## extension 09.11 — blender timeline, export dropdown, groups, widths
+
+Asked by the user 09.11, after the must was done: these go in **before** the release (`docs/diary/2026-11-08_degas-animated-elk-arrange.md`). Answers to the open points — 09.11, in «decisions» at the end. Overrides the must above where they differ: `loop` leaves the animation node, mp4 is no longer stretch, groups (stretch 2) and key dragging (stretch 6) are in.
+
+### the blender timeline, what we take
+
+Blender's timeline / dope sheet, cut to what is quick here. Buttons with text, no icons. Hotkeys — out of the release (09.11, the user): `docs/backlog/2026-11-09_timeline-hotkeys.md`; the keys below stay as the plan for them.
+
+| blender | here | key (animation node selected) — later, backlog |
+|---|---|---|
+| scrub: drag in the ruler | drag the playhead along the ruler, a frame rendered on every whole frame (latest-wins) | — |
+| jump to start / end | `start` / `end` — frame 0 / `frames - 1` | Shift+← / Shift+→ |
+| jump to keyframe | `‹ key` / `key ›` — the nearest key of any track before / after the playhead, nothing if none | ↓ / ↑ |
+| step frame | `‹` / `›` — one frame, clamped to `0…frames - 1` | ← / → |
+| play / pause | `play` / `stop` — as now | Space |
+| current frame field | number field `frame`, typed → the playhead | — |
+| start / end fields | `fps`, `frames` — as now (the start is always 0) | — |
+| insert keyframe | `+ key` on the track row — as now | I — a key on every linked track of the selected key's group, else of all linked tracks |
+| delete keyframe | `× key` — as now | X / Delete — the selected key; the node stays (xyflow's own Delete is off while a key is selected) |
+| move keyframe (G / drag) | drag a diamond sideways, snapped to whole frames | — |
+| channel groups, the summary row | a group per source node (below), its summary row shows the union of its keys; dragging a summary diamond moves every key of the group on that frame | — |
+| collapse a group | `▾` / `▸` in the group's legend | — |
+| View All (Home) / Ctrl+wheel zoom | fit by default: frames fill the timeline's width; Ctrl+wheel zooms around the cursor, `fit` button back | Home |
+
+Not taken now: reverse play, multi-select / box select of keys, markers, preview range, auto-keying (stretch 3 stays), the graph editor and easing.
+
+Rules for dragging a key:
+
+- whole frames only, from 0, past `frames` allowed (the key dims, as now)
+- a frame another key of the track holds is refused: the key stays on the last free frame it passed, nothing is overwritten (as the typed `frame` field, 05.11)
+- a summary drag moves the group's keys of that frame together; refused as a whole if any of them would land on an occupied frame
+- one undo step is not a thing yet — no undo in the app
+
+### layout of the animation node, blender's order
+
+```
+┌ animation ─────────────────────────────────────────────────────────────── 6 columns, 1220px ┐
+│ [+ track]  [start][‹ key][‹][play][›][key ›][end]  frame [ 12]  fps [36] frames [24] [fit]  │  header
+├──────────── channels: 2 columns, 396px ───────┬──────── timeline: 4 columns, 808px ──────────┤
+│                                               │ 0    4    8    12   16   20   23 │ ruler   │
+│ ┌ ▾ corners 1 ────────────────────────────┐   │ ◆                          ◆     │ summary │
+│●│ ⠿ topLeftX               [+ key] [×]    │   │ ◆──────────────────────────◆     │         │
+│●│ ⠿ topLeftY               [+ key] [×]    │   │ ◆──────────────────────────◆     │         │
+│ └─────────────────────────────────────────┘   │                 ┃ playhead        │         │
+│ ┌ ▸ move 1 (2) ───────────────────────────┐   │ ◆                          ◆     │ summary │
+├───────────────────────────────────────────────┴───────────────────────────────────────────────┤
+│ key: frame [ 0]  value [ 12.5]  [× key]                                                       │
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **width** — 6 uiu columns: `6 × 190 + 5 × 16 = 1220px` (09.11 written as 1236 — an arithmetic slip, fixed 10.11); channels 2 (396), timeline 4 (808, the gap counted in). Height grows with the tracks, no vertical scroll (04.11 stays)
+- **header** — one row, blender's: `+ track` left, the transport in the middle, frame / fps / frames / `fit` right. `loop` leaves the node (→ the export dropdown)
+- **`+ track` is a drop target**: a param wire dropped on it makes a new track linked to that param, in its node's group (with its first key, as a link into an empty track does). The rule «nothing is created by dropping a link onto the node» (03.11) stays for the rest of the node. A wire from a param that already has a track is refused, as now. Clicking it still makes an empty unlinked track
+- **selected key** — the bottom row, as now
+
+### tracks grouped by node
+
+- a group = the tracks whose links come from one node; a `fieldset` with a `legend`, the node frame's look (`.frame`), nested in the channels column. The timeline mirrors it: a summary row per group's legend, then its tracks
+- group name — the node type's label; two or more nodes of one type in the timeline get numbers in group order: `corners 1`, `corners 2`, … A track row shows the param only (`topLeftX`), the group already names the node
+- unlinked tracks — a group of their own, `unlinked`, on top (where `+ track` puts a new one)
+- order: groups in the order of their first track in `data.tracks`, tracks in `data.tracks` order inside; drag reorders inside a group only (a drop onto another group's row is refused). The contract doesn't change — groups are derived from links
+- collapsed (`▸`): the rows hide, the summary row stays, every track handle of the group sits on the legend's line, so the wires still land; the name gets the count, `move 1 (2)`. Collapse state — ui only, not in the toast, not in `localStorage`
+- the summary row: one diamond per frame that has a key in any track of the group; selected — if the selected key is on it
+
+### timeline zoom
+
+- `pxPerFrame` — ui state; default fit: `808 / timelineEnd`, at least 4 px (below that — horizontal scroll, as now)
+- Ctrl+wheel: ×1.25 per step around the cursor's frame, 4…64 px; `fit` / Home back to fit. Plain wheel keeps scrolling sideways (05.11)
+- the ruler labels thin out with the zoom (every 1 / 2 / 5 / 10 / … frames, at least ~32 px apart)
+
+### export dropdown
+
+- `render animation` gets `▾` next to it (one button group); `▾` opens a block under it in the actions panel, `▴` closes it; open / closed — ui only
+- in the block: `format` — `gif` / `mp4`; `loop` — `forever` (gif) or `once` (mp4) / `reps` / `seconds`, the other field off, as the node had it. With `seconds` — a checkbox `whole cycles`, on by default (decided 09.11): on — the length rounds to whole cycles (as now); off — exactly `seconds`, the last cycle cut on a frame. The button reads `render gif` / `render mp4`; the file — `xtc-toaster_<YYYYMMDD-HHmmss>.gif|.mp4` (10.11)
+- **contract**: the settings leave the animation node into the toast: `ToastGraph.export?: { format?: "gif" | "mp4"; loop?: AnimationLoop }` (absent format — gif, absent loop — the format's default). `AnimationLoop`'s seconds variant gets `wholeCycles?: boolean`, absent — `true`. `AnimationNode.data.loop` goes. Saved with export / import toast and `localStorage`. `TOAST_GRAPH_VERSION` stays 1 — pre-release, no migration (an old file with `loop` in the node: zod drops the unknown key, the loop is lost). The plain `render` message is sent without `export`: a setting changes no picture. Degas's `{ seconds: 15 }` moves to `export`
+- **server**: `render-animation` reads `graph.export`. mp4 — the same frames on disk (and on white, as gif), then ffmpeg `libx264`, `-pix_fmt yuv420p`, `-movflags +faststart`, the size padded to even (yuv420p needs it), `-r fps`. mp4 has no loop flag: `reps` → the cycle repeated in the file (`-stream_loop`), `seconds` → whole cycles as gif (`gifPlays`, renamed), absent → one cycle. `seconds` with `wholeCycles: false`: mp4 — repeated and cut to `round(seconds × fps)` frames (`loopVideoTo`, as the degas script); gif — the frames on disk repeated in the sequence up to that count, the file plays once (`-loop -1`) — a longer file, no extra render. Only one cycle is rendered either way. Check the debian trixie ffmpeg has `libx264` (it should), else `libopenh264`
+- `RENDER_MAX_FRAMES` counts rendered frames only — repeats cost no render
+
+### node widths on the uiu grid
+
+- every node is 1 uiu column wide — **190px**, like owo's card; wide nodes span whole columns with the gaps: `n × 190 + (n − 1) × 16`. Animation — 6 (1220px); `layers`, `input`, `output` — 2 (396px: the rows' controls, the picture); the rest — 1
+- 190px leaves 174px inside: the number field takes the label **inside**, blender's node field: `x %` left, the value right, drag / `‹ ›` / click-to-type as now. One change in `Slider.svelte` for every node; the label shortens to fit (`x (% of width)` → `x %`, the unit's long form goes to `title`). Other controls (color, select, matrix's 9 fields) fit into 174 or take a full row
+- the column width (190) and the span formula as css custom props here, marked `TODO(uiu)`: uiu has no column-width token (owo writes `190px` in `.grid`) — a backlog note
+- elk arrange reads measured sizes — nothing to change there
+
+### handles (asked by the user 09.11, with the widths)
+
+- a node's pixel **input** — the top-left corner, on the legend's line (now: the middle of the left side); the pixel **output** stays bottom-right (06.11)
+- a **param's output** handle 2–4 px closer to its field (now `--handle-offset` out of the frame) — it belongs to the row, not to the frame
+- ~~the pixel input and output squares ~2 px bigger (4 → 6 px)~~ — tried 09.11, the user: looks bad; all handles stay 4 px
+- elk arrange: the input port moves with it — the ports are read from the measured handles, nothing to change
+
+### definition of done (extension)
+
+- `bun run test` covers: the group derivation (order, numbering, unlinked), key drag rules (occupied frame, summary drag), prev / next key, the loop arithmetic (reps / seconds, whole cycles on / off) for gif and mp4, the `export` field in the toast schema
+- in a headless browser on the dev stack, degas: the node is 1220px, 6 groups (3 `corners` × 6 tracks, 3 `move` × 2), collapse / expand keeps the wires, a key dragged, the playhead dragged, `‹ key` / `key ›` / `start` / `end` and the keys, Ctrl+wheel and `fit`, a param wire dropped on `+ track` makes a linked track
+- `render mp4` downloads an mp4 that plays (`ffprobe`: h264, yuv420p, even size, the frame count = cycles × frames); gif as before
+- a toast with `export` survives export → import → reload
+
+### order (extension)
+
+1. **09.11 mon** — this spec, the diary, planning; done ahead the same day: contract (`export`, `loop` out of the node), server mp4, degas / test toasts moved, the export dropdown (from step 5), the handles (from step 3)
+2. **09.11** — widths + the label inside the field, done the same day too
+   - 09.11 also: the header, the transport, the playhead drag, zoom. `+ track` stays in the channels' head row (level with the ruler), not in the header — the header holds the transport and the fields
+3. **11.11 wed** — widths + the label inside the field, the handles; the animation node at 6 columns, the header, the transport, the playhead drag, zoom
+4. **12.11 thu** — groups (fieldsets, summary rows, collapse), key drag, a wire dropped on `+ track` (the hotkeys — out, 09.11)
+5. **13.11 fri** — the export dropdown; the headless pass of the DoD
+6. **14.11 sat** — check 2 on prod, `sprint-5.qa.md`, merge to master, release
+7. **15.11 sun** — buffer
+
+cut if behind (extension, in order): zoom (fit only) → summary drag (summary shows, doesn't drag) → mp4 (gif only, as before)
+
+### decisions (extension)
+
+answered 09.11:
+
+- the export settings live in the toast, `ToastGraph.export` — not in the animation node, not browser-only (degas keeps its 15 s)
+- a node is one uiu column, 190px; the number field holds its label inside, as blender's nodes
+- the animation node is 6 columns, 1220px
+- from blender, beyond the asked list: the whole transport, timeline zoom, the group summary row and collapse; hotkeys were taken too, then put off 09.11 (the user) — `docs/backlog/2026-11-09_timeline-hotkeys.md`
+
+set 09.11 while writing this, not asked — change here if wrong:
+
+- `layers`, `input`, `output` are 2 columns, the rest 1
+- group names `<type> N` only when a type repeats; unlinked tracks — their own group on top
+- collapse state isn't saved; zoom isn't saved
+- mp4 with no loop set — one cycle
+- `seconds` rounds to whole cycles by default; a `whole cycles` checkbox turns it off — exactly `seconds` (asked by the user 09.11)
+- a dragged key never overwrites another key of its track

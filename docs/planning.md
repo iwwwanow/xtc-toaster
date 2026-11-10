@@ -4,7 +4,7 @@
 
 - hue mask. value change on animation frame
 - layer y-rotation with perspective
-- trail-effect
+- trail-effect — 09.11 idea: delay + duplicate nodes, `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
 
 ## release - 28.11
 
@@ -127,10 +127,36 @@
    - plan fixed 03.11: `docs/sprints/sprint-5.spec.md`, `sprint-5.diagram.d2`; details — `docs/diary/2026-11-03_sprint-5-planning.md`
    - 04.11: [x] contract — the node, param links, `validateGraph`, `graphAtFrame`, tests; the ws messages moved to the server step. Vertical scroll over the tracks removed — the node grows with them, handles and styles as they are now (`docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`). Keys count in frames — confirmed. Next — web, 05–08.11. Details — `docs/diary/2026-11-04_animation-contract.md`
    - a separate node without a pixel output, one track = one numeric param, linear, keys by hand in the ui
-   - extend contract
+   - 04.11, decided: tracks as the `layers` rows — `+ track`, a new row on top, drag to reorder, the param comes by a wire. Keys outlive a shorter `frames` and a removed or rewired link: `frames` is only the render range, a frame clamps the value to the param's bounds. Both rules left `validateGraph`
+   - [x] 05.11 web: param handles, tracks, keys, playhead, the current frame through the usual render — headless browser checks passed, not yet tried by the user. Details — `docs/diary/2026-11-05_animation-web.md`
+   - [x] 06.11 user look at the node: works; the pixel output → the bottom-right corner of every node; `play` added (one frame at a time; frames ahead on the client — `docs/backlog/2026-11-06_play-frame-cache-on-client.md`); the ui gets no polish — the user redraws it by hand later
+   - [x] 06.11 check 1: frames on disk first (memory is too tight), in memory / stdin later — `docs/backlog/2026-11-06_animation-frames-in-memory.md`
+   - [ ] gifs kept for good and outside the uploads' quota — watch the disk on `ru-timeweb` after the release
+   - [ ] check 2: measured 06.11 on the laptop under 512m — degas 7 rows at 2 MP: ~5.4 s a frame, 24 frames 134 s, peak 462 MiB, no OOM; left — the same on prod, then `RENDER_MAX_FRAMES` in the stack (fallback 48)
+   - [x] 06.11 ws messages `render-animation`, `animation-progress`, `animation-rendered` (the gif as a file over http); server: frames as pngs on disk, gif in two ffmpeg passes, `RENDER_MAX_FRAMES`, ffmpeg in the image — `feat/animation-server`, `docs/diary/2026-11-06_animation-play-and-server.md`
+   - [x] 07.11 web: `render animation` (off without a linked track with keys), `frame n / N` on the button, the gif downloads as `<toast>_<YYYYMMDD-HHmmss>.gif`, the editor and the animation node locked during an export; gifs on the server kept for good (decided 07.11, no TTL — only leftover frame directories are cleaned) — `docs/diary/2026-11-07_animation-export-web.md`
+   - [x] 07.11 gif alpha: gif has 1-bit alpha, a semi-transparent frame blinked out — every frame is flattened onto white before the palette (`assembleGifFromFrames`, decided 07.11): a fade goes into white — `docs/diary/2026-11-07_animation-export-web.md`
+   - [x] 08.11 toasts: degas animated — 24 tracks (3 `corners` × 6, 3 `move` × 2), 24 frames at 36 fps, a 15 s loop; at frame 0 still bit for bit with the script. Nodes arranged with elk (`arrange.ts`): after import / `?toast=` / clear and a button in the controls. The user ran it locally 09.11 — works. `docs/diary/2026-11-08_degas-animated-elk-arrange.md`
+   - [ ] 09.11 extension before the release (asked by the user) — `docs/sprints/sprint-5.spec.md`, «extension 09.11»; planning — `docs/diary/2026-11-09_sprint-5-extension-planning.md`:
+     - [x] 09.11 blender timeline, first half: the header (transport `start` / `‹ key` / `‹` / `play` / `›` / `key ›` / `end`, a frame field, fps / frames, `fit`), playhead drag on the ruler, zoom (fit by default, Ctrl+wheel, `fit`); text buttons instead of icons
+     - [x] 09.11 key drag (whole frames, an occupied frame refused — the key waits on the last free one) and the summary diamonds' drag (the group's keys of that frame together)
+     - [x] 09.11 the export panel keeps its width in every loop mode (asked by the user)
+     - [x] 09.11 a param wire dropped on `+ track` makes a linked track with its first key — on top of its node's group; a param that has a track already makes none
+     - [x] 09.11 tracks grouped by source node — a fieldset per group, a summary row, collapse (the summary drag comes with the key drag)
+     - [x] 09.11 arrange lines chains up by the nodes' tops, not by the bottom-right output (asked by the user) — only elk's input changes, the handles on screen stay where they are
+     - [x] 09.11 export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
+     - [x] 09.11 node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1220px), `layers` / `input` / `output` 2
+     - [x] 09.11 output: a checkerboard under the picture, its edge and transparent parts show (asked by the user; another pattern — one css line, `.transparency`)
+     - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
+   - [x] 10.11 the user's look at the new ui — all ok
+   - [x] 10.11 the DoD of the extension in headless Chrome on degas — every item passed; found: every download is named `toast-2_signac_*` whatever toast is open → 10.11 every download is `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>` (decided by the user); dev `.env` needs `RENDER_MAX_LAYERS=8` for degas — `docs/diary/2026-11-10_extension-dod-headless.md`
+   - [ ] the prod-limits check (check 2), release — after the extension, 14.11
+   - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
+   - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
+   - [x] extend contract
    - without live-preview
-   - render current frame view
-   - export animated picture: gif (mp4 → stretch)
+   - [x] render current frame view
+   - [ ] export animated picture: gif (done 07.11) + mp4 (09.11: from stretch into the extension)
    - not here: time-window — `docs/backlog/2026-11-03_timeline-time-windows.md`
    - cut if behind:
      - (#1) export gif only, no mp4 — applied up front on 03.11
@@ -139,7 +165,7 @@
    - 1 week
    - 3 toasts
    - new user test (+ the sister's cursor lag: Windows + Chrome)
-   - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11
+   - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11, confirmed 06.11: QA only at the end of the release, never during a sprint (`CLAUDE.md`)
    - final fixes
    - cut if behind:
      - (#5) 2 toasts instead of 3
@@ -161,6 +187,10 @@
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
    - server: done 11.10 — render in a worker thread, latest-wins holds for bursts — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
+3. new nodes (ideas 09.11, not decided)
+   - delay (shifts the animation of a chain) + duplicate (N copies of a chain) → a trail — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
+   - node groups, constants / variables: a short pipeline reused as one node, one value wired into many params — `docs/backlog/2026-11-09_node-groups-variables.md`. Changes the toast format: decide the shape before 1.0 freezes `TOAST_GRAPH_VERSION`, or make it an optional field
+   - a true / false node → a time-window of the animation node, the window breaks at a set frequency (10.11, very raw; needs time-windows first) — `docs/backlog/2026-11-10_boolean-gate-node-for-time-window.md`
 
 ## tools:
 

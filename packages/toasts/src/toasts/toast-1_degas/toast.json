@@ -243,6 +243,328 @@
       "id": "out",
       "type": "output",
       "data": {}
+    },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 36,
+        "frames": 24,
+        "tracks": [
+          {
+            "id": "track-24",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -1.054167
+              }
+            ]
+          },
+          {
+            "id": "track-23",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -1.054167
+              }
+            ]
+          },
+          {
+            "id": "track-22",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 101.58125
+              }
+            ]
+          },
+          {
+            "id": "track-21",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -1.58125
+              }
+            ]
+          },
+          {
+            "id": "track-20",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 100.527083
+              }
+            ]
+          },
+          {
+            "id": "track-19",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 100.527083
+              }
+            ]
+          },
+          {
+            "id": "track-18",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": 0.958333
+              }
+            ]
+          },
+          {
+            "id": "track-17",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -0.958333
+              }
+            ]
+          },
+          {
+            "id": "track-16",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -2.108333
+              }
+            ]
+          },
+          {
+            "id": "track-15",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -2.108333
+              }
+            ]
+          },
+          {
+            "id": "track-14",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 103.1625
+              }
+            ]
+          },
+          {
+            "id": "track-13",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -3.1625
+              }
+            ]
+          },
+          {
+            "id": "track-12",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 101.054167
+              }
+            ]
+          },
+          {
+            "id": "track-11",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 101.054167
+              }
+            ]
+          },
+          {
+            "id": "track-10",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": 0.958333
+              }
+            ]
+          },
+          {
+            "id": "track-9",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -0.958333
+              }
+            ]
+          },
+          {
+            "id": "track-8",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -4.216667
+              }
+            ]
+          },
+          {
+            "id": "track-7",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -4.216667
+              }
+            ]
+          },
+          {
+            "id": "track-6",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 106.325
+              }
+            ]
+          },
+          {
+            "id": "track-5",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -6.325
+              }
+            ]
+          },
+          {
+            "id": "track-4",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 102.108333
+              }
+            ]
+          },
+          {
+            "id": "track-3",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 100
+              },
+              {
+                "frame": 23,
+                "value": 102.108333
+              }
+            ]
+          },
+          {
+            "id": "track-2",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": 1.916667
+              }
+            ]
+          },
+          {
+            "id": "track-1",
+            "keys": [
+              {
+                "frame": 0,
+                "value": 0
+              },
+              {
+                "frame": 23,
+                "value": -1.916667
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "edges": [
@@ -407,6 +729,179 @@
       "id": "cmp-out",
       "source": "cmp",
       "target": "out"
+    },
+    {
+      "id": "white-corners-topLeftX-anim-track-24",
+      "source": "white-corners",
+      "sourceHandle": "topLeftX",
+      "target": "anim",
+      "targetHandle": "track-24"
+    },
+    {
+      "id": "white-corners-topLeftY-anim-track-23",
+      "source": "white-corners",
+      "sourceHandle": "topLeftY",
+      "target": "anim",
+      "targetHandle": "track-23"
+    },
+    {
+      "id": "white-corners-topRightX-anim-track-22",
+      "source": "white-corners",
+      "sourceHandle": "topRightX",
+      "target": "anim",
+      "targetHandle": "track-22"
+    },
+    {
+      "id": "white-corners-topRightY-anim-track-21",
+      "source": "white-corners",
+      "sourceHandle": "topRightY",
+      "target": "anim",
+      "targetHandle": "track-21"
+    },
+    {
+      "id": "white-corners-bottomRightX-anim-track-20",
+      "source": "white-corners",
+      "sourceHandle": "bottomRightX",
+      "target": "anim",
+      "targetHandle": "track-20"
+    },
+    {
+      "id": "white-corners-bottomRightY-anim-track-19",
+      "source": "white-corners",
+      "sourceHandle": "bottomRightY",
+      "target": "anim",
+      "targetHandle": "track-19"
+    },
+    {
+      "id": "white-move-x-anim-track-18",
+      "source": "white-move",
+      "sourceHandle": "x",
+      "target": "anim",
+      "targetHandle": "track-18"
+    },
+    {
+      "id": "white-move-y-anim-track-17",
+      "source": "white-move",
+      "sourceHandle": "y",
+      "target": "anim",
+      "targetHandle": "track-17"
+    },
+    {
+      "id": "red-corners-topLeftX-anim-track-16",
+      "source": "red-corners",
+      "sourceHandle": "topLeftX",
+      "target": "anim",
+      "targetHandle": "track-16"
+    },
+    {
+      "id": "red-corners-topLeftY-anim-track-15",
+      "source": "red-corners",
+      "sourceHandle": "topLeftY",
+      "target": "anim",
+      "targetHandle": "track-15"
+    },
+    {
+      "id": "red-corners-topRightX-anim-track-14",
+      "source": "red-corners",
+      "sourceHandle": "topRightX",
+      "target": "anim",
+      "targetHandle": "track-14"
+    },
+    {
+      "id": "red-corners-topRightY-anim-track-13",
+      "source": "red-corners",
+      "sourceHandle": "topRightY",
+      "target": "anim",
+      "targetHandle": "track-13"
+    },
+    {
+      "id": "red-corners-bottomRightX-anim-track-12",
+      "source": "red-corners",
+      "sourceHandle": "bottomRightX",
+      "target": "anim",
+      "targetHandle": "track-12"
+    },
+    {
+      "id": "red-corners-bottomRightY-anim-track-11",
+      "source": "red-corners",
+      "sourceHandle": "bottomRightY",
+      "target": "anim",
+      "targetHandle": "track-11"
+    },
+    {
+      "id": "red-move-x-anim-track-10",
+      "source": "red-move",
+      "sourceHandle": "x",
+      "target": "anim",
+      "targetHandle": "track-10"
+    },
+    {
+      "id": "red-move-y-anim-track-9",
+      "source": "red-move",
+      "sourceHandle": "y",
+      "target": "anim",
+      "targetHandle": "track-9"
+    },
+    {
+      "id": "purple-corners-topLeftX-anim-track-8",
+      "source": "purple-corners",
+      "sourceHandle": "topLeftX",
+      "target": "anim",
+      "targetHandle": "track-8"
+    },
+    {
+      "id": "purple-corners-topLeftY-anim-track-7",
+      "source": "purple-corners",
+      "sourceHandle": "topLeftY",
+      "target": "anim",
+      "targetHandle": "track-7"
+    },
+    {
+      "id": "purple-corners-topRightX-anim-track-6",
+      "source": "purple-corners",
+      "sourceHandle": "topRightX",
+      "target": "anim",
+      "targetHandle": "track-6"
+    },
+    {
+      "id": "purple-corners-topRightY-anim-track-5",
+      "source": "purple-corners",
+      "sourceHandle": "topRightY",
+      "target": "anim",
+      "targetHandle": "track-5"
+    },
+    {
+      "id": "purple-corners-bottomRightX-anim-track-4",
+      "source": "purple-corners",
+      "sourceHandle": "bottomRightX",
+      "target": "anim",
+      "targetHandle": "track-4"
+    },
+    {
+      "id": "purple-corners-bottomRightY-anim-track-3",
+      "source": "purple-corners",
+      "sourceHandle": "bottomRightY",
+      "target": "anim",
+      "targetHandle": "track-3"
+    },
+    {
+      "id": "purple-move-x-anim-track-2",
+      "source": "purple-move",
+      "sourceHandle": "x",
+      "target": "anim",
+      "targetHandle": "track-2"
+    },
+    {
+      "id": "purple-move-y-anim-track-1",
+      "source": "purple-move",
+      "sourceHandle": "y",
+      "target": "anim",
+      "targetHandle": "track-1"
     }
-  ]
+  ],
+  "export": {
+    "loop": {
+      "seconds": 15
+    }
+  }
 }

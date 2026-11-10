@@ -1,13 +1,30 @@
 <script lang="ts">
+  import { Handle, Position } from "@xyflow/svelte";
   import type { ParamBounds } from "@xtc-toaster/contract";
   import { session } from "../session.svelte";
   import { DRAG_THRESHOLD, dragDelta, fillPercent, formatValue, parseTyped, snap } from "../slider";
 
-  type Props = { label: string; bounds: ParamBounds; step: number; value: number; onchange: (value: number) => void };
-  let { label, bounds, step, value, onchange }: Props = $props();
+  // `node` + `param` — a node's numeric param: gets a handle for the animation node's tracks. A node's pixel output
+  // comes before its fieldset in the markup: xyflow gives a link without a sourceHandle the first handle it finds
+  // `label` — short, it sits inside the field (`x %`); `hint` — its long form, the field's title
+  type Props = {
+    label: string;
+    hint?: string;
+    bounds: ParamBounds;
+    step: number;
+    value: number;
+    onchange: (value: number) => void;
+    node?: string;
+    param?: string;
+  };
+  let { label, hint, bounds, step, value, onchange, node, param }: Props = $props();
+
+  // a param with keys shows the value at the playhead and is edited in the animation node
+  let animated = $derived(node !== undefined && param !== undefined ? session.animatedValue(node, param) : null);
+  let locked = $derived(session.locked || animated !== null);
 
   // shown while dragging, ahead of the graph; follows the prop whenever it changes
-  let current = $derived(value);
+  let current = $derived(animated ?? value);
 
   // a change goes to the graph only when it is one — a drag back to the start renders nothing
   const commit = (next: number) => {
@@ -21,7 +38,7 @@
   let editing = $state(false);
 
   const onpointerdown = (event: PointerEvent & { currentTarget: HTMLElement }) => {
-    if (session.locked || event.button !== 0) return;
+    if (locked || event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     press = { x: event.clientX, exact: current, dragging: false };
   };
@@ -48,14 +65,14 @@
     clicked = false;
   };
 
-  const nudge = (direction: -1 | 1) => !session.locked && commit(snap(current + direction * step, bounds, step));
+  const nudge = (direction: -1 | 1) => !locked && commit(snap(current + direction * step, bounds, step));
 
   const onkeydown = (event: KeyboardEvent) => {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       nudge(event.key === "ArrowLeft" ? -1 : 1);
     }
-    if (event.key === "Enter" && !session.locked) editing = true;
+    if (event.key === "Enter" && !locked) editing = true;
   };
 
   // the text input: Enter / blur keeps, Esc drops; junk keeps the old value
@@ -71,16 +88,16 @@
   };
 </script>
 
-<!-- like blender's number field: two columns — the label right-aligned, the field; drag it (shift — slower),
-     ‹ › step it, a click types a value -->
-<div class="param">
-  <span class="param__label field__label_ai-generated">{label}</span>
-  {#if editing}
+<!-- blender's node field: the label inside on the left, the value on the right, the row's whole width; drag it
+     (shift — slower), ‹ › step it, a click types a value -->
+<div class="param-field">
+  {#if editing && animated === null}
     <!-- size 1: a text input is ~20 characters wide by itself and would widen the node's column — this way
          it takes the field's width (min-width in app.css) -->
     <input
       class="nodrag input_ai-generated input-sm_ai-generated drag-field__input"
       size="1"
+      aria-label={label}
       value={current}
       {@attach (input: HTMLInputElement) => (input.focus(), input.select())}
       onkeydown={ontypekey}
@@ -89,9 +106,10 @@
   {:else}
     <div
       class="nodrag drag-field"
-      class:drag-field_locked={session.locked}
+      class:drag-field_locked={locked}
+      title={animated === null ? (hint ?? label) : `${hint ?? label} — animated: the keys are in the animation node`}
       role="slider"
-      tabindex={session.locked ? -1 : 0}
+      tabindex={locked ? -1 : 0}
       aria-label={label}
       aria-valuemin={bounds.min}
       aria-valuemax={bounds.max}
@@ -113,6 +131,7 @@
         onpointerdown={(event) => event.stopPropagation()}
         onclick={() => nudge(-1)}>‹</button
       >
+      <span class="drag-field__label">{label}</span>
       <span class="drag-field__value">{formatValue(current, step)}</span>
       <button
         class="drag-field__arrow"
@@ -123,5 +142,14 @@
         onclick={() => nudge(1)}>›</button
       >
     </div>
+  {/if}
+  {#if node !== undefined && param !== undefined}
+    <!-- out of the node's right edge (past the frame's padding and 1px border), closer than the node's own handles -->
+    <Handle
+      type="source"
+      position={Position.Right}
+      id={param}
+      style="right: calc(-1 * var(--GRID-GAP-2) - 1px - var(--param-handle-offset))"
+    />
   {/if}
 </div>
