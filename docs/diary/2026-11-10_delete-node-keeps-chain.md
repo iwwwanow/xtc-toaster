@@ -1,6 +1,6 @@
 # 2026-11-10 — удаление ноды сохраняет цепочку
 
-Шестая фича из блока «10.11 added before the release» (`docs/planning.md`), обратная к «нода, брошенная на провод, встаёт в разрыв». Идея — `docs/backlog/2026-11-10_delete-node-keeps-chain.md`. Ветка `feat/undo-redo`, в master не слита.
+Шестая фича из блока «10.11 added before the release» (`docs/planning.md`), обратная к «нода, брошенная на провод, встаёт в разрыв». Идея — `docs/backlog/2026-11-10_delete-node-keeps-chain.md`. Ветка `feat/undo-redo`, слита в master 11.11.
 
 ## Как сделано
 

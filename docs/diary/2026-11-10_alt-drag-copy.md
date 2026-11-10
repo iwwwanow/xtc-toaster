@@ -1,6 +1,6 @@
 # 2026-11-10 — Alt + тянуть ноду — копия
 
-Пятая фича из блока «10.11 added before the release» (`docs/planning.md`). Решение — `docs/backlog/2026-10-28_box-select-like-illustrator.md`, раздел 10.11: рамку выделения не меняем, берём только Alt + тянуть. Ветка `feat/undo-redo`, в master не слита.
+Пятая фича из блока «10.11 added before the release» (`docs/planning.md`). Решение — `docs/backlog/2026-10-28_box-select-like-illustrator.md`, раздел 10.11: рамку выделения не меняем, берём только Alt + тянуть. Ветка `feat/undo-redo`, слита в master 11.11.
 
 ## Как сделано
 

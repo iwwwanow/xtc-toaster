@@ -1,6 +1,6 @@
 # 2026-11-10 — зоны действий при перетаскивании ноды
 
-Седьмая фича из блока «10.11 added before the release» (`docs/planning.md`). Идея — `docs/backlog/2026-11-10_node-drag-action-zones.md`. Ветка `feat/undo-redo`, в master не слита.
+Седьмая фича из блока «10.11 added before the release» (`docs/planning.md`). Идея — `docs/backlog/2026-11-10_node-drag-action-zones.md`. Ветка `feat/undo-redo`, слита в master 11.11.
 
 ## Как сделано
 
@@ -17,4 +17,4 @@
 ## Остаток
 
 - Руками пользователь не смотрел. Строка для QA — `tests/toasts/README.md` (`more-nodes`).
-- Все шесть фич блока 10.11 сделаны. Дальше — группы + value (`docs/backlog/2026-11-09_node-groups-variables.md`, ~4–6 дней, 13–20.11). Перед ними стоит решить, сливать ли `feat/undo-redo` в master: 14.11 проверка 2 на проде на v0.9.0.
+- Все шесть фич блока 10.11 сделаны. Дальше — группы + value (`docs/backlog/2026-11-09_node-groups-variables.md`, ~4–6 дней, 13–20.11). Ветку слили в master 11.11, группы — новой веткой (`docs/diary/2026-11-11_before-release-block-merged.md`).
