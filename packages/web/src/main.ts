@@ -19,6 +19,7 @@ if (debugToastUrl && debugToast) {
 const debugImageUrl: string | null | undefined = import.meta.env.DEBUG_IMAGE_URL;
 if (debugImageUrl) {
   const response = await fetch(debugImageUrl);
-  if (response.ok) session.upload(new File([await response.blob()], "debug-image"));
+  if (response.ok) await session.upload(new File([await response.blob()], "debug-image"));
   else console.error("debug image failed", response.status);
 }
+if (debugImageUrl || (debugToastUrl && debugToast)) session.restartHistory();

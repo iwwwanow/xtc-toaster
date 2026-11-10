@@ -27,7 +27,8 @@ import {
   type Link,
   type MenuNodeType,
 } from "./graph";
-import { fromSaved, loadSaved } from "./persist";
+import { History } from "./history";
+import { fromSaved, loadSaved, toSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
@@ -62,6 +63,11 @@ class Session {
   uploadError = $state<string | null>(null);
   // shown in the right panel under the import button
   importError = $state<string | null>(null);
+
+  // undo / redo: snapshots of the editor, a step once an edit settles (App → recordHistory)
+  private history = new History(toSaved(initial.nodes, initial.edges, initial.export));
+  canUndo = $state(false);
+  canRedo = $state(false);
 
   // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
@@ -101,6 +107,64 @@ class Session {
   private requestId = 0;
   private exportId: number | null = null;
   private socket: ReturnType<typeof connectSocket> | null = null;
+
+  private snapshot() {
+    return toSaved(this.nodes, this.edges, this.exportSettings);
+  }
+
+  private syncHistory() {
+    this.canUndo = this.history.canUndo;
+    this.canRedo = this.history.canRedo;
+  }
+
+  // the history starts over from what's on screen — dev's debug toast / picture on open aren't edits to undo
+  restartHistory() {
+    this.history = new History(this.snapshot());
+    this.syncHistory();
+  }
+
+  // a replaced graph (import, clear) is one step: the arrange that follows it (Editor) goes into that step
+  amendHistory() {
+    this.history.settle(this.snapshot());
+  }
+
+  // an edit has settled — a step back to before it
+  recordHistory(snapshot = this.snapshot()) {
+    if (this.history.record(snapshot)) this.syncHistory();
+  }
+
+  undo() {
+    this.step(() => this.history.undo());
+  }
+
+  redo() {
+    this.step(() => this.history.redo());
+  }
+
+  // not during an export or an upload — the editor is locked then. An edit still settling is a step of its own,
+  // so an undo right after it takes back that edit, not the one before
+  private step(move: () => string | null) {
+    if (this.exporting !== null || this.uploading) return;
+    this.recordHistory();
+    const text = move();
+    if (text === null) return;
+    const flow = fromSaved(text);
+    if (!flow) {
+      console.error("history step dropped — the snapshot doesn't parse");
+      this.syncHistory();
+      return;
+    }
+    // xyflow keeps what it measured; the selection stays as it was
+    const current = new Map(this.nodes.map((node) => [node.id, node]));
+    this.nodes = flow.nodes.map((node) => {
+      const was = current.get(node.id);
+      return was ? { ...node, measured: was.measured, selected: was.selected } : node;
+    });
+    this.edges = flow.edges;
+    this.exportSettings = flow.export ?? {};
+    this.history.settle(this.snapshot());
+    this.syncHistory();
+  }
 
   connect() {
     this.socket = connectSocket(wsUrl(location), {
@@ -335,6 +399,7 @@ class Session {
 
   // input → output, the picture stays
   clearGraph() {
+    this.recordHistory(); // an edit still settling stays a step of its own
     const { nodes, edges } = emptyFlow(this.imageId);
     this.nodes = nodes;
     this.edges = edges;
@@ -342,18 +407,21 @@ class Session {
     this.stop();
     this.playhead = 0;
     this.replaced++;
+    this.recordHistory();
   }
 
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
   async importToast(file: File): Promise<boolean> {
     try {
       const { nodes, edges, export: settings } = fromToastFile(await file.text(), this.imageId);
+      this.recordHistory();
       this.nodes = nodes;
       this.edges = edges;
       this.exportSettings = settings ?? {};
       this.stop();
       this.playhead = 0;
       this.replaced++;
+      this.recordHistory();
       this.importError = null;
       return true;
     } catch (error) {

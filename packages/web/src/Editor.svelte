@@ -70,7 +70,8 @@
     untrack(() => {
       arrangePending = false;
       void arrangeNodes().then((done) => {
-        if (!done) arrangePending = true;
+        if (done) session.amendHistory();
+        else arrangePending = true;
       });
     });
   });

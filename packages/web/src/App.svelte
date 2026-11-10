@@ -18,14 +18,34 @@
     if (session.connected && session.imageId !== null && session.exporting === null) untrack(() => session.render());
   });
 
-  // the editor survives a reload — saved once a drag / a typing burst settles, not on every frame
+  // the editor survives a reload — saved once a drag / a typing burst settles, not on every frame; the same moment
+  // makes a step of the undo history
   const SAVE_DELAY_MS = 300;
   $effect(() => {
     const text = toSaved(session.nodes, session.edges, session.exportSettings);
-    const timer = setTimeout(() => save(text), SAVE_DELAY_MS);
+    const timer = setTimeout(() => {
+      save(text);
+      session.recordHistory(text);
+    }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
   });
+
+  // Ctrl+Z — undo, Ctrl+Shift+Z / Ctrl+Y — redo; by the key's place (event.code), so the Cyrillic layout works too.
+  // Inside a field the browser undoes the typing itself
+  const isField = (target: EventTarget | null) =>
+    target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+  const onkeydown = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || isField(event.target)) return;
+    const redo = (event.code === "KeyZ" && event.shiftKey) || (event.code === "KeyY" && !event.shiftKey);
+    const undo = event.code === "KeyZ" && !event.shiftKey;
+    if (!undo && !redo) return;
+    event.preventDefault();
+    if (undo) session.undo();
+    else session.redo();
+  };
 </script>
+
+<svelte:window {onkeydown} />
 
 <!-- the provider lets Editor use useSvelteFlow (drop position, delete) outside SvelteFlow's children -->
 <SvelteFlowProvider>

@@ -59,6 +59,10 @@
 </script>
 
 <Panel position="top-right" style="display: flex; flex-direction: column; align-items: stretch; gap: var(--GRID-GAP-4)">
+  <div class="history-buttons">
+    <button class="btn_ai-generated" title="undo the last edit — Ctrl+Z" disabled={!session.canUndo || session.exporting !== null} onclick={() => session.undo()}>undo</button>
+    <button class="btn_ai-generated" title="redo — Ctrl+Shift+Z" disabled={!session.canRedo || session.exporting !== null} onclick={() => session.redo()}>redo</button>
+  </div>
   <button class="btn_ai-generated" disabled={session.locked || !session.rendered} onclick={() => session.download()}>download png</button>
   <!-- TODO(uiu): hand-written — uiu has no button group / dropdown: the render button and its ▾ side by side -->
   <div class="export-group">

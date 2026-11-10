@@ -492,9 +492,13 @@ legend {
 
 /* TODO(uiu): hand-written — uiu has no button group / dropdown: the export button with its ▾, the settings
    under it in a node frame */
-.export-group {
+.export-group,
+.history-buttons {
   display: flex;
   gap: var(--GRID-GAP-4);
+}
+.history-buttons > .btn_ai-generated {
+  flex: 1;
 }
 .export-group__main,
 .export-group__main > .btn_ai-generated {
