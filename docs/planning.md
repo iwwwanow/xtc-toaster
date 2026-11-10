@@ -103,7 +103,7 @@
    - connection validation — `docs/backlog/2026-10-13_node-connection-validation.md`; one `validateGraph` in contract for web and server
    - uiu ui kit, spot use — the rule in `CLAUDE.md` (26.10), existing elements first; uiu is a bun git dependency `"uiu": "github:iwwwanow/uiu#v0.3.0"` (decided 26.10, a submodule dropped as more complex); the node fieldset frame — by hand here, from uiu's fieldset / border / font / spacing styles
      - done 30.10 (`feat/uiu` → `0.6.0`): uiu classes on what exists, gaps in `app.css` with `TODO(uiu)` → `docs/backlog/2026-10-30_uiu-gaps-from-web.md`; on top, from the user's look: a blender-like number field instead of range sliders, node menu items as buttons, handles easier to hit (4px square out of the frame, hit area, `connectionRadius`) — `docs/diary/2026-10-30_uiu-number-field-handles.md`
-     - [ ] a link dropped onto a whole node connects to its input — `docs/backlog/2026-10-30_drop-link-onto-node.md` (stretch, after checking that the handles of 30.10 are enough)
+     - [ ] a link dropped onto a whole node connects to its input — `docs/backlog/2026-10-30_drop-link-onto-node.md` (stretch, after checking that the handles of 30.10 are enough) → 10.11 into sprint 5, before the release
    - prod `RENDER_MAX_LAYERS=8` (agreed 29.10): covers degas (7 layers), peak ~430 of 512 MiB; the limit is render time (~1.2 s per row, one worker per process), not memory — `docs/diary/2026-10-29_sprint-4-qa-and-measurement.md`. In the prod compose (`iwwwanow_infrastructure`, `stacks/ru-timeweb/xtc-toaster/compose.yml`) since 30.10 (infra `60bc170`)
    - 29.10: QA sections 1 + 2.1–2.3 passed, the rest of QA → **sat 31.10** on `0.5.0` (`docs/sprints/sprint-4.qa.md`, test toasts `tests/toasts/`); measured → prod `RENDER_MAX_LAYERS=8` (below); `feat/composer` merged → `0.5.0` before QA ends (decided by the user 29.10)
    - from QA 29.10, done the same day before the merge (one contract change, both optional fields → `TOAST_GRAPH_VERSION` stays 1):
@@ -153,7 +153,12 @@
    - [x] 10.11 merged `feat/animation-server` → master, CI green → `v0.9.0` (ghcr image); the branch deleted locally and on origin
    - [x] 10.11 every download is named `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>` (decided by the user; was always `toast-2_signac_*`)
    - [ ] `v0.9.0` on prod — the image tag in `iwwwanow_infrastructure` (`stacks/ru-timeweb/xtc-toaster/compose.yml`)
-   - [ ] check 2 on prod — degas at prod limits, then `RENDER_MAX_FRAMES` in the stack (fallback 48) — 14.11
+   - [ ] check 2 on prod — degas at prod limits, then `RENDER_MAX_FRAMES` in the stack (fallback 48) — 14.11. The tag bumps itself: Renovate opens an automerge PR in infra on Mend's scheduled run (a new ghcr image gives no event); sooner — the checkbox in the infra Dependency Dashboard (issue #3)
+   - [ ] 10.11 added before the release (the user), 11–15.11 — the QA of sprint 6 covers them:
+     - [ ] **delay** node — shifts the animation in time by `d` frames; the form (on a param wire or on a pixel chain) — settle first — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
+     - [ ] a node dropped onto a link goes into it (A → node → B) — `docs/backlog/2026-10-28_drop-node-onto-link.md`
+     - [ ] a link dropped onto a whole node connects to its input — `docs/backlog/2026-10-30_drop-link-onto-node.md`
+     - [ ] Alt + drag a node — a copy (the selection: all of it with the links between; no outside links); Shift-box selection stays as is — `docs/backlog/2026-10-28_box-select-like-illustrator.md`
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
    - [x] extend contract
@@ -196,7 +201,7 @@
 3. new nodes (ideas 09.11, not decided)
    - delay (shifts the animation of a chain) + duplicate (N copies of a chain) → a trail — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
    - node groups, constants / variables: a short pipeline reused as one node, one value wired into many params — `docs/backlog/2026-11-09_node-groups-variables.md`. Changes the toast format: decide the shape before 1.0 freezes `TOAST_GRAPH_VERSION`, or make it an optional field
-   - a true / false node → a time-window of the animation node, the window breaks at a set frequency (10.11, very raw; needs time-windows first) — `docs/backlog/2026-11-10_boolean-gate-node-for-time-window.md`
+   - audio → time-windows: an audio file through an analyzer node (beats / onsets / loudness) gives the animation node ready time-windows, the chain is on inside a window and off outside — the picture blinks to the track; mp4 with the sound (10.11, raw; needs time-windows first) — `docs/backlog/2026-11-10_audio-to-time-windows.md`
 
 ## tools:
 
