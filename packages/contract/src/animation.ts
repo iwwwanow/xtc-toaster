@@ -59,14 +59,49 @@ export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Re
   return values;
 };
 
-// The same graph with the animated values put into `data` — one function for web and server, a frame then goes
-// through the plain render. The animation node and its links stay: the render never reaches them
+// What the value nodes put into `data` on a frame: every param wired into a value takes its number — after the tracks,
+// so an animated value moves them all — clamped to the param's bounds. A value wired into another value takes that
+// one's number, and so do its params. `animated` — the tracks' values on this frame (animatedValues)
+const valueNodeValues = (graph: ToastGraph, animated: Map<NodeId, Record<string, number>>): Map<NodeId, Record<string, number>> => {
+  const values = new Map<NodeId, Record<string, number>>();
+  const byId = new Map<NodeId, GraphNode>(graph.nodes.map((node) => [node.id, node]));
+  const links = graph.edges.filter(({ target, sourceHandle }) => sourceHandle !== undefined && byId.get(target)?.type === "value");
+  if (links.length === 0) return values;
+  const wiredInto = new Map<NodeId, NodeId>();
+  for (const { source, target } of links) if (byId.get(source)?.type === "value") wiredInto.set(source, target);
+  const numberOf = (id: NodeId): number | null => {
+    // bounded: validateGraph refuses a loop, an unvalidated graph mustn't hang
+    for (let step = 0; wiredInto.has(id) && step <= graph.nodes.length; step++) id = wiredInto.get(id)!;
+    const node = byId.get(id);
+    return node?.type === "value" ? (animated.get(id)?.value ?? node.data.value) : null;
+  };
+  for (const { source, sourceHandle, target } of links) {
+    const value = numberOf(target);
+    const bounds = paramBounds(byId.get(source)?.type ?? "", sourceHandle!);
+    if (value === null || !bounds) continue;
+    values.set(source, { ...values.get(source), [sourceHandle!]: Math.min(bounds.max, Math.max(bounds.min, value)) });
+  }
+  return values;
+};
+
+// Everything that sets a param on a frame instead of its own field: the tracks (animatedValues), then the value nodes.
+// node → param → value; a param has one or the other, never both (validateGraph: one track or value per param)
+export const drivenValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
+  const animated = animatedValues(graph, frame);
+  const values = new Map(animated);
+  for (const [node, params] of valueNodeValues(graph, animated)) values.set(node, { ...values.get(node), ...params });
+  return values;
+};
+
+// The same graph with the driven values (tracks, value nodes) put into `data` — one function for web and server, a
+// frame then goes through the plain render. The animation, delay and value nodes and their links stay: the render
+// never reaches them
 export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
-  const values = animatedValues(graph, frame);
+  const values = drivenValues(graph, frame);
   if (values.size === 0) return graph;
   const nodes = graph.nodes.map((node) => {
-    const animated = values.get(node.id);
-    return animated ? ({ ...node, data: { ...node.data, ...animated } } as GraphNode) : node;
+    const driven = values.get(node.id);
+    return driven ? ({ ...node, data: { ...node.data, ...driven } } as GraphNode) : node;
   });
   return { ...graph, nodes };
 };

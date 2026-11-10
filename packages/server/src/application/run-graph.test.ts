@@ -220,6 +220,15 @@ describe("runGraph: the animation node", () => {
     const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
     expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
   });
+
+  test("a param wired into a value renders the value's number; the value is never reached either", async () => {
+    const value: GraphNode = { id: "v", type: "value", data: { value: 0.5 } };
+    const link: GraphEdge = { id: "op-v", source: "op", sourceHandle: "opacity", target: "v" };
+    const frame = graphAtFrame(graph([input, opacity("op", 1), value, output], [...chain, link]), 0);
+    const { data } = await runGraph(frame, loadImage);
+    const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
+    expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
+  });
 });
 
 describe("runGraph: layer cap", () => {

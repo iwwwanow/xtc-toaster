@@ -204,6 +204,15 @@ export const DelayNodeSchema = z.object({
   }),
 });
 
+// one number for the params wired into it: param → value, the param takes the value (graphAtFrame), clamped to its
+// bounds. Many params into its one input; no pixels in or out. Its own `value` is a param: animated, or wired into
+// another value
+export const ValueNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("value"),
+  data: z.object({ value: ranged(PARAMS.value.value) }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -231,6 +240,7 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   LayersNodeSchema,
   AnimationNodeSchema,
   DelayNodeSchema,
+  ValueNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -262,17 +272,18 @@ export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
 export type DelayNode = z.infer<typeof DelayNodeSchema>;
 export type DelayRow = z.infer<typeof DelayRowSchema>;
+export type ValueNode = z.infer<typeof ValueNodeSchema>;
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: NodeIdSchema,
   target: NodeIdSchema,
-  // a param link (into the animation node or a delay): the param's name, or the delay row it leaves; a pixel link has
-  // no field
+  // a param link (into the animation node, a delay or a value): the param's name, or the delay row it leaves; a pixel
+  // link has no field
   sourceHandle: z.string().min(1).optional(),
-  // a layers edge: the layer row it goes into; a param link: the track or the delay row; every other node has one
-  // unnamed handle (no field)
+  // a layers edge: the layer row it goes into; a param link: the track or the delay row (into a value — no field, its
+  // one input takes many); every other node has one unnamed handle (no field)
   targetHandle: z.string().min(1).optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;

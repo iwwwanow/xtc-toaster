@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "move-1", "type": "move", "data": { "x": 0, "y": 0 } },
+    { "id": "skew-1", "type": "skew", "data": { "x": 0, "y": 0 } },
+    { "id": "rotate-1", "type": "rotate", "data": { "angle": 0 } },
+    { "id": "out", "type": "output", "data": {} },
+    { "id": "value-1", "type": "value", "data": { "value": 0 } },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 12,
+        "frames": 24,
+        "tracks": [{ "id": "track-1", "keys": [{ "frame": 0, "value": -40 }, { "frame": 23, "value": 40 }] }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "in-move", "source": "in", "target": "move-1" },
+    { "id": "move-skew", "source": "move-1", "target": "skew-1" },
+    { "id": "skew-rotate", "source": "skew-1", "target": "rotate-1" },
+    { "id": "rotate-out", "source": "rotate-1", "target": "out" },
+    { "id": "x-value", "source": "move-1", "sourceHandle": "x", "target": "value-1" },
+    { "id": "skew-value", "source": "skew-1", "sourceHandle": "x", "target": "value-1" },
+    { "id": "angle-value", "source": "rotate-1", "sourceHandle": "angle", "target": "value-1" },
+    { "id": "value-track", "source": "value-1", "sourceHandle": "value", "target": "anim", "targetHandle": "track-1" }
+  ]
+}

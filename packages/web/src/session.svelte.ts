@@ -1,6 +1,6 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
-  animatedValues,
+  drivenValues,
   graphAtFrame,
   UPLOAD_MAX_MEGAPIXELS,
   type AnimationExport,
@@ -110,7 +110,8 @@ class Session {
   frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
 
   private graph = $derived(toGraph(this.nodes, this.edges, this.exportSettings));
-  private animated = $derived(animatedValues(this.graph, this.frame));
+  // what the tracks and the value nodes put into the params at the playhead
+  private driven = $derived(drivenValues(this.graph, this.frame));
   // what one render needs: the frame under the playhead, without the animation node
   private frameGraph = $derived(withoutAnimation(graphAtFrame(this.graph, this.frame)));
   // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
@@ -268,9 +269,14 @@ class Session {
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
   }
 
-  // a param's value at the playhead; null — no track with keys drives it
+  // a param's value at the playhead; null — no track with keys and no value node drives it
   animatedValue(nodeId: string, param: string): number | null {
-    return this.animated.get(nodeId)?.[param] ?? null;
+    return this.driven.get(nodeId)?.[param] ?? null;
+  }
+
+  // a param wired into a value node: the value sets it, not a track
+  valueDriven(nodeId: string, param: string): boolean {
+    return this.edges.some(({ source, sourceHandle, target }) => source === nodeId && sourceHandle === param && this.nodes.find(({ id }) => id === target)?.type === "value");
   }
 
   // a moved playhead is a new frame → App sends a new render, if the picture changes on it
@@ -332,6 +338,16 @@ class Session {
     const param = paramOf(this.nodes, this.edges, source, sourceHandle);
     const value = param && paramValue(this.nodes, param.node.id, param.param);
     if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
+  }
+
+  // a param wired into a value nothing is wired into yet: the value takes the param's number — the picture doesn't jump
+  // (like a track's first key)
+  seedValue({ source, sourceHandle, target }: Link) {
+    const node = this.nodes.find(({ id }) => id === target);
+    if (node?.type !== "value" || !sourceHandle) return;
+    if (this.edges.some((edge) => edge.target === target && edge.sourceHandle)) return;
+    const value = paramValue(this.nodes, source, sourceHandle);
+    if (value !== null) this.setNodeData(target, { value });
   }
 
   // A param's wire dropped on `+ track` (09.11): a new track on top, linked to that param, with its first key.

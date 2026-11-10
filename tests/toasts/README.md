@@ -21,6 +21,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | `empty-layers` | no row linked → `render-error` on the layers node |
 | `animation` | input → move → opacity → output with an animation node below: 4 tracks (a new one on top, empty and unlinked — `track 4`; `opacity.opacity`; `move.y` with a dimmed key past the end; `move.x`). Dashed wires; `x`, `y`, `opacity` fields read-only; a ruler click changes the output picture |
 | `delay` | `move.x` through a delay of 6 frames, `opacity` straight: the delay shows `move.x` and a free row under it; the track group `move` names its row `x +6`; `x` stays −50 up to frame 6 while opacity already fades; wiring `move.y` into the free row makes a new free row |
+| `value` | `move.x`, `skew.x`, `rotate.angle` wired into one value (dashed wires into its one input), its number animated −40 → 40: the three move together, each field locked with «set by a value node» in its title, skew stops at 40 inside its ±60; a param wired into an empty value gives it its number; a pixel wire into it is refused |
 | `broken-animation-two-nodes` | import refused: only one animation node |
 | `broken-animation-pixel-link` | import refused: a pixel link into a track |
 | `broken-cycle` | import refused: a cycle (off the output path) |

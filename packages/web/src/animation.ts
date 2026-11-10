@@ -249,11 +249,12 @@ export const clampPlayhead = (frame: number, frames: number): number => Math.max
 // play: the frame after this one, the last goes back to the first
 export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
 
-// what one frame's render needs: no animation node, no delays, no param links. Fps, keys elsewhere, track order,
-// a delay's shift once applied don't touch the picture, so they don't change this graph and don't start a render
+// what one frame's render needs: no animation node, no delays, no value nodes, no param links. Fps, keys elsewhere,
+// track order, a delay's shift or a value's number once applied don't touch the picture, so they don't change this
+// graph and don't start a render
 export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGraph => ({
   ...graph,
-  nodes: graph.nodes.filter(({ type }) => type !== "animation" && type !== "delay"),
+  nodes: graph.nodes.filter(({ type }) => type !== "animation" && type !== "delay" && type !== "value"),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),
 });
 

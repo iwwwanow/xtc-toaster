@@ -174,15 +174,17 @@
   };
 
   // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect.
-  // A param linked into an empty track makes its first key
+  // A param linked into an empty track makes its first key, into a value nothing is wired into yet — its number
   const onbeforeconnect = (connection: Connection) => {
     session.freeTarget(connection);
     session.seedTrack(connection);
+    session.seedValue(connection);
     return connection;
   };
   const onbeforereconnect = (edge: Edge) => {
     session.freeTarget(edge, edge.id);
     session.seedTrack(edge);
+    session.seedValue(edge);
     return edge;
   };
 

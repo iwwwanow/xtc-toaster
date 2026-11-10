@@ -625,3 +625,48 @@ describe("keepChain", () => {
     expect(remove({ ...open, edges: open.edges.filter(({ id }) => id !== "in-bl") }, ["bl"])).toEqual(["op>out"]);
   });
 });
+
+describe("param links into a value", () => {
+  // move.x already wired into the value; rotate free
+  const flow = () =>
+    toFlow({
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId: null } },
+        { id: "mv", type: "move", data: { x: 0, y: 0 } },
+        { id: "rt", type: "rotate", data: { angle: 0 } },
+        { id: "v", type: "value", data: { value: 10 } },
+        { id: "v2", type: "value", data: { value: 0 } },
+        { id: "out", type: "output", data: {} },
+      ] as GraphNode[],
+      edges: [
+        { id: "in-mv", source: "in", target: "mv" },
+        { id: "mv-rt", source: "mv", target: "rt" },
+        { id: "rt-out", source: "rt", target: "out" },
+        { id: "x-v", source: "mv", sourceHandle: "x", target: "v" },
+      ],
+    });
+  const param = (source: string, sourceHandle: string, target: string) => ({ source, sourceHandle, target, targetHandle: null });
+
+  test("a second param joins the first — the value's input takes many", () => {
+    const { nodes, edges } = flow();
+    expect(canConnect(nodes, edges, param("rt", "angle", "v"))).toBe(true);
+    expect(withoutTaken(edges, param("rt", "angle", "v")).map(({ id }) => id)).toContain("x-v");
+  });
+
+  test("the same param into another value moves there", () => {
+    const { edges } = flow();
+    expect(withoutTaken(edges, param("mv", "x", "v2")).map(({ id }) => id)).not.toContain("x-v");
+  });
+
+  test("a pixel wire into a value is refused, a value's number into another value is not", () => {
+    const { nodes, edges } = flow();
+    expect(canConnect(nodes, edges, { source: "mv", target: "v", targetHandle: null })).toBe(false);
+    expect(canConnect(nodes, edges, param("v", "value", "v2"))).toBe(true);
+  });
+
+  test("a value is in the menu, in a group of its own", () => {
+    expect(NODE_CATEGORIES.find(({ name }) => name === "value")?.types).toEqual(["value"]);
+    expect(createNode("value", { x: 0, y: 0 }).data).toEqual({ value: 0 });
+  });
+});

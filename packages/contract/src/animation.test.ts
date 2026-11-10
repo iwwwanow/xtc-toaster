@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { graphAtFrame, paramSources, valueAtFrame } from "./animation";
+import { drivenValues, graphAtFrame, paramSources, valueAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
 import { parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
 import { PARAMS } from "./params";
@@ -206,5 +206,59 @@ describe("graphAtFrame through a delay", () => {
     expect(sourceOf("dl2", "r1")).toEqual({ node: "sc", param: "x", shift: 6 });
     expect(sourceOf("mv", "x")).toEqual({ node: "mv", param: "x", shift: 0 });
     expect(sourceOf("dl", "free")).toBeNull();
+  });
+});
+
+describe("graphAtFrame with a value", () => {
+  // move.x, rotate.angle and opacity into one value; a second value wired into the first
+  const valued = (number = 45, animated = false): ToastGraph => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "mv", type: "move", data: { x: 0, y: 0 } },
+      { id: "rt", type: "rotate", data: { angle: 0 } },
+      { id: "op", type: "opacity", data: { opacity: 0.5 } },
+      { id: "v", type: "value", data: { value: number } },
+      ...(animated
+        ? ([{ id: "anim", type: "animation", data: { fps: 24, frames: 20, tracks: [{ id: "t", keys: keys([0, 0], [10, 100]) }] } }] as GraphNode[])
+        : []),
+    ],
+    edges: [
+      { id: "1", source: "mv", sourceHandle: "x", target: "v" },
+      { id: "2", source: "rt", sourceHandle: "angle", target: "v" },
+      { id: "3", source: "op", sourceHandle: "opacity", target: "v" },
+      ...(animated ? [{ id: "4", source: "v", sourceHandle: "value", target: "anim", targetHandle: "t" }] : []),
+    ],
+  });
+  const data = (graph: ToastGraph, id: string) => graph.nodes.find((node) => node.id === id)!.data;
+
+  test("every param wired into it takes its number, clamped to its own bounds", () => {
+    const graph = graphAtFrame(valued(45), 0);
+    expect(data(graph, "mv")).toEqual({ x: 45, y: 0 });
+    expect(data(graph, "rt")).toEqual({ angle: 45 });
+    expect(data(graph, "op")).toEqual({ opacity: 1 });
+    expect(data(graphAtFrame(valued(-500), 0), "rt")).toEqual({ angle: -180 });
+  });
+
+  test("works without an animation node — a still render takes it too", () => {
+    expect(drivenValues(valued(20), 0).get("mv")).toEqual({ x: 20 });
+  });
+
+  test("an animated value moves every param wired into it", () => {
+    expect(data(graphAtFrame(valued(0, true), 5), "mv")).toEqual({ x: 50, y: 0 });
+    expect(data(graphAtFrame(valued(0, true), 5), "rt")).toEqual({ angle: 50 });
+  });
+
+  test("value → value: the params of both take the last one's number", () => {
+    const graph = valued(45);
+    graph.nodes.push({ id: "v2", type: "value", data: { value: -7 } });
+    graph.edges.push({ id: "5", source: "v", sourceHandle: "value", target: "v2" });
+    const at = graphAtFrame(graph, 0);
+    expect(data(at, "mv")).toEqual({ x: -7, y: 0 });
+    expect(data(at, "v")).toEqual({ value: -7 });
+  });
+
+  test("no params wired in — the graph as is", () => {
+    const graph = { ...valued(45), edges: [] };
+    expect(graphAtFrame(graph, 0)).toBe(graph);
   });
 });
