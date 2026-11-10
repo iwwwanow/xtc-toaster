@@ -65,6 +65,20 @@ legend {
 .svelte-flow__node.selected > .frame {
   border-color: var(--DARK);
 }
+/* a pixel wire let go now goes into this node (Editor, [data-drop]): a frame 2px DARK — hover alone gives 1px — and
+   the input it takes, its handle like a valid drop; a layers row taken gets the frame too */
+.svelte-flow__node[data-drop] > .frame {
+  border-color: var(--DARK);
+  outline: 1px solid var(--DARK);
+}
+.svelte-flow__node[data-drop] > .svelte-flow__handle-left,
+[data-row][data-drop] > .svelte-flow__handle {
+  background-color: var(--DARK);
+}
+/* the row's outline is inline (reorder by drag) — a shadow draws the same line */
+[data-row][data-drop] {
+  box-shadow: 0 0 0 1px var(--DARK);
+}
 
 /* TODO(uiu): hand-written — uiu has no label | control row; blender-like: the label right-aligned */
 .param {

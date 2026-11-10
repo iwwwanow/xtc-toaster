@@ -9,7 +9,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | toast | expect |
 |---|---|
 | `all-nodes` | input → blur → rotate → scale → move → channel → output; the selects unlinked below |
-| `more-nodes` | input → skew → corners → matrix → tint → opacity → output; fill unlinked — dragged onto a link it highlights it, let go it goes in (A → fill → B), one Ctrl+Z takes it back out and where it was; a node dragged out of the menu onto a link goes in the same way |
+| `more-nodes` | input → skew → corners → matrix → tint → opacity → output; fill unlinked — dragged onto a link it highlights it, let go it goes in (A → fill → B), one Ctrl+Z takes it back out and where it was; a node dragged out of the menu onto a link goes in the same way; a wire from tint's output let go over fill's middle (not its input) — fill's frame highlighted, then tint → fill; the end of tint → opacity grabbed at opacity's input and let go over fill — moves to fill, into empty space — unlinked; one Ctrl+Z each |
 | `fork-3` | input → 3 chains → layers node (normal / add / normal, opacity in the middle chain) → output: poppies over a green add over color noise |
 | `fork-fill` | fill and tint write in place — the other branches get the untouched picture: sharp red poppies over a half-transparent blue tint over gray. Poppies gone or tinted → a buffer leaked between branches |
 | `limit-4` | 4 rows, one quarter each — a 2×2 collage (at the `RENDER_MAX_LAYERS` fallback of 4) |
@@ -17,7 +17,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | `nested-4` | layers node (2 rows) in a layers node (2 rows) = 4 → three quarters render |
 | `nested-5` | 2 + 3 = 5 → `render-error` (the cap counts all layers nodes of a render) |
 | `hidden-row` | fork-3 with names (`poppies`, `hue noise`) and the green `add` row hidden: poppies over hue noise, no green; the hidden row dimmed, its checkbox off |
-| `unlinked-row` | the top row unlinked — skipped; poppies over the picture |
+| `unlinked-row` | the top row unlinked — skipped; poppies over the picture. A wire from the input let go over the layers legend (no row) goes into the top free row (layer 3, highlighted with the frame); over a taken row — replaces its link |
 | `empty-layers` | no row linked → `render-error` on the layers node |
 | `animation` | input → move → opacity → output with an animation node below: 4 tracks (a new one on top, empty and unlinked — `track 4`; `opacity.opacity`; `move.y` with a dimmed key past the end; `move.x`). Dashed wires; `x`, `y`, `opacity` fields read-only; a ruler click changes the output picture |
 | `delay` | `move.x` through a delay of 6 frames, `opacity` straight: the delay shows `move.x` and a free row under it; the track group `move` names its row `x +6`; `x` stays −50 up to frame 6 while opacity already fades; wiring `move.y` into the free row makes a new free row |

@@ -279,6 +279,39 @@ export const canConnect = (nodes: FlowNode[], edges: Edge[], link: Link): boolea
     edges: [...withoutTaken(edges, link), { ...link, id: "candidate" }].map(toGraphEdge),
   }) === null;
 
+// A pixel wire let go over a node's frame, not on a handle, goes into the node's input (30.10, done 10.11): no aiming at
+// the handle. A layers node takes it into the row under the pointer — a taken one is replaced, like a drop on its
+// handle — or, over the frame but no row, into its top free row; all rows taken — nothing, a row to replace is aimed at.
+// No pixel input — input, animation, delay — nothing. `keep` — the link whose end is being moved there, it doesn't
+// count as taking a row. The link, or null — the same rules as a drawn link (canConnect)
+export const linkOntoNode = (
+  nodes: FlowNode[],
+  edges: Edge[],
+  source: string,
+  nodeId: string,
+  row: string | null,
+  keep?: string,
+): Link | null => {
+  const node = nodes.find(({ id }) => id === nodeId);
+  if (!node || nodeId === source || node.type === "input" || node.type === "animation" || node.type === "delay") return null;
+  const others = edges.filter(({ id }) => id !== keep);
+  let targetHandle: string | undefined;
+  if (node.type === "layers") {
+    const taken = new Set(others.filter(({ target }) => target === nodeId).map((edge) => edge.targetHandle));
+    targetHandle =
+      row === null ? node.data.layers.find(({ id }) => !taken.has(id))?.id : node.data.layers.find(({ id }) => id === row)?.id;
+    if (targetHandle === undefined) return null;
+  }
+  const link: Link = { source, target: nodeId, ...(targetHandle && { targetHandle }) };
+  return canConnect(nodes, others, link) ? link : null;
+};
+
+// a link put in place of what its target had (withoutTaken); `keep` — the link being moved, it goes away
+export const withLink = (edges: Edge[], link: Link, keep?: string): Edge[] => [
+  ...withoutTaken(edges, link, keep).filter(({ id }) => id !== keep),
+  { id: linkId(link), ...link },
+];
+
 // toast file: the graph only, imageId: null — a toast is a preset, not a picture.
 // whether to save the picture too is open — docs/backlog/2026-10-13_toast-export-with-image.md
 export const toToastFile = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string => {

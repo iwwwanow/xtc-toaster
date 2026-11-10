@@ -9,6 +9,7 @@ import {
   emptyFlow,
   fromToastFile,
   insertOnLink,
+  linkOntoNode,
   linksUnder,
   MENU_NODE_TYPES,
   NODE_CATEGORIES,
@@ -16,6 +17,7 @@ import {
   toGraph,
   toToastFile,
   ToastFileError,
+  withLink,
   withoutTaken,
 } from "./graph";
 
@@ -439,5 +441,61 @@ describe("linksUnder", () => {
 
   test("a path it can't read is skipped", () => {
     expect(linksUnder(rect, [{ id: "line", d: "M0,130 L300,130" }])).toEqual([]);
+  });
+});
+
+describe("linkOntoNode", () => {
+  // in → nz → cmp:top, in → cmp:bottom, cmp → out; a free blur, a layers node with a free row
+  const flow = () => {
+    const graph = fanOut();
+    graph.nodes.push(
+      { id: "bl", type: "blur", data: { radius: 4 } } as GraphNode,
+      { id: "ly", type: "layers", data: { layers: [{ id: "a", blendMode: "normal" }, { id: "b", blendMode: "add" }] } } as GraphNode,
+      { id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [] } } as GraphNode,
+      { id: "dl", type: "delay", data: structuredClone(INITIAL_DATA.delay) } as unknown as GraphNode,
+    );
+    graph.edges.push({ id: "bl-ly", source: "bl", target: "ly", targetHandle: "a" });
+    return toFlow(graph);
+  };
+
+  test("a node's frame is its input", () => {
+    const { nodes, edges } = flow();
+    expect(linkOntoNode(nodes, edges, "in", "bl", null)).toEqual({ source: "in", target: "bl" });
+  });
+
+  test("a taken input is replaced, like a drop on its handle", () => {
+    const { nodes, edges } = flow();
+    const link = linkOntoNode(nodes, edges, "bl", "out", null);
+    expect(link).toEqual({ source: "bl", target: "out" });
+    const next = withLink(edges, link!);
+    expect(next.filter(({ target }) => target === "out").map(({ source }) => source)).toEqual(["bl"]);
+  });
+
+  test("layers: the row under the pointer, taken or not", () => {
+    const { nodes, edges } = flow();
+    expect(linkOntoNode(nodes, edges, "nz", "ly", "a")).toEqual({ source: "nz", target: "ly", targetHandle: "a" });
+    expect(linkOntoNode(nodes, edges, "nz", "ly", "b")).toEqual({ source: "nz", target: "ly", targetHandle: "b" });
+    expect(linkOntoNode(nodes, edges, "nz", "ly", "missing")).toBeNull();
+  });
+
+  test("layers: over the frame, no row — the top free row; all taken — nothing", () => {
+    const { nodes, edges } = flow();
+    expect(linkOntoNode(nodes, edges, "nz", "ly", null)).toEqual({ source: "nz", target: "ly", targetHandle: "b" });
+    expect(linkOntoNode(nodes, edges, "bl", "cmp", null)).toBeNull();
+  });
+
+  test("the link being moved doesn't take its row", () => {
+    const { nodes, edges } = flow();
+    expect(linkOntoNode(nodes, edges, "nz", "cmp", null, "nz-cmp")).toEqual({ source: "nz", target: "cmp", targetHandle: "top" });
+    const next = withLink(edges, { source: "nz", target: "ly", targetHandle: "b" }, "nz-cmp");
+    expect(next.some(({ id }) => id === "nz-cmp")).toBe(false);
+    expect(next.filter(({ target }) => target === "cmp").map(({ targetHandle }) => targetHandle)).toEqual(["bottom"]);
+  });
+
+  test("no pixel input, the wire's own node, a cycle — nothing", () => {
+    const { nodes, edges } = flow();
+    for (const id of ["in", "an", "dl", "missing"]) expect(linkOntoNode(nodes, edges, "nz", id, null)).toBeNull();
+    expect(linkOntoNode(nodes, edges, "bl", "bl", null)).toBeNull();
+    expect(linkOntoNode(nodes, edges, "cmp", "nz", null)).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import {
   fromToastFile,
   insertOnLink,
   toFlow,
+  withLink,
   toGraph,
   toToastFile,
   ToastFileError,
@@ -75,6 +76,8 @@ class Session {
   dragging = $state(false);
   // the link the dragged node would go into if let go now — LinkEdge highlights it
   dropLink = $state<string | null>(null);
+  // the node a pixel wire would go into if let go now, over its frame (linkOntoNode) — Editor highlights it
+  dropNode = $state.raw<{ node: string; link: Link } | null>(null);
   // the node type being dragged out of the left menu — a drag's data can't be read before the drop
   menuDrag: MenuNodeType | null = null;
 
@@ -348,6 +351,12 @@ class Session {
   // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused
   canConnect(connection: Link) {
     return canConnect(this.nodes, this.edges, connection);
+  }
+
+  // a wire let go over a node's frame (linkOntoNode): in place of what that input had; `keep` — the link whose end
+  // was moved there, it goes. One edges write — one step
+  linkOntoNode(link: Link, keep?: string) {
+    this.edges = withLink(this.edges, link, keep);
   }
 
   // a link dropped on a taken input replaces the one there, like blender; `keep` — the link being moved

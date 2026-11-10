@@ -5,6 +5,7 @@
     Controls,
     Position,
     SvelteFlow,
+    useConnection,
     useNodesInitialized,
     useSvelteFlow,
     useUpdateNodeInternals,
@@ -15,7 +16,7 @@
   import { tick, untrack } from "svelte";
   import { arrange, type ArrangeHandle, type ArrangeNode } from "./arrange";
   import LinkEdge from "./edges/LinkEdge.svelte";
-  import { isMenuNodeType, linksUnder, NODE_TYPE_MIME, type FlowNode } from "./graph";
+  import { isMenuNodeType, linkOntoNode, linksUnder, NODE_TYPE_MIME, type FlowNode, type Link } from "./graph";
   import { nodeTypes } from "./nodes";
   import ActionsPanel from "./panels/ActionsPanel.svelte";
   import ConnectionPanel from "./panels/ConnectionPanel.svelte";
@@ -158,13 +159,58 @@
     return edge;
   };
 
+  // A pixel wire let go over a node's frame, not on a handle, goes into its input (linkOntoNode); the node (and the
+  // layers row) under the pointer — the topmost element there, so a panel over a node hides it
+  const pixelWireOnto = (x: number, y: number, source: string, keep?: string): { node: string; link: Link } | null => {
+    const top = document.elementFromPoint(x, y);
+    const node = top?.closest<HTMLElement>(".svelte-flow__node")?.dataset.id;
+    if (!top || !node) return null;
+    const row = top.closest<HTMLElement>("[data-row]")?.dataset.row ?? null;
+    const link = linkOntoNode(session.nodes, session.edges, source, node, row, keep);
+    return link && { node, link };
+  };
+
+  // while a pixel wire is dragged — a new one or a moved end — the node it would go into is highlighted (app.css,
+  // [data-drop]); not when xyflow has a handle in reach that takes it — that one wins
+  const connection = useConnection();
+  let flowElement = $state<HTMLElement>();
+  let reconnecting: string | undefined;
+  $effect(() => {
+    const { inProgress, isValid, fromHandle, pointer } = connection.current;
+    if (!inProgress || isValid || fromHandle.type !== "source" || fromHandle.id || !flowElement) {
+      session.dropNode = null;
+      return;
+    }
+    // the pointer is relative to the flow's box — this wrapper's, the flow fills it
+    const { left, top } = flowElement.getBoundingClientRect();
+    session.dropNode = untrack(() => pixelWireOnto(left + pointer.x, top + pointer.y, fromHandle.nodeId, reconnecting));
+  });
+  $effect(() => {
+    const at = session.dropNode;
+    if (!at) return;
+    const node = document.querySelector(`.svelte-flow__node[data-id="${CSS.escape(at.node)}"]`);
+    const row = at.link.targetHandle && node?.querySelector(`[data-row="${CSS.escape(at.link.targetHandle)}"]`);
+    const marked = [node, row].filter((element): element is Element => !!element);
+    for (const element of marked) element.setAttribute("data-drop", "");
+    return () => marked.forEach((element) => element.removeAttribute("data-drop"));
+  });
+
+  const pointOf = (event: MouseEvent | TouchEvent) => ("changedTouches" in event ? event.changedTouches[0] : event);
+
   const updateNodeInternals = useUpdateNodeInternals();
-  // a param's wire let go over `+ track` (no handle took it) → a new track linked to that param
+  // a pixel wire let go over a node's frame → into its input; a param's wire let go over `+ track` (no handle took
+  // it) → a new track linked to that param
   const onconnectend: OnConnectEnd = (event, state) => {
+    session.dropNode = null;
     const from = state.fromHandle;
-    if (state.isValid || from?.type !== "source" || !from.id) return;
-    const point = "changedTouches" in event ? event.changedTouches[0] : event;
-    if (!point || !document.elementFromPoint(point.clientX, point.clientY)?.closest("[data-track-drop]")) return;
+    const point = pointOf(event);
+    if (state.isValid || from?.type !== "source" || !point) return;
+    if (!from.id) {
+      const onto = pixelWireOnto(point.clientX, point.clientY, from.nodeId);
+      if (onto) session.linkOntoNode(onto.link);
+      return;
+    }
+    if (!document.elementFromPoint(point.clientX, point.clientY)?.closest("[data-track-drop]")) return;
     const link = session.addLinkedTrack(from.nodeId, from.id);
     if (!link) return;
     // the track's handle is mounted (tick), measured — updateNodeInternals runs in a requestAnimationFrame of its
@@ -175,9 +221,18 @@
     });
   };
 
-  // a link end dropped into empty space → unlink
-  const onreconnectend = (_: unknown, edge: Edge, __: unknown, { isValid }: { isValid: boolean | null }) => {
-    if (!isValid) session.edges = session.edges.filter(({ id }) => id !== edge.id);
+  // a link end moved: let go over a node's frame — into its input, like a new wire; into empty space — unlink
+  const onreconnectstart = (_: unknown, edge: Edge) => {
+    reconnecting = edge.id;
+  };
+  const onreconnectend = (event: MouseEvent | TouchEvent, edge: Edge, _: unknown, { isValid }: { isValid: boolean | null }) => {
+    reconnecting = undefined;
+    session.dropNode = null;
+    if (isValid) return;
+    const point = pointOf(event);
+    const onto = point && !edge.sourceHandle ? pixelWireOnto(point.clientX, point.clientY, edge.source, edge.id) : null;
+    if (onto) session.linkOntoNode(onto.link, edge.id);
+    else session.edges = session.edges.filter(({ id }) => id !== edge.id);
   };
 </script>
 
@@ -185,6 +240,7 @@
 <div
   style="position: fixed; inset: 0; --xy-node-border: none; --xy-node-border-selected: none"
   role="application"
+  bind:this={flowElement}
   {ondragover}
   {ondrop}
 >
@@ -203,6 +259,7 @@
     {onnodedrag}
     {onnodedragstop}
     {onedgecontextmenu}
+    {onreconnectstart}
     {onreconnectend}
     {onconnectend}
     isValidConnection={(connection) => session.canConnect(connection)}

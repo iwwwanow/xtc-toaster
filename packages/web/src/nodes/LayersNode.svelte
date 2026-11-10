@@ -45,6 +45,7 @@
     <div
       class="nodrag"
       role="listitem"
+      data-row={layer.id}
       style="position: relative; display: flex; gap: var(--GRID-GAP-4); align-items: center"
       style:outline={drag.over === index && drag.dragged !== index ? "1px dashed currentColor" : "none"}
       style:opacity={drag.dragged === index ? 0.4 : 1}
