@@ -68,7 +68,7 @@ Solid wires carry pixels as before, dashed ones bind a param to a track. Nothing
   - **the selected key** — number fields `frame` and `value`, `× key`
 - a param with a track: its field is read-only and shows the value at the playhead — values are edited in the animation node
 - moving the playhead → the usual render of that frame (latest-wins holds); `download png` saves that frame
-- `render animation` in the actions panel: off without an animation node or with no keys; while it runs — the editor is locked (as `session.locked`), `frame n / N` on the button; when done — the gif is downloaded as `<toast>_<YYYYMMDD-HHmmss>.gif`
+- `render animation` in the actions panel: off without an animation node or with no keys; while it runs — the editor is locked (as `session.locked`), `frame n / N` on the button; when done — the gif is downloaded as `<toast>_<YYYYMMDD-HHmmss>.gif` (10.11: `xtc-toaster_<YYYYMMDD-HHmmss>` for every download)
 - a hand-written style → `TODO(uiu)` + a backlog note, as usual
 
 #### toasts
@@ -244,7 +244,7 @@ Rules for dragging a key:
 ### export dropdown
 
 - `render animation` gets `▾` next to it (one button group); `▾` opens a block under it in the actions panel, `▴` closes it; open / closed — ui only
-- in the block: `format` — `gif` / `mp4`; `loop` — `forever` (gif) or `once` (mp4) / `reps` / `seconds`, the other field off, as the node had it. With `seconds` — a checkbox `whole cycles`, on by default (decided 09.11): on — the length rounds to whole cycles (as now); off — exactly `seconds`, the last cycle cut on a frame. The button reads `render gif` / `render mp4`; the file — `<toast>_<YYYYMMDD-HHmmss>.gif|.mp4`
+- in the block: `format` — `gif` / `mp4`; `loop` — `forever` (gif) or `once` (mp4) / `reps` / `seconds`, the other field off, as the node had it. With `seconds` — a checkbox `whole cycles`, on by default (decided 09.11): on — the length rounds to whole cycles (as now); off — exactly `seconds`, the last cycle cut on a frame. The button reads `render gif` / `render mp4`; the file — `xtc-toaster_<YYYYMMDD-HHmmss>.gif|.mp4` (10.11)
 - **contract**: the settings leave the animation node into the toast: `ToastGraph.export?: { format?: "gif" | "mp4"; loop?: AnimationLoop }` (absent format — gif, absent loop — the format's default). `AnimationLoop`'s seconds variant gets `wholeCycles?: boolean`, absent — `true`. `AnimationNode.data.loop` goes. Saved with export / import toast and `localStorage`. `TOAST_GRAPH_VERSION` stays 1 — pre-release, no migration (an old file with `loop` in the node: zod drops the unknown key, the loop is lost). The plain `render` message is sent without `export`: a setting changes no picture. Degas's `{ seconds: 15 }` moves to `export`
 - **server**: `render-animation` reads `graph.export`. mp4 — the same frames on disk (and on white, as gif), then ffmpeg `libx264`, `-pix_fmt yuv420p`, `-movflags +faststart`, the size padded to even (yuv420p needs it), `-r fps`. mp4 has no loop flag: `reps` → the cycle repeated in the file (`-stream_loop`), `seconds` → whole cycles as gif (`gifPlays`, renamed), absent → one cycle. `seconds` with `wholeCycles: false`: mp4 — repeated and cut to `round(seconds × fps)` frames (`loopVideoTo`, as the degas script); gif — the frames on disk repeated in the sequence up to that count, the file plays once (`-loop -1`) — a longer file, no extra render. Only one cycle is rendered either way. Check the debian trixie ffmpeg has `libx264` (it should), else `libopenh264`
 - `RENDER_MAX_FRAMES` counts rendered frames only — repeats cost no render

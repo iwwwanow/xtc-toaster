@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { base64ToBlob, outputFileName } from "./files";
 
 describe("outputFileName", () => {
-  test("<toast>_<YYYYMMDD-HHmmss>.<ext> in local time", () => {
+  test("xtc-toaster_<YYYYMMDD-HHmmss>.<ext> in local time", () => {
     const date = new Date(2026, 9, 9, 7, 5, 3);
-    expect(outputFileName("toast-2_signac", "png", date)).toBe("toast-2_signac_20261009-070503.png");
+    expect(outputFileName("png", date)).toBe("xtc-toaster_20261009-070503.png");
   });
 });
 

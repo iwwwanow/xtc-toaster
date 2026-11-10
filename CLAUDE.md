@@ -50,7 +50,7 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 ## Project-wide conventions
 
 - **Barrel exports.** A package exposes one entry — `"exports": { ".": "<barrel>" }` (`src/index.ts`, lib: `main.ts`) — and other packages import only from the package root, never subpaths or deep paths. Inside a package, a folder with a public surface gets its own `index.ts` barrel. A barrel never re-exports a module with side effects on import (e.g. `toast-1_degas`).
-- **Output file naming.** Every file the project produces for the user (render downloads, baked videos, exports) is named `<toast>_<YYYYMMDD-HHmmss>.<ext>` — `<toast>` is the toast directory name, timestamp in local time. Example: `toast-2_signac_20261009-153012.png`.
+- **Output file naming.** Every file the web ui gives the user (png, gif / mp4, exported toast) is named `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>`, timestamp in local time, whatever toast is open (decided 10.11 — the toast's own name was always `toast-2_signac`). Example: `xtc-toaster_20261009-153012.png`. The bake script `toast-1_degas` still names its video by the input picture (its own TODO).
 
 ## Sprint process
 

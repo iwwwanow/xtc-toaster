@@ -149,7 +149,7 @@
      - [x] 09.11 output: a checkerboard under the picture, its edge and transparent parts show (asked by the user; another pattern — one css line, `.transparency`)
      - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
    - [x] 10.11 the user's look at the new ui — all ok
-   - [x] 10.11 the DoD of the extension in headless Chrome on degas — every item passed; found: every download is named `toast-2_signac_*` whatever toast is open; dev `.env` needs `RENDER_MAX_LAYERS=8` for degas — `docs/diary/2026-11-10_extension-dod-headless.md`
+   - [x] 10.11 the DoD of the extension in headless Chrome on degas — every item passed; found: every download is named `toast-2_signac_*` whatever toast is open → 10.11 every download is `xtc-toaster_<YYYYMMDD-HHmmss>.<ext>` (decided by the user); dev `.env` needs `RENDER_MAX_LAYERS=8` for degas — `docs/diary/2026-11-10_extension-dod-headless.md`
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`

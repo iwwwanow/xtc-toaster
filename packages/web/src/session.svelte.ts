@@ -31,8 +31,6 @@ import { fromSaved, loadSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
 import { uploadImage } from "./upload";
 
-// toast directory name — prefix of downloaded files
-const TOAST = "toast-2_signac";
 // the editor as it was before the reload, else the default toast
 const initial = fromSaved(loadSaved()) ?? toFlow(toast2signac);
 
@@ -302,7 +300,7 @@ class Session {
         try {
           const response = await fetch(message.url);
           if (!response.ok) throw new Error(`GET ${message.url}: ${response.status}`);
-          saveBlob(await response.blob(), outputFileName(TOAST, extensionOf(message.url)));
+          saveBlob(await response.blob(), outputFileName(extensionOf(message.url)));
           this.endExport(null);
         } catch (error) {
           console.error("animation download failed", error);
@@ -327,12 +325,12 @@ class Session {
   }
 
   download() {
-    if (this.rendered) saveBlob(this.rendered.blob, outputFileName(TOAST, "png"));
+    if (this.rendered) saveBlob(this.rendered.blob, outputFileName("png"));
   }
 
   exportToast() {
     const file = toToastFile(this.nodes, this.edges, this.exportSettings);
-    saveBlob(new Blob([file], { type: "application/json" }), outputFileName(TOAST, "json"));
+    saveBlob(new Blob([file], { type: "application/json" }), outputFileName("json"));
   }
 
   // input → output, the picture stays
