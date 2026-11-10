@@ -18,6 +18,7 @@ import {
   emptyFlow,
   fromToastFile,
   insertOnLink,
+  keepChain,
   leaveCopiesBehind,
   toFlow,
   withLink,
@@ -228,6 +229,13 @@ class Session {
   insertOnLink(nodeId: string, edgeId: string) {
     const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId);
     if (edges) this.edges = edges;
+  }
+
+  // after a delete: the deleted nodes' sources linked to what they fed (keepChain)
+  keepChain(nodes: string[], edges: Edge[]) {
+    const gone = new Set(nodes);
+    const left = this.edges.filter(({ source, target }) => !gone.has(source) && !gone.has(target));
+    this.edges = keepChain(this.nodes.filter(({ id }) => !gone.has(id)), left, { nodes, edges });
   }
 
   // Alt + drag: copies left where the dragged nodes stood, with their links; the dragged ones go on as the copies

@@ -9,6 +9,7 @@ import {
   emptyFlow,
   fromToastFile,
   insertOnLink,
+  keepChain,
   leaveCopiesBehind,
   linkOntoNode,
   linksUnder,
@@ -557,5 +558,70 @@ describe("leaveCopiesBehind", () => {
     // the input only moves: its link to the dragged node is a link out of the copies, it goes to the one left
     expect(links(result.edges)).toContain("in>c1");
     valid(result.nodes, result.edges);
+  });
+});
+
+describe("keepChain", () => {
+  // what xyflow does on delete: the nodes and every edge touching them go, keepChain runs on the rest
+  const remove = (flow: { nodes: Parameters<typeof keepChain>[0]; edges: Edge[] }, ids: string[]) => {
+    const removed = { nodes: ids, edges: flow.edges.filter(({ source, target }) => ids.includes(source) || ids.includes(target)) };
+    const nodes = flow.nodes.filter(({ id }) => !ids.includes(id));
+    const edges = flow.edges.filter((edge) => !removed.edges.includes(edge));
+    return links(keepChain(nodes, edges, removed));
+  };
+  const links = (edges: Edge[]) =>
+    edges.map(({ source, target, targetHandle }) => `${source}>${target}${targetHandle ? `:${targetHandle}` : ""}`).sort();
+  const chain = (...extra: GraphEdge[]) =>
+    toFlow({
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId: null } },
+        { id: "bl", type: "blur", data: { radius: 4 } },
+        { id: "op", type: "opacity", data: { opacity: 0.5 } },
+        { id: "out", type: "output", data: {} },
+        { id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } },
+      ] as GraphNode[],
+      edges: [
+        { id: "in-bl", source: "in", target: "bl" },
+        { id: "bl-op", source: "bl", target: "op" },
+        { id: "op-out", source: "op", target: "out" },
+        ...extra,
+      ],
+    });
+
+  test("A → node → B becomes A → B", () => {
+    expect(remove(chain(), ["bl"])).toEqual(["in>op", "op>out"]);
+  });
+
+  test("deleted together: A → n1 → n2 → B — A → B", () => {
+    expect(remove(chain(), ["bl", "op"])).toEqual(["in>out"]);
+  });
+
+  test("a fan-out: A into each, a layers row keeps its row", () => {
+    const { nodes, edges } = toFlow(fanOut());
+    // in → nz → cmp:top — nz deleted, in goes into the top row too
+    expect(remove({ nodes, edges }, ["nz"])).toEqual(["cmp>out", "in>cmp:bottom", "in>cmp:top"]);
+    // bl feeds op and a layers row — in goes into both
+    const fork = chain({ id: "bl-ly", source: "bl", target: "ly", targetHandle: "a" });
+    const ly = { id: "ly", type: "layers", position: { x: 0, y: 0 }, data: { layers: [{ id: "a", blendMode: "normal" }] } };
+    expect(remove({ nodes: [...fork.nodes, ly as (typeof fork.nodes)[number]], edges: fork.edges }, ["bl"])).toEqual([
+      "in>ly:a",
+      "in>op",
+      "op>out",
+    ]);
+  });
+
+  test("layers with several rows linked leaves nothing; with one — keeps it", () => {
+    const { nodes, edges } = toFlow(fanOut());
+    expect(remove({ nodes, edges }, ["cmp"])).toEqual(["in>nz"]);
+    const one = edges.filter(({ id }) => id !== "in-cmp");
+    expect(remove({ nodes, edges: one }, ["cmp"])).toEqual(["in>nz", "nz>out"]);
+  });
+
+  test("param links go with the node; an unlinked side leaves nothing", () => {
+    const animated = chain({ id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" });
+    expect(remove(animated, ["bl"])).toEqual(["in>op", "op>out"]);
+    const open = chain();
+    expect(remove({ ...open, edges: open.edges.filter(({ id }) => id !== "in-bl") }, ["bl"])).toEqual(["op>out"]);
   });
 });

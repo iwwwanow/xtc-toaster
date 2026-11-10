@@ -112,6 +112,11 @@
     event.preventDefault();
     void deleteElements({ nodes: [node] });
   };
+  // a deleted node linked on both sides keeps the chain: A → node → B becomes A → B (keepChain). xyflow has already
+  // dropped the nodes and their edges; the same tick — one history step with the delete
+  const ondelete = ({ nodes, edges }: { nodes: FlowNode[]; edges: Edge[] }) => {
+    if (nodes.length > 0) session.keepChain(nodes.map(({ id }) => id), edges);
+  };
   const onedgecontextmenu = ({ edge, event }: { edge: Edge; event: MouseEvent }) => {
     event.preventDefault();
     void deleteElements({ edges: [edge] });
@@ -258,6 +263,7 @@
     connectionRadius={40}
     deleteKey={["Delete", "Backspace"]}
     {onnodecontextmenu}
+    {ondelete}
     {onnodedragstart}
     {onnodedrag}
     {onnodedragstop}

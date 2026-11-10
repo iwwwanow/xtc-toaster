@@ -312,6 +312,31 @@ export const withLink = (edges: Edge[], link: Link, keep?: string): Edge[] => [
   { id: linkId(link), ...link },
 ];
 
+// Deleting a node linked on both sides keeps the chain, like blender's delete with reconnect (10.11): A → node → B
+// becomes A → B, the node's pixel source into everything its output fed (a fan-out — into each). A node with no
+// single pixel input (input; layers with several rows linked) leaves nothing; deleted together, A → n1 → n2 → B —
+// A → B. Param links go with the node. Each new link passes canConnect, a refused one is left out.
+// `edges` — what is left after the delete; `removed` — the deleted nodes' ids and edges. The edges with the chain kept
+export const keepChain = (nodes: FlowNode[], edges: Edge[], removed: { nodes: readonly string[]; edges: readonly Edge[] }): Edge[] => {
+  const gone = new Set(removed.nodes);
+  const pixel = pixelLinks(removed.edges.map(toGraphEdge));
+  const upstream = (id: string, seen = new Set<string>()): string | null => {
+    const into = pixel.filter(({ target }) => target === id);
+    if (into.length !== 1 || seen.has(id)) return null;
+    const { source } = into[0]!;
+    return gone.has(source) ? upstream(source, seen.add(id)) : source;
+  };
+  let next = edges;
+  for (const { source, target, targetHandle } of pixel) {
+    if (!gone.has(source) || gone.has(target)) continue;
+    const from = upstream(source);
+    if (from === null) continue;
+    const link: Link = { source: from, target, ...(targetHandle && { targetHandle }) };
+    if (canConnect(nodes, next, link)) next = withLink(next, link);
+  }
+  return next;
+};
+
 // Alt + drag a node — a copy, like Illustrator (28.10, 10.11): the original stays with its links, the copy goes with
 // the pointer, same params, linked only to the other copies of the same drag. xyflow drags the nodes it has, so the
 // dragged ones play the copies: copies with new ids are left where they stood and take over every link that goes
