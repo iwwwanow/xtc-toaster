@@ -145,10 +145,11 @@
      - [x] 09.11 tracks grouped by source node — a fieldset per group, a summary row, collapse (the summary drag comes with the key drag)
      - [x] 09.11 arrange lines chains up by the nodes' tops, not by the bottom-right output (asked by the user) — only elk's input changes, the handles on screen stay where they are
      - [x] 09.11 export dropdown under `render animation`: `gif` / `mp4`, `loop` (reps / seconds + `whole cycles`, on by default) out of the node into the toast (`ToastGraph.export`); mp4 on the server (libx264, yuv420p)
-     - [x] 09.11 node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1236px), `layers` / `input` / `output` 2
+     - [x] 09.11 node widths on the uiu grid: 190px a column, the number field's label inside; animation 6 columns (1220px), `layers` / `input` / `output` 2
      - [x] 09.11 output: a checkerboard under the picture, its edge and transparent parts show (asked by the user; another pattern — one css line, `.transparency`)
      - [x] 09.11 handles: the pixel input top-left, the output stays bottom-right; a param's output 2–4 px closer to its field; pixel in / out stay 4 px (6 px tried, looked bad)
-   - [ ] the DoD of the extension in headless Chrome + the user's look at the new ui — 12–13.11
+   - [x] 10.11 the user's look at the new ui — all ok
+   - [x] 10.11 the DoD of the extension in headless Chrome on degas — every item passed; found: every download is named `toast-2_signac_*` whatever toast is open; dev `.env` needs `RENDER_MAX_LAYERS=8` for degas — `docs/diary/2026-11-10_extension-dod-headless.md`
    - [ ] the prod-limits check (check 2), release — after the extension, 14.11
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
@@ -189,6 +190,7 @@
 3. new nodes (ideas 09.11, not decided)
    - delay (shifts the animation of a chain) + duplicate (N copies of a chain) → a trail — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
    - node groups, constants / variables: a short pipeline reused as one node, one value wired into many params — `docs/backlog/2026-11-09_node-groups-variables.md`. Changes the toast format: decide the shape before 1.0 freezes `TOAST_GRAPH_VERSION`, or make it an optional field
+   - a true / false node → a time-window of the animation node, the window breaks at a set frequency (10.11, very raw; needs time-windows first) — `docs/backlog/2026-11-10_boolean-gate-node-for-time-window.md`
 
 ## tools:
 

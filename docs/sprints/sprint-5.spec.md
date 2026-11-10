@@ -207,7 +207,7 @@ Rules for dragging a key:
 ### layout of the animation node, blender's order
 
 ```
-┌ animation ─────────────────────────────────────────────────────────────── 6 columns, 1236px ┐
+┌ animation ─────────────────────────────────────────────────────────────── 6 columns, 1220px ┐
 │ [+ track]  [start][‹ key][‹][play][›][key ›][end]  frame [ 12]  fps [36] frames [24] [fit]  │  header
 ├──────────── channels: 2 columns, 396px ───────┬──────── timeline: 4 columns, 808px ──────────┤
 │                                               │ 0    4    8    12   16   20   23 │ ruler   │
@@ -221,7 +221,7 @@ Rules for dragging a key:
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **width** — 6 uiu columns: `6 × 190 + 5 × 16 = 1236px`; channels 2 (396), timeline 4 (808, the gap counted in). Height grows with the tracks, no vertical scroll (04.11 stays)
+- **width** — 6 uiu columns: `6 × 190 + 5 × 16 = 1220px` (09.11 written as 1236 — an arithmetic slip, fixed 10.11); channels 2 (396), timeline 4 (808, the gap counted in). Height grows with the tracks, no vertical scroll (04.11 stays)
 - **header** — one row, blender's: `+ track` left, the transport in the middle, frame / fps / frames / `fit` right. `loop` leaves the node (→ the export dropdown)
 - **`+ track` is a drop target**: a param wire dropped on it makes a new track linked to that param, in its node's group (with its first key, as a link into an empty track does). The rule «nothing is created by dropping a link onto the node» (03.11) stays for the rest of the node. A wire from a param that already has a track is refused, as now. Clicking it still makes an empty unlinked track
 - **selected key** — the bottom row, as now
@@ -251,7 +251,7 @@ Rules for dragging a key:
 
 ### node widths on the uiu grid
 
-- every node is 1 uiu column wide — **190px**, like owo's card; wide nodes span whole columns with the gaps: `n × 190 + (n − 1) × 16`. Animation — 6 (1236px); `layers`, `input`, `output` — 2 (396px: the rows' controls, the picture); the rest — 1
+- every node is 1 uiu column wide — **190px**, like owo's card; wide nodes span whole columns with the gaps: `n × 190 + (n − 1) × 16`. Animation — 6 (1220px); `layers`, `input`, `output` — 2 (396px: the rows' controls, the picture); the rest — 1
 - 190px leaves 174px inside: the number field takes the label **inside**, blender's node field: `x %` left, the value right, drag / `‹ ›` / click-to-type as now. One change in `Slider.svelte` for every node; the label shortens to fit (`x (% of width)` → `x %`, the unit's long form goes to `title`). Other controls (color, select, matrix's 9 fields) fit into 174 or take a full row
 - the column width (190) and the span formula as css custom props here, marked `TODO(uiu)`: uiu has no column-width token (owo writes `190px` in `.grid`) — a backlog note
 - elk arrange reads measured sizes — nothing to change there
@@ -266,7 +266,7 @@ Rules for dragging a key:
 ### definition of done (extension)
 
 - `bun run test` covers: the group derivation (order, numbering, unlinked), key drag rules (occupied frame, summary drag), prev / next key, the loop arithmetic (reps / seconds, whole cycles on / off) for gif and mp4, the `export` field in the toast schema
-- in a headless browser on the dev stack, degas: the node is 1236px, 6 groups (3 `corners` × 6 tracks, 3 `move` × 2), collapse / expand keeps the wires, a key dragged, the playhead dragged, `‹ key` / `key ›` / `start` / `end` and the keys, Ctrl+wheel and `fit`, a param wire dropped on `+ track` makes a linked track
+- in a headless browser on the dev stack, degas: the node is 1220px, 6 groups (3 `corners` × 6 tracks, 3 `move` × 2), collapse / expand keeps the wires, a key dragged, the playhead dragged, `‹ key` / `key ›` / `start` / `end` and the keys, Ctrl+wheel and `fit`, a param wire dropped on `+ track` makes a linked track
 - `render mp4` downloads an mp4 that plays (`ffprobe`: h264, yuv420p, even size, the frame count = cycles × frames); gif as before
 - a toast with `export` survives export → import → reload
 
@@ -289,7 +289,7 @@ answered 09.11:
 
 - the export settings live in the toast, `ToastGraph.export` — not in the animation node, not browser-only (degas keeps its 15 s)
 - a node is one uiu column, 190px; the number field holds its label inside, as blender's nodes
-- the animation node is 6 columns, 1236px
+- the animation node is 6 columns, 1220px
 - from blender, beyond the asked list: the whole transport, timeline zoom, the group summary row and collapse; hotkeys were taken too, then put off 09.11 (the user) — `docs/backlog/2026-11-09_timeline-hotkeys.md`
 
 set 09.11 while writing this, not asked — change here if wrong:
