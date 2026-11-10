@@ -2,13 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { toast2signac } from "@xtc-toaster/toasts";
 import { INITIAL_DATA, PARAMS } from "@xtc-toaster/contract";
 import type { Edge } from "@xyflow/svelte";
-import { TOAST_GRAPH_VERSION, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
+import { TOAST_GRAPH_VERSION, validateGraph, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
 import {
   canConnect,
   createNode,
   emptyFlow,
   fromToastFile,
   insertOnLink,
+  leaveCopiesBehind,
   linkOntoNode,
   linksUnder,
   MENU_NODE_TYPES,
@@ -497,5 +498,64 @@ describe("linkOntoNode", () => {
     for (const id of ["in", "an", "dl", "missing"]) expect(linkOntoNode(nodes, edges, "nz", id, null)).toBeNull();
     expect(linkOntoNode(nodes, edges, "bl", "bl", null)).toBeNull();
     expect(linkOntoNode(nodes, edges, "cmp", "nz", null)).toBeNull();
+  });
+});
+
+describe("leaveCopiesBehind", () => {
+  // in → nz → cmp:top, in → cmp:bottom, cmp → out; nz's param animated
+  const flow = () => {
+    const graph = fanOut();
+    graph.nodes.push({ id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } } as GraphNode);
+    graph.edges.push({ id: "nz-an", source: "nz", sourceHandle: "deviationCoefficient", target: "an", targetHandle: "t" });
+    return toFlow(graph);
+  };
+  const ids = () => {
+    let n = 0;
+    return () => `c${++n}`;
+  };
+  const links = (edges: Edge[]) =>
+    edges.map(({ source, sourceHandle, target, targetHandle }) => `${source}${sourceHandle ? `.${sourceHandle}` : ""}>${target}${targetHandle ? `:${targetHandle}` : ""}`).sort();
+  const valid = (nodes: Parameters<typeof toGraph>[0], edges: Edge[]) => expect(validateGraph(toGraph(nodes, edges))).toBeNull();
+
+  test("one node: the copy left behind takes every link, the dragged one goes bare", () => {
+    const { nodes, edges } = flow();
+    const result = leaveCopiesBehind(nodes, edges, ["nz"], ids())!;
+    expect(result.nodes.map(({ id }) => id)).toEqual([...nodes.map(({ id }) => id), "c1"]);
+    const copy = result.nodes.find(({ id }) => id === "c1")!;
+    const nz = nodes.find(({ id }) => id === "nz")!;
+    expect(copy).toMatchObject({ type: "colorNoise", data: nz.data, position: nz.position, selected: false });
+    expect(links(result.edges)).toEqual(["c1.deviationCoefficient>an:t", "c1>cmp:top", "cmp>out", "in>c1", "in>cmp:bottom"]);
+    valid(result.nodes, result.edges);
+  });
+
+  test("several: links between them are kept and cloned between the copies, links out go to the copies", () => {
+    const { nodes, edges } = flow();
+    const result = leaveCopiesBehind(nodes, edges, ["nz", "cmp"], ids())!;
+    expect(links(result.edges)).toEqual([
+      "c1.deviationCoefficient>an:t",
+      "c1>c2:top",
+      "c2>out",
+      "in>c1",
+      "in>c2:bottom",
+      "nz>cmp:top",
+    ]);
+    valid(result.nodes, result.edges);
+  });
+
+  test("the copy's data is its own", () => {
+    const { nodes, edges } = flow();
+    const result = leaveCopiesBehind(nodes, edges, ["cmp"], ids())!;
+    const copy = result.nodes.find(({ id }) => id === "c1")!;
+    expect(copy.data).not.toBe(nodes.find(({ id }) => id === "cmp")!.data);
+  });
+
+  test("input, output and animation are never copied — dragged alone, nothing", () => {
+    const { nodes, edges } = flow();
+    expect(leaveCopiesBehind(nodes, edges, ["in", "out", "an"], ids())).toBeNull();
+    const result = leaveCopiesBehind(nodes, edges, ["in", "nz"], ids())!;
+    expect(result.nodes).toHaveLength(nodes.length + 1);
+    // the input only moves: its link to the dragged node is a link out of the copies, it goes to the one left
+    expect(links(result.edges)).toContain("in>c1");
+    valid(result.nodes, result.edges);
   });
 });

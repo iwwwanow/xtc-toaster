@@ -18,6 +18,7 @@ import {
   emptyFlow,
   fromToastFile,
   insertOnLink,
+  leaveCopiesBehind,
   toFlow,
   withLink,
   toGraph,
@@ -227,6 +228,14 @@ class Session {
   insertOnLink(nodeId: string, edgeId: string) {
     const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId);
     if (edges) this.edges = edges;
+  }
+
+  // Alt + drag: copies left where the dragged nodes stood, with their links; the dragged ones go on as the copies
+  leaveCopiesBehind(dragged: string[]) {
+    const result = leaveCopiesBehind(this.nodes, this.edges, dragged);
+    if (!result) return;
+    this.nodes = result.nodes;
+    this.edges = result.edges;
   }
 
   // a link the node may go into — asked on every move of a drag; a node type — one still in the menu

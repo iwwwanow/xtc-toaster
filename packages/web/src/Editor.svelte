@@ -134,8 +134,11 @@
     const box = { ...node.position, width, height };
     return linksUnder(box, drawnLinks()).find((edgeId) => session.canInsertOnLink(node.id, edgeId)) ?? null;
   };
-  const onnodedragstart = () => {
+  // Alt held as the drag starts — a copy goes with the pointer, the original stays (leaveCopiesBehind); the drag, the
+  // copy and a drop into a link are one step
+  const onnodedragstart = ({ event, nodes }: { event: MouseEvent | TouchEvent; nodes: FlowNode[] }) => {
     session.dragging = true;
+    if (event.altKey) session.leaveCopiesBehind(nodes.map(({ id }) => id));
   };
   const onnodedrag = ({ targetNode, nodes }: { targetNode: FlowNode | null; nodes: FlowNode[] }) => {
     session.dropLink = linkUnder(targetNode, nodes);

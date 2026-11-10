@@ -312,6 +312,36 @@ export const withLink = (edges: Edge[], link: Link, keep?: string): Edge[] => [
   { id: linkId(link), ...link },
 ];
 
+// Alt + drag a node — a copy, like Illustrator (28.10, 10.11): the original stays with its links, the copy goes with
+// the pointer, same params, linked only to the other copies of the same drag. xyflow drags the nodes it has, so the
+// dragged ones play the copies: copies with new ids are left where they stood and take over every link that goes
+// out of the dragged set; a link inside it stays and is cloned between the copies left. Input, output and animation
+// (one per graph) are never copied — dragged along, they just move. The nodes and edges, or null — nothing to copy
+export const leaveCopiesBehind = (
+  nodes: FlowNode[],
+  edges: Edge[],
+  dragged: readonly string[],
+  newId: () => string = () => crypto.randomUUID(),
+): { nodes: FlowNode[]; edges: Edge[] } | null => {
+  const copied = new Map<string, string>();
+  for (const { id, type } of nodes)
+    if (dragged.includes(id) && !isFixed(type) && type !== "animation") copied.set(id, newId());
+  if (copied.size === 0) return null;
+  const left = nodes.flatMap((node) => {
+    const id = copied.get(node.id);
+    return id ? [{ ...node, id, data: structuredClone(node.data), selected: false, dragging: false } as FlowNode] : [];
+  });
+  const behind = (id: string) => copied.get(id) ?? id;
+  const next = edges.flatMap((edge) => {
+    const inside = copied.has(edge.source) && copied.has(edge.target);
+    if (!inside && !copied.has(edge.source) && !copied.has(edge.target)) return [edge];
+    const link = { ...toGraphEdge(edge), source: behind(edge.source), target: behind(edge.target) };
+    const moved = { ...link, id: linkId(link) };
+    return inside ? [edge, moved] : [moved];
+  });
+  return { nodes: [...nodes, ...left], edges: next };
+};
+
 // toast file: the graph only, imageId: null — a toast is a preset, not a picture.
 // whether to save the picture too is open — docs/backlog/2026-10-13_toast-export-with-image.md
 export const toToastFile = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string => {
