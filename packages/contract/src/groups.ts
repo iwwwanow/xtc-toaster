@@ -1,0 +1,111 @@
+import type { GraphEdge, GraphNode, GroupDefinition, GroupNode, NodeId, ToastGraph } from "./graph";
+
+// an expanded inner node's id: `<instance>/<inner>` — an issue there is shown on the instance (instanceOf)
+export const GROUP_SEPARATOR = "/";
+export const innerId = (instance: NodeId, inner: NodeId) => `${instance}${GROUP_SEPARATOR}${inner}`;
+
+const isInstance = (node: GraphNode | undefined): node is GroupNode => node?.type === "group";
+const isGroupEnd = ({ type }: GraphNode) => type === "groupInput" || type === "groupOutput";
+
+// the instance an expanded node came from, or the id itself — a root node
+export const instanceOf = (graph: ToastGraph, id: NodeId): NodeId => {
+  const instance = graph.nodes.find((node) => isInstance(node) && id.startsWith(`${node.id}${GROUP_SEPARATOR}`));
+  return instance?.id ?? id;
+};
+
+type End = { node: NodeId; handle?: string };
+
+// A plain graph out of one with groups (docs/sprints/sprint-5.spec.md, «node groups»): every instance becomes copies of
+// its definition's nodes (`<instance>/<inner>`, the instance's own param values written in), the inside's links copied;
+// a pixel link into an instance goes to what its groupInput feeds, one out of it leaves from what feeds its groupOutput
+// (groupInput → groupOutput straight — A → B); a param link out of an instance leaves the inner node's param. No groups,
+// no group nodes left. Assumes validateGroups passed — what doesn't resolve (a missing definition, …) is dropped
+export const expandGroups = (graph: ToastGraph): ToastGraph => {
+  const { groups, ...rest } = graph;
+  const instances = graph.nodes.filter(isInstance);
+  if (instances.length === 0) return groups ? rest : graph;
+
+  const definitions = new Map<string, GroupDefinition>((groups ?? []).map((group) => [group.id, group]));
+  const byId = new Map<NodeId, GraphNode>(graph.nodes.map((node) => [node.id, node]));
+  const definitionOf = (id: NodeId) => {
+    const node = byId.get(id);
+    return isInstance(node) ? definitions.get(node.data.group) : undefined;
+  };
+  const endOfType = (definition: GroupDefinition, type: "groupInput" | "groupOutput") =>
+    definition.nodes.find((node) => node.type === type)?.id;
+
+  // where a link leaving `node`'s `handle` really starts. Through an instance's groupInput → groupOutput it is what
+  // feeds the instance; bounded by `depth` — a loop of instances is validateGraph's to refuse, not to hang here
+  const sourcesOf = (node: NodeId, handle: string | undefined, depth = 0): End[] => {
+    const definition = definitionOf(node);
+    if (!definition) return [{ node, ...(handle !== undefined && { handle }) }];
+    if (depth > graph.nodes.length) return [];
+    if (handle !== undefined) {
+      const param = definition.params.find(({ id }) => id === handle);
+      return param ? [{ node: innerId(node, param.node), handle: param.param }] : [];
+    }
+    const output = endOfType(definition, "groupOutput");
+    const input = endOfType(definition, "groupInput");
+    return definition.edges
+      .filter(({ target, sourceHandle }) => target === output && sourceHandle === undefined)
+      .flatMap(({ source }) =>
+        source === input
+          ? graph.edges
+              .filter(({ target, sourceHandle }) => target === node && sourceHandle === undefined)
+              .flatMap((into) => sourcesOf(into.source, into.sourceHandle, depth + 1))
+          : [{ node: innerId(node, source) }],
+      );
+  };
+  // where a link into `node`'s `handle` really ends: an instance's — what its groupInput feeds, except its groupOutput
+  // (that pass-through is the source side's, sourcesOf)
+  const targetsOf = (node: NodeId, handle: string | undefined): End[] => {
+    const definition = definitionOf(node);
+    if (!definition) return [{ node, ...(handle !== undefined && { handle }) }];
+    const input = endOfType(definition, "groupInput");
+    const output = endOfType(definition, "groupOutput");
+    return definition.edges
+      .filter(({ source, target, sourceHandle }) => source === input && target !== output && sourceHandle === undefined)
+      .map(({ target, targetHandle }) => ({ node: innerId(node, target), ...(targetHandle !== undefined && { handle: targetHandle }) }));
+  };
+
+  const nodes: GraphNode[] = graph.nodes.filter((node) => !isInstance(node));
+  const edges: GraphEdge[] = [];
+  for (const instance of instances) {
+    const definition = definitions.get(instance.data.group);
+    if (!definition) continue;
+    const own = instance.data.params ?? {};
+    for (const node of definition.nodes) {
+      if (isGroupEnd(node)) continue;
+      const values = Object.fromEntries(
+        definition.params.flatMap(({ id, node: inner, param }) => (inner === node.id && id in own ? [[param, own[id]]] : [])),
+      );
+      nodes.push({ ...node, id: innerId(instance.id, node.id), data: { ...node.data, ...values } } as GraphNode);
+    }
+    const ends = new Set(definition.nodes.filter(isGroupEnd).map(({ id }) => id));
+    for (const edge of definition.edges) {
+      if (ends.has(edge.source) || ends.has(edge.target)) continue;
+      edges.push({ ...edge, id: innerId(instance.id, edge.id), source: innerId(instance.id, edge.source), target: innerId(instance.id, edge.target) });
+    }
+  }
+  for (const edge of graph.edges) {
+    const from = sourcesOf(edge.source, edge.sourceHandle);
+    const to = targetsOf(edge.target, edge.targetHandle);
+    const plain = !definitionOf(edge.source) && !definitionOf(edge.target);
+    if (plain) {
+      edges.push(edge);
+      continue;
+    }
+    from.forEach((source, i) =>
+      to.forEach((target, j) =>
+        edges.push({
+          id: `${edge.id}${GROUP_SEPARATOR}${i}.${j}`,
+          source: source.node,
+          target: target.node,
+          ...(source.handle !== undefined && { sourceHandle: source.handle }),
+          ...(target.handle !== undefined && { targetHandle: target.handle }),
+        }),
+      ),
+    );
+  }
+  return { ...rest, nodes, edges };
+};

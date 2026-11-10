@@ -300,3 +300,22 @@ set 09.11 while writing this, not asked — change here if wrong:
 - mp4 with no loop set — one cycle
 - `seconds` rounds to whole cycles by default; a `whole cycles` checkbox turns it off — exactly `seconds` (asked by the user 09.11)
 - a dragged key never overwrites another key of its track
+
+## node groups (v1, 11.11)
+
+What and why — `docs/backlog/2026-11-09_node-groups-variables.md` (the ui flow agreed 10.11). Here — the format and the rules; value / factor (done 11.11) are its params' natural drivers.
+
+### toast format
+- optional `groups: GroupDefinition[]` next to `nodes` / `edges` — `TOAST_GRAPH_VERSION` stays 1 (an optional field; a toast without groups is unchanged)
+- `GroupDefinition = { id, name, nodes, edges, params }`:
+  - `nodes` — ordinary nodes plus exactly one `groupInput` and one `groupOutput` (`data: {}`), no `group` (no nesting in v1), no `animation` (one per graph, it stays outside), no `input` / `output`
+  - `edges` — the inside's links; the pixel chain runs `groupInput → … → groupOutput`; param links inside (into a delay, a value, a factor) are allowed
+  - `params: { id, node, param }[]` — the exposed params: a numeric param of an inner node, shown on the instance as `id`
+- an instance is a node `{ type: "group", data: { group, params? } }`: `group` — the definition's id; `params` — this instance's own values of the exposed params (missing — the inner node's own value). Instances of one definition are linked: an edit inside changes them all
+- the instance has one pixel input, one pixel output (both unnamed, like any node) and a param output per exposed param (`sourceHandle` = the param's `id`) — wired like any param: into a track, a delay, a value, a factor
+
+### expansion — one function for server and web
+- `expandGroups(graph)` → a plain graph: every instance becomes copies of its definition's nodes with ids `<instance>/<inner>`, the instance's `params` written into their data; the inside's links copied; a pixel link into the instance goes to what `groupInput` feeds, the one out of it leaves from what feeds `groupOutput` (`groupInput → groupOutput` straight — A → B); a param link out of the instance's `id` leaves the inner node's param. `groups` and the group nodes are gone
+- the server: parse → `validateGroups` → `expandGroups` → `validateGraph` → `graphAtFrame` → render, as before; an issue inside points at `<instance>/<inner>`, the ui shows it on the instance
+- `validateGroups`: a definition has one `groupInput` / `groupOutput`, nothing forbidden inside, its own links pass `validateGraph` (with `groupInput` / `groupOutput` as the input / output); exposed params name an inner node's numeric param, ids unique; an instance names an existing definition, its `params` only exposed ones, within the bounds. Then the expanded graph passes `validateGraph` like any other
+- v1 limits: exactly one pixel in and one out, no nesting, no «make single user»

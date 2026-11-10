@@ -1,8 +1,10 @@
-import { isDriver, type AnimationNode, type DelayNode, type DriverNode, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
+import { isDriver, type AnimationNode, type DelayNode, type DriverNode, type GraphEdge, type GraphNode, type GroupDefinition, type NodeId, type ToastGraph } from "./graph";
+import { expandGroups, instanceOf } from "./groups";
 import { paramBounds } from "./params";
 
-// what is wrong and where — server sends it as render-error, web refuses the link
-export type GraphIssue = { message: string; nodeId?: NodeId };
+// what is wrong and where — server sends it as render-error, web refuses the link; `group` — inside that group's
+// definition, `nodeId` is an inner node there
+export type GraphIssue = { message: string; nodeId?: NodeId; group?: string };
 
 // The link rules zod can't check: one link per target handle, handles only on layers rows and
 // animation tracks, no cycles / self-links, nothing into the input or out of the output, exactly
@@ -40,7 +42,7 @@ const animationIssue = ({ id, data: { tracks } }: AnimationNode): GraphIssue | n
   return null;
 };
 
-export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null => {
+const validatePlain = ({ nodes, edges }: Pick<ToastGraph, "nodes" | "edges">): GraphIssue | null => {
   const byId = new Map<NodeId, GraphNode>();
   for (const node of nodes) {
     if (byId.has(node.id)) return { message: "duplicate node id", nodeId: node.id };
@@ -111,4 +113,68 @@ export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null =
     if (nodeId) return { message: "the graph loops", nodeId };
   }
   return null;
+};
+
+// what may not sit inside a group's definition: no nesting in v1, the one animation node stays outside, the toast's
+// input / output are the root's
+const NOT_IN_A_GROUP = new Set<GraphNode["type"]>(["group", "animation", "input", "output"]);
+
+// a definition's own links, judged like a graph: its groupInput / groupOutput stand for the input / output
+const definitionIssue = (definition: GroupDefinition): GraphIssue | null => {
+  const at = (issue: GraphIssue): GraphIssue => ({ ...issue, group: definition.id });
+  const count = (type: GraphNode["type"]) => definition.nodes.filter((node) => node.type === type).length;
+  if (count("groupInput") !== 1 || count("groupOutput") !== 1) return at({ message: "a group needs one group input and one group output" });
+  const misplaced = definition.nodes.find(({ type }) => NOT_IN_A_GROUP.has(type));
+  if (misplaced) return at({ message: `no ${misplaced.type} inside a group`, nodeId: misplaced.id });
+  const asGraph = definition.nodes.map((node): GraphNode => {
+    if (node.type === "groupInput") return { id: node.id, type: "input", data: { imageId: null } };
+    if (node.type === "groupOutput") return { id: node.id, type: "output", data: {} };
+    return node;
+  });
+  const issue = validatePlain({ nodes: asGraph, edges: definition.edges });
+  if (issue) return at(issue);
+  const ids = new Set<string>();
+  for (const { id, node, param } of definition.params) {
+    if (ids.has(id)) return at({ message: "duplicate group param id" });
+    ids.add(id);
+    const inner = definition.nodes.find(({ id }) => id === node);
+    if (!inner || !paramBounds(inner.type, param)) return at({ message: "a group param shows a numeric param of a node inside", nodeId: node });
+  }
+  return null;
+};
+
+// The group rules zod can't check (docs/sprints/sprint-5.spec.md, «node groups»): unique definitions, each one sound
+// (definitionIssue), group inputs / outputs only inside, an instance names an existing definition and only its params,
+// within their bounds
+const groupsIssue = ({ nodes, groups = [] }: ToastGraph): GraphIssue | null => {
+  const definitions = new Map<string, GroupDefinition>();
+  for (const definition of groups) {
+    if (definitions.has(definition.id)) return { message: "duplicate group id", group: definition.id };
+    definitions.set(definition.id, definition);
+    const issue = definitionIssue(definition);
+    if (issue) return issue;
+  }
+  for (const node of nodes) {
+    if (node.type === "groupInput" || node.type === "groupOutput") return { message: "a group input / output only inside a group", nodeId: node.id };
+    if (node.type !== "group") continue;
+    const definition = definitions.get(node.data.group);
+    if (!definition) return { message: "a group that isn't there", nodeId: node.id };
+    for (const [id, value] of Object.entries(node.data.params ?? {})) {
+      const param = definition.params.find((param) => param.id === id);
+      const inner = param && definition.nodes.find(({ id }) => id === param.node);
+      const bounds = inner && paramBounds(inner.type, param.param);
+      if (!bounds) return { message: "not a param of this group", nodeId: node.id };
+      if (value < bounds.min || value > bounds.max) return { message: `${id} out of its bounds`, nodeId: node.id };
+    }
+  }
+  return null;
+};
+
+// The link rules zod can't check, over the whole toast: the groups first (groupsIssue), then the graph with them
+// expanded (validatePlain) — an issue on an expanded node points at its instance
+export const validateGraph = (graph: ToastGraph): GraphIssue | null => {
+  const issue = groupsIssue(graph);
+  if (issue) return issue;
+  const plain = validatePlain(expandGroups(graph));
+  return plain?.nodeId ? { ...plain, nodeId: instanceOf(graph, plain.nodeId) } : plain;
 };

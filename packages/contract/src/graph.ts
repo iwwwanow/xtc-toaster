@@ -221,6 +221,19 @@ export const FactorNodeSchema = z.object({
   data: z.object({ factor: ranged(PARAMS.factor.factor) }),
 });
 
+// an instance of a group (docs/sprints/sprint-5.spec.md, «node groups»): `group` — the definition's id; `params` — this
+// instance's own values of the exposed params, a missing one — the inner node's value. Linked: an edit inside changes
+// every instance. One pixel in, one out, a param output per exposed param
+export const GroupNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("group"),
+  data: z.object({ group: z.string().min(1), params: z.record(z.string().min(1), z.number()).optional() }),
+});
+
+// inside a group's definition only: where the instance's pixel input comes in, where its output leaves
+export const GroupInputNodeSchema = z.object({ id: NodeIdSchema, type: z.literal("groupInput"), data: z.object({}) });
+export const GroupOutputNodeSchema = z.object({ id: NodeIdSchema, type: z.literal("groupOutput"), data: z.object({}) });
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -250,6 +263,9 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   DelayNodeSchema,
   ValueNodeSchema,
   FactorNodeSchema,
+  GroupNodeSchema,
+  GroupInputNodeSchema,
+  GroupOutputNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -285,6 +301,7 @@ export type ValueNode = z.infer<typeof ValueNodeSchema>;
 export type FactorNode = z.infer<typeof FactorNodeSchema>;
 // the nodes that set the params wired into them — a value (its number), a factor (a share of the param's range)
 export type DriverNode = ValueNode | FactorNode;
+export type GroupNode = z.infer<typeof GroupNodeSchema>;
 export const isDriver = (node: GraphNode | undefined): node is DriverNode => node?.type === "value" || node?.type === "factor";
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
@@ -301,6 +318,21 @@ export const GraphEdgeSchema = z.object({
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
 
+// an exposed param: a numeric param of an inner node, shown on the instance as `id`
+export const GroupParamSchema = z.object({ id: z.string().min(1), node: NodeIdSchema, param: z.string().min(1) });
+
+// a group's definition: its inside — ordinary nodes plus one groupInput and one groupOutput — and the params it shows
+// on its instances. The rules zod can't check — validateGroups
+export const GroupDefinitionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(LAYER_NAME_MAX),
+  nodes: z.array(GraphNodeSchema),
+  edges: z.array(GraphEdgeSchema),
+  params: z.array(GroupParamSchema),
+});
+export type GroupDefinition = z.infer<typeof GroupDefinitionSchema>;
+export type GroupParam = z.infer<typeof GroupParamSchema>;
+
 // also the toast file format (presets, export / import). The link rules are validateGraph, called apart —
 // TODO: into a superRefine here, docs/backlog/2026-11-01_validate-graph-into-zod.md
 export const ToastGraphSchema = z.object({
@@ -308,6 +340,8 @@ export const ToastGraphSchema = z.object({
   nodes: z.array(GraphNodeSchema),
   edges: z.array(GraphEdgeSchema),
   export: AnimationExportSchema.optional(),
+  // node groups' definitions; optional — a toast without groups is unchanged (TOAST_GRAPH_VERSION stays 1)
+  groups: z.array(GroupDefinitionSchema).optional(),
 });
 export type ToastGraph = z.infer<typeof ToastGraphSchema>;
 

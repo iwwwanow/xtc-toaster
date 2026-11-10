@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { TOAST_GRAPH_VERSION, graphAtFrame, type BlendMode, type GraphEdge, type GraphNode } from "@xtc-toaster/contract";
+import { TOAST_GRAPH_VERSION, graphAtFrame, type BlendMode, type GraphEdge, type GraphNode, type GroupDefinition } from "@xtc-toaster/contract";
 import { imageFileToRawData } from "@xtc-toaster/lib";
 import { GraphError, RENDER_MAX_LAYERS_DEFAULT, focalLengthPx, percentPx, cornersQuad, runGraph } from "./run-graph";
 
@@ -217,6 +217,34 @@ describe("runGraph: the animation node", () => {
     ];
     const frame = graphAtFrame(graph([input, opacity("op", 1), delay, animation, output], [...chain, ...links]), 8);
     const { data } = await runGraph(frame, loadImage);
+    const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
+    expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
+  });
+
+  test("a group instance renders like its inside wired in, with the instance's own param value", async () => {
+    const group: GroupDefinition = {
+      id: "fade",
+      name: "fade",
+      nodes: [
+        { id: "gi", type: "groupInput", data: {} },
+        opacity("op", 1),
+        { id: "go", type: "groupOutput", data: {} },
+      ],
+      edges: [
+        { id: "a", source: "gi", target: "op" },
+        { id: "b", source: "op", target: "go" },
+      ],
+      params: [{ id: "o", node: "op", param: "opacity" }],
+    };
+    const instance: GraphNode = { id: "g", type: "group", data: { group: "fade", params: { o: 0.5 } } };
+    const toast = {
+      ...graph([input, instance, output], [
+        { id: "in-g", source: "in", target: "g" },
+        { id: "g-out", source: "g", target: "out" },
+      ]),
+      groups: [group],
+    };
+    const { data } = await runGraph(toast, loadImage);
     const { data: expected } = await render([input, opacity("op", 0.5), output], chain);
     expect(Buffer.from(data).equals(Buffer.from(expected))).toBe(true);
   });
