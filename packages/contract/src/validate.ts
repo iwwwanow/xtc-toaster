@@ -1,4 +1,4 @@
-import type { AnimationNode, DelayNode, GraphEdge, GraphNode, NodeId, ToastGraph, ValueNode } from "./graph";
+import { isDriver, type AnimationNode, type DelayNode, type DriverNode, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
 import { paramBounds } from "./params";
 
 // what is wrong and where — server sends it as render-error, web refuses the link
@@ -12,18 +12,18 @@ export type GraphIssue = { message: string; nodeId?: NodeId };
 // TODO: call it from ToastGraphSchema.superRefine — one entry point, fromToastFile's own checks go; stays a
 // plain function for web canConnect, nodeId must reach the issue — docs/backlog/2026-11-01_validate-graph-into-zod.md
 // a param link: from a numeric param of the source's type or out of a delay row, into a track or a delay row; into a
-// value — from a numeric param only (a delay shifts a track's time, a value has none), its one unnamed input
+// value or a factor — from a numeric param only (a delay shifts a track's time, they have none), their one unnamed input
 const paramLinkIssue = (
   from: GraphNode,
-  to: AnimationNode | DelayNode | ValueNode,
+  to: AnimationNode | DelayNode | DriverNode,
   { sourceHandle, targetHandle }: GraphEdge,
 ): GraphIssue | null => {
   if (sourceHandle === undefined) return { message: "link a param", nodeId: to.id };
   if (from.type === "delay") {
-    if (to.type === "value") return { message: "a delay links only into a track or a delay", nodeId: from.id };
+    if (isDriver(to)) return { message: "a delay links only into a track or a delay", nodeId: from.id };
     if (!from.data.rows.some(({ id }) => id === sourceHandle)) return { message: "link out of a delay row", nodeId: from.id };
   } else if (!paramBounds(from.type, sourceHandle)) return { message: "only a numeric param can be animated", nodeId: from.id };
-  if (to.type === "value") return targetHandle === undefined ? null : { message: "a value has one input", nodeId: to.id };
+  if (isDriver(to)) return targetHandle === undefined ? null : { message: `a ${to.type} has one input`, nodeId: to.id };
   if (to.type === "delay")
     return to.data.rows.some(({ id }) => id === targetHandle) ? null : { message: "link a delay row", nodeId: to.id };
   const track = to.data.tracks.find(({ id }) => id === targetHandle);
@@ -70,7 +70,7 @@ export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null =
     if (from.type === "output") return { message: "nothing links out of the output", nodeId: source };
     if (from.type === "animation") return { message: "nothing links out of the animation node", nodeId: source };
 
-    if (to.type === "animation" || to.type === "delay" || to.type === "value") {
+    if (to.type === "animation" || to.type === "delay" || isDriver(to)) {
       const issue = paramLinkIssue(from, to, link);
       if (issue) return issue;
       // a param (or a delay row) feeds one track or one value: a second would fight it for the value
@@ -78,17 +78,17 @@ export const validateGraph = ({ nodes, edges }: ToastGraph): GraphIssue | null =
       if (animated.has(param)) return { message: "one track per param", nodeId: target };
       animated.add(param);
     } else if (from.type === "delay") return { message: "a delay links only into a track or a delay", nodeId: source };
-    else if (sourceHandle !== undefined) return { message: "a param links only into a track, a delay or a value", nodeId: source };
-    else if (from.type === "value") return { message: "a value links only its param", nodeId: source };
+    else if (sourceHandle !== undefined) return { message: "a param links only into a track, a delay, a value or a factor", nodeId: source };
+    else if (isDriver(from)) return { message: `a ${from.type} links only its param`, nodeId: source };
 
     if (to.type === "layers") {
       if (!to.data.layers.some(({ id }) => id === targetHandle)) return { message: "link a layer row", nodeId: target };
-    } else if (to.type !== "animation" && to.type !== "delay" && to.type !== "value" && targetHandle !== undefined)
+    } else if (to.type !== "animation" && to.type !== "delay" && !isDriver(to) && targetHandle !== undefined)
       return { message: "only layers rows and animation tracks take a handle", nodeId: target };
 
-    // a node's input, each layers row and each track take one link; a value's input — any number of params
+    // a node's input, each layers row and each track take one link; a value's or a factor's — any number of params
     const handle = `${target}\0${targetHandle ?? ""}`;
-    if (to.type !== "value" && taken.has(handle)) return { message: "one link per input", nodeId: target };
+    if (!isDriver(to) && taken.has(handle)) return { message: "one link per input", nodeId: target };
     taken.add(handle);
     next.set(source, [...(next.get(source) ?? []), target]);
   }

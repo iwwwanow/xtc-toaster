@@ -213,6 +213,14 @@ export const ValueNodeSchema = z.object({
   data: z.object({ value: ranged(PARAMS.value.value) }),
 });
 
+// a share of the range for the params wired into it: param → factor, the param takes min + factor · (max − min) of its
+// own bounds (graphAtFrame). Wired like a value: many params into its one input, its own `factor` is a param
+export const FactorNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("factor"),
+  data: z.object({ factor: ranged(PARAMS.factor.factor) }),
+});
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -241,6 +249,7 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   AnimationNodeSchema,
   DelayNodeSchema,
   ValueNodeSchema,
+  FactorNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -273,6 +282,10 @@ export type AnimationExport = z.infer<typeof AnimationExportSchema>;
 export type DelayNode = z.infer<typeof DelayNodeSchema>;
 export type DelayRow = z.infer<typeof DelayRowSchema>;
 export type ValueNode = z.infer<typeof ValueNodeSchema>;
+export type FactorNode = z.infer<typeof FactorNodeSchema>;
+// the nodes that set the params wired into them — a value (its number), a factor (a share of the param's range)
+export type DriverNode = ValueNode | FactorNode;
+export const isDriver = (node: GraphNode | undefined): node is DriverNode => node?.type === "value" || node?.type === "factor";
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({

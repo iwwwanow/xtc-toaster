@@ -262,3 +262,55 @@ describe("graphAtFrame with a value", () => {
     expect(graphAtFrame(graph, 0)).toBe(graph);
   });
 });
+
+describe("graphAtFrame with a factor", () => {
+  // rotate.angle (−180…180), blur.radius (0…20) and opacity (0…1) into one factor
+  const factored = (factor = 0.5): ToastGraph => ({
+    version: TOAST_GRAPH_VERSION,
+    nodes: [
+      { id: "rt", type: "rotate", data: { angle: 15 } },
+      { id: "bl", type: "blur", data: { radius: 4 } },
+      { id: "op", type: "opacity", data: { opacity: 0.5 } },
+      { id: "f", type: "factor", data: { factor } },
+    ],
+    edges: [
+      { id: "1", source: "rt", sourceHandle: "angle", target: "f" },
+      { id: "2", source: "bl", sourceHandle: "radius", target: "f" },
+      { id: "3", source: "op", sourceHandle: "opacity", target: "f" },
+    ],
+  });
+  const data = (graph: ToastGraph, id: string) => graph.nodes.find((node) => node.id === id)!.data;
+
+  test("every param wired into it takes that share of its own range", () => {
+    const graph = graphAtFrame(factored(0.25), 0);
+    expect(data(graph, "rt")).toEqual({ angle: -90 });
+    expect(data(graph, "bl")).toEqual({ radius: 5 });
+    expect(data(graph, "op")).toEqual({ opacity: 0.25 });
+  });
+
+  test("0 and 1 are the ends of each range", () => {
+    expect(data(graphAtFrame(factored(0), 0), "rt")).toEqual({ angle: -180 });
+    expect(data(graphAtFrame(factored(1), 0), "bl")).toEqual({ radius: 20 });
+  });
+
+  test("an animated factor moves them all", () => {
+    const graph = factored(0);
+    graph.nodes.push({ id: "anim", type: "animation", data: { fps: 24, frames: 20, tracks: [{ id: "t", keys: keys([0, 0], [10, 1]) }] } });
+    graph.edges.push({ id: "4", source: "f", sourceHandle: "factor", target: "anim", targetHandle: "t" });
+    expect(data(graphAtFrame(graph, 5), "bl")).toEqual({ radius: 10 });
+    expect(data(graphAtFrame(graph, 5), "op")).toEqual({ opacity: 0.5 });
+  });
+
+  test("a value wired into a factor gives it its number, clamped to 0…1; a factor into a value — a share of ±1000", () => {
+    const graph = factored(0.5);
+    graph.nodes.push({ id: "v", type: "value", data: { value: 0.75 } });
+    graph.edges.push({ id: "4", source: "f", sourceHandle: "factor", target: "v" });
+    expect(data(graphAtFrame(graph, 0), "op")).toEqual({ opacity: 0.75 });
+    const back = factored(0.5);
+    back.nodes.push({ id: "v", type: "value", data: { value: 0 } }, { id: "mv", type: "move", data: { x: 0, y: 0 } });
+    back.edges.push({ id: "4", source: "v", sourceHandle: "value", target: "f" }, { id: "5", source: "mv", sourceHandle: "x", target: "v" });
+    // the value's own param takes the half of −1000…1000 — 0; move.x takes the value's 0
+    expect(data(graphAtFrame(back, 0), "mv")).toEqual({ x: 0, y: 0 });
+    expect(data(graphAtFrame(back, 0), "v")).toEqual({ value: 0 });
+  });
+});

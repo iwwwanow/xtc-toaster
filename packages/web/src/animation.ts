@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
 import { NODE_LABELS, type FlowNode, type MenuNodeType } from "./graph";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
@@ -249,12 +249,12 @@ export const clampPlayhead = (frame: number, frames: number): number => Math.max
 // play: the frame after this one, the last goes back to the first
 export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
 
-// what one frame's render needs: no animation node, no delays, no value nodes, no param links. Fps, keys elsewhere,
+// what one frame's render needs: no animation node, no delays, no value / factor nodes, no param links. Fps, keys elsewhere,
 // track order, a delay's shift or a value's number once applied don't touch the picture, so they don't change this
 // graph and don't start a render
 export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGraph => ({
   ...graph,
-  nodes: graph.nodes.filter(({ type }) => type !== "animation" && type !== "delay" && type !== "value"),
+  nodes: graph.nodes.filter((node) => node.type !== "animation" && node.type !== "delay" && !isDriver(node)),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),
 });
 

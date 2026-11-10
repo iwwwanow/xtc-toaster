@@ -46,6 +46,7 @@ export const NODE_LABELS = {
   animation: "animation",
   delay: "delay",
   value: "value",
+  factor: "factor",
 } as const satisfies Record<MenuNodeType, string>;
 
 // one phrase «what the node does» — a tooltip on the menu item
@@ -70,6 +71,7 @@ export const NODE_HINTS = {
   animation: "changes numeric params from frame to frame, one per graph",
   delay: "plays the params wired through it some frames later",
   value: "one number for every param wired into it",
+  factor: "one share 0–1 of each wired param's own range",
 } as const satisfies Record<MenuNodeType, string>;
 
 // the left menu, a rule between groups; every menu type in exactly one (graph.test.ts)
@@ -80,8 +82,8 @@ export const NODE_CATEGORIES = [
   { name: "move", types: ["move", "rotate", "scale", "skew", "turn3d", "corners", "matrix"] },
   { name: "layers", types: ["layers"] },
   { name: "animation", types: ["animation", "delay"] },
-  // params wired into it take its number; `factor` (a share of each range) comes next to it
-  { name: "value", types: ["value"] },
+  // the params wired into them take a value's number or a factor's share of their range
+  { name: "value", types: ["value", "factor"] },
 ] as const satisfies readonly { name: string; types: readonly MenuNodeType[] }[];
 export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE_TYPES as string[]).includes(type);
 
@@ -207,7 +209,7 @@ export type Link = Pick<Edge, "source" | "sourceHandle" | "target" | "targetHand
 export const withoutTaken = (edges: Edge[], { source, sourceHandle, target, targetHandle }: Link, keep?: string): Edge[] =>
   edges.filter((edge) => {
     if (edge.id === keep) return true;
-    // a param into an unnamed input is a param into a value — its one input takes any number of them
+    // a param into an unnamed input is a param into a value or a factor — its one input takes any number of them
     const shared = sourceHandle && !targetHandle;
     if (!shared && edge.target === target && (edge.targetHandle ?? null) === (targetHandle ?? null)) return false;
     return !(sourceHandle && edge.source === source && edge.sourceHandle === sourceHandle);

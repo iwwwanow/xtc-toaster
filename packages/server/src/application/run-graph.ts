@@ -225,9 +225,10 @@ export const runGraph = async (
     if (node.type === "layers") return compose(node, links);
 
     const flow = pull(links[0]!.source);
-    // the animation node, a delay and a value are never on the way (no pixel links out of them), this only narrows
-    // the type — a value's number is already in the params (graphAtFrame)
-    if (node.type === "output" || node.type === "animation" || node.type === "delay" || node.type === "value") return flow;
+    // the animation node, a delay, a value and a factor are never on the way (no pixel links out of them), this only
+    // narrows the type — what a value or a factor gives is already in the params (graphAtFrame)
+    if (node.type === "output" || node.type === "animation" || node.type === "delay" || node.type === "value" || node.type === "factor")
+      return flow;
     const layer = new Composition(width, height).createLayerFromPixelData(flow.data);
     try {
       const opacity = applyNode({ node, layer, width, height }, flow.opacity);

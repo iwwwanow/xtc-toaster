@@ -665,8 +665,20 @@ describe("param links into a value", () => {
     expect(canConnect(nodes, edges, param("v", "value", "v2"))).toBe(true);
   });
 
-  test("a value is in the menu, in a group of its own", () => {
-    expect(NODE_CATEGORIES.find(({ name }) => name === "value")?.types).toEqual(["value"]);
+  test("value and factor are in the menu, in a group of their own", () => {
+    expect(NODE_CATEGORIES.find(({ name }) => name === "value")?.types).toEqual(["value", "factor"]);
     expect(createNode("value", { x: 0, y: 0 }).data).toEqual({ value: 0 });
+    expect(createNode("factor", { x: 0, y: 0 }).data).toEqual({ factor: 0.5 });
+  });
+
+  test("a factor takes params the same way: many in, no pixels", () => {
+    const { nodes, edges } = flow();
+    const factor = createNode("factor", { x: 0, y: 0 });
+    const all = [...nodes, factor];
+    // move.x leaves the value for the factor — one place per param
+    const joined = [...edges.filter(({ id }) => id !== "x-v"), { id: "x-f", source: "mv", sourceHandle: "x", target: factor.id }];
+    expect(canConnect(all, joined, param("rt", "angle", factor.id))).toBe(true);
+    expect(withoutTaken(joined, param("rt", "angle", factor.id)).map(({ id }) => id)).toContain("x-f");
+    expect(canConnect(all, edges, { source: "mv", target: factor.id, targetHandle: null })).toBe(false);
   });
 });

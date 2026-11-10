@@ -71,6 +71,11 @@ export const PARAMS = {
   value: {
     value: { min: -1000, max: 1000, initial: 0 },
   },
+  // a share of each wired param's own range: the param takes min + factor · (max − min) — params of any units move
+  // together (opacity and blur grow alike). Its own param animates like any other
+  factor: {
+    factor: { min: 0, max: 1, initial: 0.5 },
+  },
 } as const satisfies Record<string, Record<string, ParamBounds>>;
 
 // the bounds of a node type's numeric param; null — not one (a color, a matrix, an unknown name)

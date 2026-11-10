@@ -236,6 +236,14 @@ describe("validateGraph, a value", () => {
     expect(validateGraph(graph)).toMatchObject({ nodeId });
   });
 
+  test("a factor is wired the same way", () => {
+    const factor: GraphNode = { id: "f", type: "factor", data: { factor: 0.5 } };
+    expect(validateGraph(g([link("mv", "x", "f"), link("rt", "angle", "f"), link("f", "factor", "v")], [factor]))).toBeNull();
+    expect(validateGraph(g([link("in", undefined, "f")], [factor]))).toMatchObject({ nodeId: "f" });
+    expect(validateGraph(g([link("f", undefined, "out")], [factor]))).toMatchObject({ nodeId: "f" });
+    expect(validateGraph(g([link("mv", "x", "f"), link("mv", "x", "v")], [factor]))).toMatchObject({ nodeId: "v" });
+  });
+
   test("its number stays within −1000…1000", () => {
     const file = (number: number) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ ...value(), data: { value: number } }], edges: [] });
     expect(() => parseToastGraph(file(-12.5))).not.toThrow();

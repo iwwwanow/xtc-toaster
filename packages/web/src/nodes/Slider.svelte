@@ -19,10 +19,10 @@
   };
   let { label, hint, bounds, step, value, onchange, node, param }: Props = $props();
 
-  // a param with keys shows the value at the playhead and is edited in the animation node; one wired into a value
-  // node shows its number and is edited there
+  // a param with keys shows the value at the playhead and is edited in the animation node; one wired into a value or
+  // a factor node shows what it gives and is edited there
   let animated = $derived(node !== undefined && param !== undefined ? session.animatedValue(node, param) : null);
-  let byValue = $derived(node !== undefined && param !== undefined && session.valueDriven(node, param));
+  let driver = $derived(node !== undefined && param !== undefined ? session.driverOf(node, param) : null);
   let locked = $derived(session.locked || animated !== null);
 
   // shown while dragging, ahead of the graph; follows the prop whenever it changes
@@ -111,7 +111,7 @@
       class:drag-field_locked={locked}
       title={animated === null
         ? (hint ?? label)
-        : `${hint ?? label} — ${byValue ? "set by a value node" : "animated: the keys are in the animation node"}`}
+        : `${hint ?? label} — ${driver ? `set by a ${driver} node` : "animated: the keys are in the animation node"}`}
       role="slider"
       tabindex={locked ? -1 : 0}
       aria-label={label}

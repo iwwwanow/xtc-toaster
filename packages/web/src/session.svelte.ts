@@ -2,6 +2,7 @@ import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
   drivenValues,
   graphAtFrame,
+  paramBounds,
   UPLOAD_MAX_MEGAPIXELS,
   type AnimationExport,
   type AnimationFormat,
@@ -274,9 +275,11 @@ class Session {
     return this.driven.get(nodeId)?.[param] ?? null;
   }
 
-  // a param wired into a value node: the value sets it, not a track
-  valueDriven(nodeId: string, param: string): boolean {
-    return this.edges.some(({ source, sourceHandle, target }) => source === nodeId && sourceHandle === param && this.nodes.find(({ id }) => id === target)?.type === "value");
+  // the value or factor node a param is wired into — it sets the param, not a track; null — none
+  driverOf(nodeId: string, param: string): "value" | "factor" | null {
+    const link = this.edges.find(({ source, sourceHandle }) => source === nodeId && sourceHandle === param);
+    const type = link && this.nodes.find(({ id }) => id === link.target)?.type;
+    return type === "value" || type === "factor" ? type : null;
   }
 
   // a moved playhead is a new frame → App sends a new render, if the picture changes on it
@@ -340,14 +343,17 @@ class Session {
     if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
   }
 
-  // a param wired into a value nothing is wired into yet: the value takes the param's number — the picture doesn't jump
-  // (like a track's first key)
+  // a param wired into a value or a factor nothing is wired into yet: it takes the param's number (a factor — where it
+  // sits in the param's range) — the picture doesn't jump (like a track's first key)
   seedValue({ source, sourceHandle, target }: Link) {
     const node = this.nodes.find(({ id }) => id === target);
-    if (node?.type !== "value" || !sourceHandle) return;
+    if ((node?.type !== "value" && node?.type !== "factor") || !sourceHandle) return;
     if (this.edges.some((edge) => edge.target === target && edge.sourceHandle)) return;
     const value = paramValue(this.nodes, source, sourceHandle);
-    if (value !== null) this.setNodeData(target, { value });
+    if (value === null) return;
+    if (node.type === "value") return this.setNodeData(target, { value });
+    const bounds = paramBounds(this.nodes.find(({ id }) => id === source)?.type ?? "", sourceHandle);
+    if (bounds) this.setNodeData(target, { factor: (value - bounds.min) / (bounds.max - bounds.min) });
   }
 
   // A param's wire dropped on `+ track` (09.11): a new track on top, linked to that param, with its first key.

@@ -20,6 +20,7 @@ import SelectVividNode from "./SelectVividNode.svelte";
 import SkewNode from "./SkewNode.svelte";
 import TintNode from "./TintNode.svelte";
 import ValueNode from "./ValueNode.svelte";
+import FactorNode from "./FactorNode.svelte";
 import Turn3dNode from "./Turn3dNode.svelte";
 
 // one component per contract node type
@@ -45,5 +46,6 @@ export const nodeTypes = {
   animation: AnimationNode,
   delay: DelayNode,
   value: ValueNode,
+  factor: FactorNode,
   output: OutputNode,
 } satisfies NodeTypes;
