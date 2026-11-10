@@ -9,7 +9,7 @@ Open in dev: `http://localhost:5173/?toast=<name>` (file name without `.json`, o
 | toast | expect |
 |---|---|
 | `all-nodes` | input → blur → rotate → scale → move → channel → output; the selects unlinked below |
-| `more-nodes` | input → skew → corners → matrix → tint → opacity → output; fill unlinked |
+| `more-nodes` | input → skew → corners → matrix → tint → opacity → output; fill unlinked — dragged onto a link it highlights it, let go it goes in (A → fill → B), one Ctrl+Z takes it back out and where it was |
 | `fork-3` | input → 3 chains → layers node (normal / add / normal, opacity in the middle chain) → output: poppies over a green add over color noise |
 | `fork-fill` | fill and tint write in place — the other branches get the untouched picture: sharp red poppies over a half-transparent blue tint over gray. Poppies gone or tinted → a buffer leaked between branches |
 | `limit-4` | 4 rows, one quarter each — a 2×2 collage (at the `RENDER_MAX_LAYERS` fallback of 4) |

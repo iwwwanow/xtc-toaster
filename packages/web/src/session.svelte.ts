@@ -17,6 +17,7 @@ import {
   createNode,
   emptyFlow,
   fromToastFile,
+  insertOnLink,
   toFlow,
   toGraph,
   toToastFile,
@@ -68,6 +69,12 @@ class Session {
   private history = new History(toSaved(initial.nodes, initial.edges, initial.export));
   canUndo = $state(false);
   canRedo = $state(false);
+
+  // a node is being dragged: the drag and what its drop does (going into a link) are one step, however long it
+  // pauses on the way — App records no step until it's let go
+  dragging = $state(false);
+  // the link the dragged node would go into if let go now — LinkEdge highlights it
+  dropLink = $state<string | null>(null);
 
   // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
@@ -206,6 +213,17 @@ class Session {
   addNode(type: MenuNodeType, position: XYPosition) {
     if (type === "animation" && this.animationNode) return; // one per graph (contract)
     this.nodes = [...this.nodes, createNode(type, position)];
+  }
+
+  // a node dragged onto a link and let go goes into it: A → node → B
+  insertOnLink(nodeId: string, edgeId: string) {
+    const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId);
+    if (edges) this.edges = edges;
+  }
+
+  // a link the node may go into — asked on every move of a drag
+  canInsertOnLink(nodeId: string, edgeId: string) {
+    return insertOnLink(this.nodes, this.edges, nodeId, edgeId) !== null;
   }
 
   // a param change is a graph change → App sends a new render

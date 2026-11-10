@@ -207,6 +207,69 @@ export const withoutTaken = (edges: Edge[], { source, sourceHandle, target, targ
     return !(sourceHandle && edge.source === source && edge.sourceHandle === sourceHandle);
   });
 
+// xyflow's own id for a drawn link
+const linkId = ({ source, sourceHandle, target, targetHandle }: Link) =>
+  `xy-edge__${source}${sourceHandle ?? ""}-${target}${targetHandle ?? ""}`;
+
+// A node dropped onto a pixel link A → B goes into it: A → node → B, like blender's auto-attach (28.10). Only a node
+// with no pixel link yet and with a pixel input and output — not input / output, not animation / delay (params only);
+// a layers node takes the link into its top row. The new graph passes validateGraph like any drawn link.
+// The edges with the node in the link, or null — it doesn't go there
+export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, edgeId: string): Edge[] | null => {
+  const node = nodes.find(({ id }) => id === nodeId);
+  const link = edges.find(({ id }) => id === edgeId);
+  if (!node || !link || link.sourceHandle || link.source === nodeId || link.target === nodeId) return null;
+  if (isFixed(node.type) || node.type === "animation" || node.type === "delay") return null;
+  if (edges.some(({ source, sourceHandle, target }) => (source === nodeId && !sourceHandle) || target === nodeId)) return null;
+  const into = node.type === "layers" ? node.data.layers[0]?.id : undefined;
+  if (node.type === "layers" && into === undefined) return null;
+  const before: Link = { source: link.source, target: nodeId, ...(into && { targetHandle: into }) };
+  const after: Link = { source: nodeId, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) };
+  const next = [...edges.filter(({ id }) => id !== edgeId), { id: linkId(before), ...before }, { id: linkId(after), ...after }];
+  const issue = validateGraph({
+    version: TOAST_GRAPH_VERSION,
+    nodes: nodes.map(({ id, type, data }) => ({ id, type, data }) as GraphNode),
+    edges: next.map(toGraphEdge),
+  });
+  return issue ? null : next;
+};
+
+type Point = { x: number; y: number };
+export type Rect = Point & { width: number; height: number };
+
+// a link's drawn path as xyflow's getBezierPath writes it: «M sx,sy C c1x,c1y c2x,c2y tx,ty»
+const parseBezier = (d: string): Point[] | null => {
+  const numbers = d.match(/-?\d*\.?\d+(?:e-?\d+)?/gi)?.map(Number);
+  if (!d.trimStart().startsWith("M") || !d.includes("C") || numbers?.length !== 8) return null;
+  return [0, 2, 4, 6].map((i) => ({ x: numbers[i]!, y: numbers[i + 1]! }));
+};
+
+const BEZIER_SAMPLES = 64;
+
+// the links whose drawn path crosses the rect (a dragged node's box, flow coordinates), the one passing nearest its
+// center first. Paths are the `d` of the drawn links — what the user sees is what's hit
+export const linksUnder = (rect: Rect, paths: readonly { id: string; d: string }[]): string[] => {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const hits: { id: string; distance: number }[] = [];
+  for (const { id, d } of paths) {
+    const curve = parseBezier(d);
+    if (!curve) continue;
+    const [p0, p1, p2, p3] = curve as [Point, Point, Point, Point];
+    let distance = Infinity;
+    for (let i = 0; i <= BEZIER_SAMPLES; i++) {
+      const t = i / BEZIER_SAMPLES;
+      const u = 1 - t;
+      const [a, b, c, e] = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      const x = a * p0.x + b * p1.x + c * p2.x + e * p3.x;
+      const y = a * p0.y + b * p1.y + c * p2.y + e * p3.y;
+      if (x < rect.x || x > rect.x + rect.width || y < rect.y || y > rect.y + rect.height) continue;
+      distance = Math.min(distance, Math.hypot(x - center.x, y - center.y));
+    }
+    if (distance < Infinity) hits.push({ id, distance });
+  }
+  return hits.toSorted((a, b) => a.distance - b.distance).map(({ id }) => id);
+};
+
 // the same rules the server applies (contract validateGraph), on the graph as it would be with the link
 // in place of the one it replaces; no zod parse — runs on every handle the dragged link passes
 export const canConnect = (nodes: FlowNode[], edges: Edge[], link: Link): boolean =>

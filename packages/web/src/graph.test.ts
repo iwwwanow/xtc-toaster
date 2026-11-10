@@ -8,6 +8,8 @@ import {
   createNode,
   emptyFlow,
   fromToastFile,
+  insertOnLink,
+  linksUnder,
   MENU_NODE_TYPES,
   NODE_CATEGORIES,
   toFlow,
@@ -349,5 +351,93 @@ describe("param links", () => {
     const { edges } = toFlow(animated());
     const link = { source: "m", sourceHandle: "y", target: "a", targetHandle: "t2" };
     expect(withoutTaken(edges, link).map(({ id }) => id)).toEqual(["1", "2", "3"]);
+  });
+});
+
+describe("insertOnLink", () => {
+  // in → out, a free blur below; ids as the tests name them
+  const chain = (...extra: GraphNode[]) => {
+    const { nodes, edges } = toFlow({
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId: null } },
+        { id: "out", type: "output", data: {} },
+        { id: "bl", type: "blur", data: { radius: 4 } },
+        ...extra,
+      ] as GraphNode[],
+      edges: [{ id: "in-out", source: "in", target: "out" }],
+    });
+    return { nodes, edges };
+  };
+  const links = (edges: Edge[] | null) =>
+    edges?.map(({ source, target, targetHandle }) => `${source}>${target}${targetHandle ? `:${targetHandle}` : ""}`).sort();
+
+  test("a free node goes into the link: A → node → B", () => {
+    const { nodes, edges } = chain();
+    expect(links(insertOnLink(nodes, edges, "bl", "in-out"))).toEqual(["bl>out", "in>bl"]);
+  });
+
+  test("the link into a layers row keeps its row", () => {
+    const { nodes, edges } = toFlow(fanOut());
+    const free = createNode("blur", { x: 0, y: 0 });
+    const result = insertOnLink([...nodes, free], edges, free.id, "nz-cmp");
+    expect(links(result)).toContain(`${free.id}>cmp:top`);
+    expect(links(result)).toContain(`nz>${free.id}`);
+    expect(links(result)).not.toContain("nz>cmp:top");
+  });
+
+  test("a layers node takes the link into its top row", () => {
+    const { nodes, edges } = chain({ id: "ly", type: "layers", data: { layers: [{ id: "a", blendMode: "normal" }, { id: "b", blendMode: "add" }] } });
+    expect(links(insertOnLink(nodes, edges, "ly", "in-out"))).toEqual(["in>ly:a", "ly>out"]);
+  });
+
+  test("a node with a pixel link stays out", () => {
+    const { nodes, edges } = chain();
+    const linked = [...edges, { id: "in-bl", source: "in", target: "bl" }];
+    expect(insertOnLink(nodes, linked, "bl", "in-out")).toBeNull();
+  });
+
+  test("a param link doesn't count — an animated node goes in", () => {
+    const { nodes, edges } = chain({ id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } } as GraphNode);
+    const animated = [...edges, { id: "bl-an", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" }];
+    expect(links(insertOnLink(nodes, animated, "bl", "in-out"))).toEqual(["bl>an:t", "bl>out", "in>bl"]);
+  });
+
+  test("input, output, animation and delay never go in; a param link takes nothing", () => {
+    const { nodes, edges } = chain(
+      { id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } } as GraphNode,
+      { id: "dl", type: "delay", data: structuredClone(INITIAL_DATA.delay) } as unknown as GraphNode,
+    );
+    for (const id of ["an", "dl"]) expect(insertOnLink(nodes, edges, id, "in-out")).toBeNull();
+    const param = [...edges, { id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" }];
+    const move = createNode("move", { x: 0, y: 0 });
+    expect(insertOnLink([...nodes, move], param, move.id, "p")).toBeNull();
+    expect(insertOnLink(nodes, edges, "bl", "missing")).toBeNull();
+  });
+
+  test("a layers node with no rows stays out", () => {
+    const { nodes, edges } = chain({ id: "ly", type: "layers", data: { layers: [] } });
+    expect(insertOnLink(nodes, edges, "ly", "in-out")).toBeNull();
+  });
+});
+
+describe("linksUnder", () => {
+  const rect = { x: 100, y: 100, width: 100, height: 60 };
+  // a straight wire at y, a bezier as getBezierPath writes it
+  const wire = (id: string, y: number) => ({ id, d: `M0,${y} C150,${y} 150,${y} 300,${y}` });
+
+  test("the links crossing the box, the one nearest its center first", () => {
+    expect(linksUnder(rect, [wire("far", 105), wire("near", 128), wire("off", 300)])).toEqual(["near", "far"]);
+  });
+
+  test("the curve counts, not the straight line between its ends", () => {
+    // (0, 0) → (300, 0) bowed down: y ≈ 130–150 over the box's x — the chord at y 0 would cross a box at y 0–60
+    const bowed = [{ id: "bowed", d: "M0,0 C100,200 200,200 300,0" }];
+    expect(linksUnder({ ...rect, y: 0 }, bowed)).toEqual([]);
+    expect(linksUnder({ ...rect, y: 120 }, bowed)).toEqual(["bowed"]);
+  });
+
+  test("a path it can't read is skipped", () => {
+    expect(linksUnder(rect, [{ id: "line", d: "M0,130 L300,130" }])).toEqual([]);
   });
 });

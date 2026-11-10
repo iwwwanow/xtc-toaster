@@ -15,7 +15,7 @@
   import { tick, untrack } from "svelte";
   import { arrange, type ArrangeHandle, type ArrangeNode } from "./arrange";
   import LinkEdge from "./edges/LinkEdge.svelte";
-  import { isMenuNodeType, NODE_TYPE_MIME, type FlowNode } from "./graph";
+  import { isMenuNodeType, linksUnder, NODE_TYPE_MIME, type FlowNode } from "./graph";
   import { nodeTypes } from "./nodes";
   import ActionsPanel from "./panels/ActionsPanel.svelte";
   import ConnectionPanel from "./panels/ConnectionPanel.svelte";
@@ -105,6 +105,34 @@
     void deleteElements({ edges: [edge] });
   };
 
+  // a node dragged alone over a link it may go into highlights it (LinkEdge), let go there it goes in: A → node → B.
+  // The box is the node's, the paths are the drawn links' — the nearest to the node's center that takes the node
+  const linkUnder = (node: FlowNode | null, dragged: FlowNode[]): string | null => {
+    if (!node || dragged.length !== 1) return null;
+    const internal = getInternalNode(node.id);
+    const { width, height } = internal?.measured ?? {};
+    if (!internal || !width || !height) return null;
+    const paths = [...document.querySelectorAll<SVGGElement>(".svelte-flow__edge")].flatMap((link) => {
+      const d = link.querySelector(".svelte-flow__edge-path")?.getAttribute("d");
+      const id = link.dataset.id;
+      return d && id ? [{ id, d }] : [];
+    });
+    // the event's node is where it is now — the internal node's position lags a move behind (no parent nodes here)
+    const box = { ...node.position, width, height };
+    return linksUnder(box, paths).find((edgeId) => session.canInsertOnLink(node.id, edgeId)) ?? null;
+  };
+  const onnodedragstart = () => {
+    session.dragging = true;
+  };
+  const onnodedrag = ({ targetNode, nodes }: { targetNode: FlowNode | null; nodes: FlowNode[] }) => {
+    session.dropLink = linkUnder(targetNode, nodes);
+  };
+  const onnodedragstop = ({ targetNode }: { targetNode: FlowNode | null }) => {
+    if (targetNode && session.dropLink) session.insertOnLink(targetNode.id, session.dropLink);
+    session.dropLink = null;
+    session.dragging = false;
+  };
+
   // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect.
   // A param linked into an empty track makes its first key
   const onbeforeconnect = (connection: Connection) => {
@@ -159,6 +187,9 @@
     connectionRadius={40}
     deleteKey={["Delete", "Backspace"]}
     {onnodecontextmenu}
+    {onnodedragstart}
+    {onnodedrag}
+    {onnodedragstop}
     {onedgecontextmenu}
     {onreconnectend}
     {onconnectend}

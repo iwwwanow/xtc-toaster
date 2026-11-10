@@ -19,9 +19,10 @@
   });
 
   // the editor survives a reload — saved once a drag / a typing burst settles, not on every frame; the same moment
-  // makes a step of the undo history
+  // makes a step of the undo history. A node drag is settled only once let go — a pause on the way is no step
   const SAVE_DELAY_MS = 300;
   $effect(() => {
+    if (session.dragging) return;
     const text = toSaved(session.nodes, session.edges, session.exportSettings);
     const timer = setTimeout(() => {
       save(text);
