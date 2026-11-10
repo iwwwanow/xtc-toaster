@@ -264,6 +264,12 @@ legend {
 .svelte-flow__handle-left {
   left: calc(-1 * var(--handle-offset));
 }
+/* a linked input's end is grabbed to move or unlink the link (LinkEdge's reconnect anchor, 16px around it) — over the
+   handle's catch square and over the nodes (xyflow puts edge labels under them, z-index inline; selected nodes rise
+   to 1000); an unlinked input has no anchor, its handle starts a link as before. Covered since the catch square (30.10) */
+.svelte-flow__edgeupdater {
+  z-index: 2000 !important;
+}
 .svelte-flow__handle-right {
   right: calc(-1 * var(--handle-offset));
 }
