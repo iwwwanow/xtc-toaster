@@ -82,17 +82,28 @@
   // every link is drawn by LinkEdge — it carries the grab-to-unlink anchor
   const edgeTypes = { default: LinkEdge };
 
+  // a node dragged out of the menu has no box yet — the links under this much around the pointer (screen px)
+  const MENU_DROP_REACH = 24;
+
   const ondragover = (event: DragEvent) => {
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    const type = session.menuDrag;
+    if (!type) return;
+    const from = screenToFlowPosition({ x: event.clientX - MENU_DROP_REACH, y: event.clientY - MENU_DROP_REACH });
+    const to = screenToFlowPosition({ x: event.clientX + MENU_DROP_REACH, y: event.clientY + MENU_DROP_REACH });
+    const box = { ...from, width: to.x - from.x, height: to.y - from.y };
+    session.dropLink = linksUnder(box, drawnLinks()).find((edgeId) => session.canInsertOnLink(type, edgeId)) ?? null;
   };
 
-  // a node from the menu appears where it was dropped
+  // a node from the menu appears where it was dropped; onto a highlighted link — into it
   const ondrop = (event: DragEvent) => {
     event.preventDefault();
     const type = event.dataTransfer?.getData(NODE_TYPE_MIME);
+    const link = session.dropLink;
+    session.dropLink = null;
     if (!type || !isMenuNodeType(type)) return;
-    session.addNode(type, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+    session.addNode(type, screenToFlowPosition({ x: event.clientX, y: event.clientY }), link);
   };
 
   // right click deletes; input / output are deletable: false, deleteElements skips them
@@ -107,19 +118,20 @@
 
   // a node dragged alone over a link it may go into highlights it (LinkEdge), let go there it goes in: A → node → B.
   // The box is the node's, the paths are the drawn links' — the nearest to the node's center that takes the node
+  const drawnLinks = () =>
+    [...document.querySelectorAll<SVGGElement>(".svelte-flow__edge")].flatMap((link) => {
+      const d = link.querySelector(".svelte-flow__edge-path")?.getAttribute("d");
+      const id = link.dataset.id;
+      return d && id ? [{ id, d }] : [];
+    });
   const linkUnder = (node: FlowNode | null, dragged: FlowNode[]): string | null => {
     if (!node || dragged.length !== 1) return null;
     const internal = getInternalNode(node.id);
     const { width, height } = internal?.measured ?? {};
     if (!internal || !width || !height) return null;
-    const paths = [...document.querySelectorAll<SVGGElement>(".svelte-flow__edge")].flatMap((link) => {
-      const d = link.querySelector(".svelte-flow__edge-path")?.getAttribute("d");
-      const id = link.dataset.id;
-      return d && id ? [{ id, d }] : [];
-    });
     // the event's node is where it is now — the internal node's position lags a move behind (no parent nodes here)
     const box = { ...node.position, width, height };
-    return linksUnder(box, paths).find((edgeId) => session.canInsertOnLink(node.id, edgeId)) ?? null;
+    return linksUnder(box, drawnLinks()).find((edgeId) => session.canInsertOnLink(node.id, edgeId)) ?? null;
   };
   const onnodedragstart = () => {
     session.dragging = true;

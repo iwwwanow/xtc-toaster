@@ -3,8 +3,15 @@
   import { NODE_CATEGORIES, NODE_HINTS, NODE_LABELS, NODE_TYPE_MIME, type MenuNodeType } from "../graph";
   import { session } from "../session.svelte";
 
-  const ondragstart = (event: DragEvent, type: string) => {
+  // dropped or not — the drag is over, the link under it isn't highlighted any more
+  const ondragend = () => {
+    session.menuDrag = null;
+    session.dropLink = null;
+  };
+
+  const ondragstart = (event: DragEvent, type: MenuNodeType) => {
     hint = null;
+    session.menuDrag = type;
     event.dataTransfer?.setData(NODE_TYPE_MIME, type);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
   };
@@ -39,6 +46,7 @@
           style:cursor={taken ? "not-allowed" : "grab"}
           style:opacity={taken ? 0.4 : 1}
           ondragstart={(event) => ondragstart(event, type)}
+          {ondragend}
           onmouseenter={(event) => onenter(type, event)}
           onmouseleave={() => (hint = null)}
         >

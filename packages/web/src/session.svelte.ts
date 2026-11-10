@@ -75,6 +75,8 @@ class Session {
   dragging = $state(false);
   // the link the dragged node would go into if let go now — LinkEdge highlights it
   dropLink = $state<string | null>(null);
+  // the node type being dragged out of the left menu — a drag's data can't be read before the drop
+  menuDrag: MenuNodeType | null = null;
 
   // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
@@ -209,10 +211,13 @@ class Session {
     }
   }
 
-  // a node from the left menu, dropped at a flow position — unlinked until the user links it
-  addNode(type: MenuNodeType, position: XYPosition) {
+  // a node from the left menu, dropped at a flow position — unlinked until the user links it, or dropped onto a
+  // link — into it; one step either way
+  addNode(type: MenuNodeType, position: XYPosition, link?: string | null) {
     if (type === "animation" && this.animationNode) return; // one per graph (contract)
-    this.nodes = [...this.nodes, createNode(type, position)];
+    const node = createNode(type, position);
+    this.nodes = [...this.nodes, node];
+    if (link) this.insertOnLink(node.id, link);
   }
 
   // a node dragged onto a link and let go goes into it: A → node → B
@@ -221,9 +226,13 @@ class Session {
     if (edges) this.edges = edges;
   }
 
-  // a link the node may go into — asked on every move of a drag
-  canInsertOnLink(nodeId: string, edgeId: string) {
-    return insertOnLink(this.nodes, this.edges, nodeId, edgeId) !== null;
+  // a link the node may go into — asked on every move of a drag; a node type — one still in the menu
+  canInsertOnLink(node: string | MenuNodeType, edgeId: string) {
+    if (node === this.menuDrag) {
+      const created = createNode(node, { x: 0, y: 0 });
+      return insertOnLink([...this.nodes, created], this.edges, created.id, edgeId) !== null;
+    }
+    return insertOnLink(this.nodes, this.edges, node, edgeId) !== null;
   }
 
   // a param change is a graph change → App sends a new render

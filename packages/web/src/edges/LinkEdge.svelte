@@ -8,9 +8,9 @@
   let [path] = $derived(getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition }));
   let reconnecting = $state(false);
   // solid wires carry pixels, dashed ones bind a param to a track
-  // the link a dragged node goes into if let go now — drawn thick
+  // the link a dragged node goes into if let go now — drawn a bit thicker
   let lineStyle = $derived(
-    [style, sourceHandleId && "stroke-dasharray: 4 4", session.dropLink === id && "stroke-width: 4"].filter(Boolean).join(";"),
+    [style, sourceHandleId && "stroke-dasharray: 4 4", session.dropLink === id && "stroke-width: 2"].filter(Boolean).join(";"),
   );
 </script>
 
