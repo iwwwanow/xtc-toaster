@@ -20,6 +20,7 @@
   import { nodeTypes } from "./nodes";
   import ActionsPanel from "./panels/ActionsPanel.svelte";
   import ConnectionPanel from "./panels/ConnectionPanel.svelte";
+  import DragZones from "./panels/DragZones.svelte";
   import NodeMenu from "./panels/NodeMenu.svelte";
   import VersionPanel from "./panels/VersionPanel.svelte";
   import { session } from "./session.svelte";
@@ -122,6 +123,8 @@
     void deleteElements({ edges: [edge] });
   };
 
+  const pointOf = (event: MouseEvent | TouchEvent) => ("changedTouches" in event ? event.changedTouches[0] : event);
+
   // a node dragged alone over a link it may go into highlights it (LinkEdge), let go there it goes in: A → node → B.
   // The box is the node's, the paths are the drawn links' — the nearest to the node's center that takes the node
   const drawnLinks = () =>
@@ -139,19 +142,35 @@
     const box = { ...node.position, width, height };
     return linksUnder(box, drawnLinks()).find((edgeId) => session.canInsertOnLink(node.id, edgeId)) ?? null;
   };
+  // a node drag's action zones at the bottom (DragZones): shown when something dragged can be deleted (not input /
+  // output); let go over `delete` — deleted like a right click, the chain kept (ondelete). Over it no link is offered
+  let zone = $state<HTMLElement>();
+  let zonesShown = $state(false);
+  let overZone = $state(false);
+  const onZone = (event: MouseEvent | TouchEvent) => {
+    const point = pointOf(event);
+    const box = zone?.getBoundingClientRect();
+    return !!point && !!box && point.clientX >= box.left && point.clientX <= box.right && point.clientY >= box.top && point.clientY <= box.bottom;
+  };
+
   // Alt held as the drag starts — a copy goes with the pointer, the original stays (leaveCopiesBehind); the drag, the
   // copy and a drop into a link are one step
   const onnodedragstart = ({ event, nodes }: { event: MouseEvent | TouchEvent; nodes: FlowNode[] }) => {
     session.dragging = true;
+    zonesShown = nodes.some(({ deletable }) => deletable !== false);
     if (event.altKey) session.leaveCopiesBehind(nodes.map(({ id }) => id));
   };
-  const onnodedrag = ({ targetNode, nodes }: { targetNode: FlowNode | null; nodes: FlowNode[] }) => {
-    session.dropLink = linkUnder(targetNode, nodes);
+  const onnodedrag = ({ event, targetNode, nodes }: { event: MouseEvent | TouchEvent; targetNode: FlowNode | null; nodes: FlowNode[] }) => {
+    overZone = onZone(event);
+    session.dropLink = overZone ? null : linkUnder(targetNode, nodes);
   };
-  const onnodedragstop = ({ targetNode }: { targetNode: FlowNode | null }) => {
-    if (targetNode && session.dropLink) session.insertOnLink(targetNode.id, session.dropLink);
+  const onnodedragstop = ({ event, targetNode, nodes }: { event: MouseEvent | TouchEvent; targetNode: FlowNode | null; nodes: FlowNode[] }) => {
+    if (zonesShown && onZone(event)) void deleteElements({ nodes });
+    else if (targetNode && session.dropLink) session.insertOnLink(targetNode.id, session.dropLink);
     session.dropLink = null;
     session.dragging = false;
+    zonesShown = false;
+    overZone = false;
   };
 
   // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect.
@@ -202,8 +221,6 @@
     for (const element of marked) element.setAttribute("data-drop", "");
     return () => marked.forEach((element) => element.removeAttribute("data-drop"));
   });
-
-  const pointOf = (event: MouseEvent | TouchEvent) => ("changedTouches" in event ? event.changedTouches[0] : event);
 
   const updateNodeInternals = useUpdateNodeInternals();
   // a pixel wire let go over a node's frame → into its input; a param's wire let go over `+ track` (no handle took
@@ -289,6 +306,7 @@
     <NodeMenu />
     <ActionsPanel />
     <ConnectionPanel />
+    <DragZones visible={zonesShown} over={overZone} bind:zone />
     <VersionPanel />
   </SvelteFlow>
 </div>
