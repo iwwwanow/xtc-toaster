@@ -155,10 +155,12 @@
    - [ ] `v0.9.0` on prod — the image tag in `iwwwanow_infrastructure` (`stacks/ru-timeweb/xtc-toaster/compose.yml`)
    - [ ] check 2 on prod — degas at prod limits, then `RENDER_MAX_FRAMES` in the stack (fallback 48) — 14.11. The tag bumps itself: Renovate opens an automerge PR in infra on Mend's scheduled run (a new ghcr image gives no event); sooner — the checkbox in the infra Dependency Dashboard (issue #3)
    - [ ] 10.11 added before the release (the user), 11–15.11 — the QA of sprint 6 covers them:
-     - [ ] **delay** node — shifts the animation in time by `d` frames; the form (on a param wire or on a pixel chain) — settle first — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
+     - [ ] **delay** node on param wires: `param → delay → track`, the param reads the track at `frame − d`; rows like `layers` (a pair in → out per param, a free row at the bottom), one `d` in frames for the whole node, not animated in v1; `graphAtFrame` and `trackGroups` see through it — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
      - [ ] a node dropped onto a link goes into it (A → node → B) — `docs/backlog/2026-10-28_drop-node-onto-link.md`
      - [ ] a link dropped onto a whole node connects to its input — `docs/backlog/2026-10-30_drop-link-onto-node.md`
      - [ ] Alt + drag a node — a copy (the selection: all of it with the links between; no outside links); Shift-box selection stays as is — `docs/backlog/2026-10-28_box-select-like-illustrator.md`
+   - [ ] 10.11 **groups + value** into the release (the user: the fattest feature) — 13–20.11, after the four above; v1: group from a selection (a toolbar over the selection + the right-click menu on a selection, no hotkeys), one pixel in / out, crossing param wires → the group's params, open by double click / `open`, back by the breadcrumb, instances from the left menu (linked), ungroup; `value` — one number wired into many params; the toast gets an optional `groups` field (`TOAST_GRAPH_VERSION` stays 1); ~4–6 days — `docs/backlog/2026-11-09_node-groups-variables.md`. Moves QA (sprint 6) to ~21–25.11, the buffer shrinks to 26–27.11
+     - cut if behind: groups → 1.1, no migration needed (an optional field)
    - [ ] `docs/sprints/sprint-5.qa.md`, sprint close
    - stretch, after all of the above (07.11): manual ui pass — the user goes over the ui by hand and redraws it (`CLAUDE.md`, «Sprint process»); first in the stretch list of `docs/sprints/sprint-5.spec.md`
    - [x] extend contract
@@ -193,14 +195,15 @@
    - live preview animated picture
      - play at the real fps: frames rendered ahead and cached on the client — `docs/backlog/2026-11-06_play-frame-cache-on-client.md`
    - timeline hotkeys (blender-like, put off 09.11) — `docs/backlog/2026-11-09_timeline-hotkeys.md`
-   - one track drives many params, of different nodes too — `docs/backlog/2026-11-09_one-track-many-params.md` (changes the toast format — before 1.0)
    - time-window: a vertical cut of the timeline, a show reel — `docs/backlog/2026-11-03_timeline-time-windows.md`
 2. live render while dragging a param slider (sprint 1 stretch 2)
    - client: `oninput` + debounce, slider stays live during render
    - server: done 11.10 — render in a worker thread, latest-wins holds for bursts — `docs/backlog/2026-10-11_render-pipeline-evolution.md`
 3. new nodes (ideas 09.11, not decided)
-   - delay (shifts the animation of a chain) + duplicate (N copies of a chain) → a trail — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`
-   - node groups, constants / variables: a short pipeline reused as one node, one value wired into many params — `docs/backlog/2026-11-09_node-groups-variables.md`. Changes the toast format: decide the shape before 1.0 freezes `TOAST_GRAPH_VERSION`, or make it an optional field
+   - duplicate (N copies of a chain → a trail with delay) — put off 10.11, after groups — `docs/backlog/2026-11-09_delay-and-duplicate-nodes-trail.md`; delay and groups + value moved into the release (sprint 5 / 6 above)
+   - closed 10.11: one track for many params — `value` covers it (`docs/backlog/2026-11-09_one-track-many-params.md`); composer as a frame — groups cover it
+   - put off 10.11: the node list panel (`docs/backlog/2026-10-28_node-list-panel.md`), the tracks' vertical scroll with fading wires (`docs/backlog/2026-11-04_animation-tracks-vertical-scroll.md`)
+   - main menu: a uiu / owo grid of the current projects (`localStorage`) with previews — `docs/backlog/2026-11-10_main-menu-projects-grid.md`
    - audio → time-windows: an audio file through an analyzer node (beats / onsets / loudness) gives the animation node ready time-windows, the chain is on inside a window and off outside — the picture blinks to the track; mp4 with the sound (10.11, raw; needs time-windows first) — `docs/backlog/2026-11-10_audio-to-time-windows.md`
 
 ## tools:
