@@ -8,6 +8,7 @@ import {
   type AnimationExport,
   type GraphEdge,
   type GraphNode,
+  type GroupDefinition,
   type NodeId,
   type ToastGraph,
 } from "@xtc-toaster/contract";
@@ -90,19 +91,24 @@ export const isMenuNodeType = (type: string): type is MenuNodeType => (MENU_NODE
 const NODE_GAP_X = 400;
 const ROW_GAP_Y = 400;
 
-// exactly one input and one output, never deleted — several of each may come later
-const isFixed = (type: GraphNode["type"]) => type === "input" || type === "output";
+// exactly one input and one output, never deleted — several of each may come later; a group's inside has its group
+// input and output the same way
+export const isFixed = (type: GraphNode["type"]) =>
+  type === "input" || type === "output" || type === "groupInput" || type === "groupOutput";
 
 // a param link carries a number, not pixels — it has no say in the layout
 const pixelLinks = (edges: readonly GraphEdge[]) => edges.filter(({ sourceHandle }) => sourceHandle === undefined);
 
-// positions are not in the toast: the column is the longest path from the input, so a node sits right
-// of everything it pulls; a column stacks its nodes top-down in graph order
-const columns = ({ nodes, edges }: ToastGraph): Map<NodeId, number> => {
+// a level of the toast: the root's nodes and links, or a group's inside
+type Level = Pick<ToastGraph, "nodes" | "edges">;
+
+// positions are not in the toast: the column is the longest path from the input (a group's inside — its group
+// input), so a node sits right of everything it pulls; a column stacks its nodes top-down in graph order
+const columns = ({ nodes, edges }: Level): Map<NodeId, number> => {
   const next = new Map<NodeId, NodeId[]>();
   for (const { source, target } of pixelLinks(edges)) next.set(source, [...(next.get(source) ?? []), target]);
   const column = new Map<NodeId, number>();
-  const input = nodes.find((node) => node.type === "input")?.id;
+  const input = nodes.find((node) => node.type === "input" || node.type === "groupInput")?.id;
   if (input === undefined) return column;
   // one step deeper per round, the last round that reaches a node wins; bounded — a cycle can't hang it
   column.set(input, 0);
@@ -128,14 +134,26 @@ const toGraphEdge = ({ id, source, sourceHandle, target, targetHandle }: Edge | 
 // what the input reaches by columns, the rest in a row below everything. A node takes the row of what it
 // pulls when that cell is free — parallel chains (a layers node's rows) run straight, not crossing — else the
 // next free row below
-// the editor's whole state that a toast holds: the graph as xyflow takes it, the export settings beside it
-export type Flow = { nodes: FlowNode[]; edges: Edge[]; export?: AnimationExport };
+// a group's definition as xyflow takes its inside — opened, it is the level on screen
+export type FlowGroup = Omit<GroupDefinition, "nodes" | "edges"> & { nodes: FlowNode[]; edges: Edge[] };
+
+// the editor's whole state that a toast holds: the graph as xyflow takes it, the group definitions, the export
+// settings beside it
+export type Flow = { nodes: FlowNode[]; edges: Edge[]; groups?: FlowGroup[]; export?: AnimationExport };
+
+// group definitions as the toast keeps them: none — no field
+const groupsField = (groups: readonly (FlowGroup | GroupDefinition)[] | undefined) =>
+  groups && groups.length > 0
+    ? { groups: groups.map(({ id, name, nodes, edges, params }) => ({ id, name, nodes: nodes.map(toGraphNode), edges: edges.map(toGraphEdge), params })) }
+    : {};
+
+const toGraphNode = ({ id, type, data }: FlowNode | GraphNode) => ({ id, type, data }) as GraphNode;
 
 // export settings as the toast keeps them: nothing set — no field
 const exportField = (settings: AnimationExport | undefined) =>
   settings && Object.keys(settings).length > 0 ? { export: settings } : {};
 
-export const toFlow = (graph: ToastGraph): Flow => {
+const layout = (graph: Level): FlowNode[] => {
   const column = columns(graph);
   const sources = new Map<NodeId, NodeId[]>();
   for (const { source, target } of pixelLinks(graph.edges)) sources.set(target, [...(sources.get(target) ?? []), source]);
@@ -166,12 +184,20 @@ export const toFlow = (graph: ToastGraph): Flow => {
       return { x: (Math.max(-1, ...animatedColumns) + 1) * NODE_GAP_X, y: offRow + (offRowCount > 0 ? ROW_GAP_Y : 0) };
     return { x: off++ * NODE_GAP_X, y: offRow };
   };
-  const nodes = graph.nodes.map((node) => {
+  return graph.nodes.map((node) => {
     const position = place(node);
     return { ...node, position, ...(isFixed(node.type) && { deletable: false }) } as FlowNode;
   });
-  return { nodes, edges: graph.edges.map(toGraphEdge), ...exportField(graph.export) };
 };
+
+export const toFlow = (graph: ToastGraph): Flow => ({
+  nodes: layout(graph),
+  edges: graph.edges.map(toGraphEdge),
+  ...(graph.groups && graph.groups.length > 0 && {
+    groups: graph.groups.map((group) => ({ ...group, nodes: layout(group), edges: group.edges.map(toGraphEdge) })),
+  }),
+  ...exportField(graph.export),
+});
 
 // «clear graph»: input → output, the picture stays
 export const emptyFlow = (imageId: string | null) =>
@@ -192,13 +218,36 @@ export const createNode =(type: MenuNodeType, position: XYPosition): FlowNode =>
 };
 
 // strips ui fields (position, selected, measured, …) — server does not depend on xyflow
-export const toGraph = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): ToastGraph =>
+export const toGraph = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport, groups?: readonly FlowGroup[]): ToastGraph =>
   parseToastGraph({
     version: TOAST_GRAPH_VERSION,
-    nodes: nodes.map(({ id, type, data }) => ({ id, type, data })),
+    nodes: nodes.map(toGraphNode),
     edges: edges.map(toGraphEdge),
+    ...groupsField(groups),
     ...exportField(settings),
   });
+
+// The level on screen — the root or a group's inside — put back into the whole toast, so validateGraph judges an edit
+// there with everything it touches: an edit at the root with the groups its instances use, one inside a group with
+// the root and every instance of it. ROOT — a toast with no groups, the level is all of it
+export type Scope = (level: Level) => ToastGraph;
+export const ROOT: Scope = ({ nodes, edges }) => ({ version: TOAST_GRAPH_VERSION, nodes, edges });
+
+// the scope of a level in a flow: `group` — the inside of that definition, null — the root
+export const scopeOf = (flow: Pick<Flow, "nodes" | "edges" | "groups">, group: string | null): Scope => {
+  const others = (flow.groups ?? []).filter(({ id }) => id !== group);
+  const root = { nodes: flow.nodes.map(toGraphNode), edges: flow.edges.map(toGraphEdge) };
+  const definitions = groupsField(others).groups ?? [];
+  const opened = flow.groups?.find(({ id }) => id === group);
+  if (!opened) return (level) => ({ version: TOAST_GRAPH_VERSION, ...level, ...groupsField(definitions) });
+  const { id, name, params } = opened;
+  return (level) => ({ version: TOAST_GRAPH_VERSION, ...root, groups: [...definitions, { id, name, params, ...level }] });
+};
+
+const levelOf = (nodes: readonly FlowNode[], edges: readonly (Edge | GraphEdge)[]): Level => ({
+  nodes: nodes.map(toGraphNode),
+  edges: edges.map(toGraphEdge),
+});
 
 // a drawn link — xyflow's Connection or an Edge being moved
 export type Link = Pick<Edge, "source" | "sourceHandle" | "target" | "targetHandle">;
@@ -223,7 +272,7 @@ const linkId = ({ source, sourceHandle, target, targetHandle }: Link) =>
 // with no pixel link yet and with a pixel input and output — not input / output, not animation / delay (params only);
 // a layers node takes the link into its top row. The new graph passes validateGraph like any drawn link.
 // The edges with the node in the link, or null — it doesn't go there
-export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, edgeId: string): Edge[] | null => {
+export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, edgeId: string, scope = ROOT): Edge[] | null => {
   const node = nodes.find(({ id }) => id === nodeId);
   const link = edges.find(({ id }) => id === edgeId);
   if (!node || !link || link.sourceHandle || link.source === nodeId || link.target === nodeId) return null;
@@ -234,12 +283,7 @@ export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, e
   const before: Link = { source: link.source, target: nodeId, ...(into && { targetHandle: into }) };
   const after: Link = { source: nodeId, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) };
   const next = [...edges.filter(({ id }) => id !== edgeId), { id: linkId(before), ...before }, { id: linkId(after), ...after }];
-  const issue = validateGraph({
-    version: TOAST_GRAPH_VERSION,
-    nodes: nodes.map(({ id, type, data }) => ({ id, type, data }) as GraphNode),
-    edges: next.map(toGraphEdge),
-  });
-  return issue ? null : next;
+  return validateGraph(scope(levelOf(nodes, next))) ? null : next;
 };
 
 type Point = { x: number; y: number };
@@ -280,17 +324,13 @@ export const linksUnder = (rect: Rect, paths: readonly { id: string; d: string }
 
 // the same rules the server applies (contract validateGraph), on the graph as it would be with the link
 // in place of the one it replaces; no zod parse — runs on every handle the dragged link passes
-export const canConnect = (nodes: FlowNode[], edges: Edge[], link: Link): boolean =>
-  validateGraph({
-    version: TOAST_GRAPH_VERSION,
-    nodes: nodes.map(({ id, type, data }) => ({ id, type, data }) as GraphNode),
-    edges: [...withoutTaken(edges, link), { ...link, id: "candidate" }].map(toGraphEdge),
-  }) === null;
+export const canConnect = (nodes: FlowNode[], edges: Edge[], link: Link, scope = ROOT): boolean =>
+  validateGraph(scope(levelOf(nodes, [...withoutTaken(edges, link), { ...link, id: "candidate" }]))) === null;
 
 // A pixel wire let go over a node's frame, not on a handle, goes into the node's input (30.10, done 10.11): no aiming at
 // the handle. A layers node takes it into the row under the pointer — a taken one is replaced, like a drop on its
 // handle — or, over the frame but no row, into its top free row; all rows taken — nothing, a row to replace is aimed at.
-// No pixel input — input, animation, delay — nothing. `keep` — the link whose end is being moved there, it doesn't
+// No pixel input — input, group input, animation, delay, value, factor — nothing. `keep` — the link whose end is being moved there, it doesn't
 // count as taking a row. The link, or null — the same rules as a drawn link (canConnect)
 export const linkOntoNode = (
   nodes: FlowNode[],
@@ -299,9 +339,11 @@ export const linkOntoNode = (
   nodeId: string,
   row: string | null,
   keep?: string,
+  scope = ROOT,
 ): Link | null => {
   const node = nodes.find(({ id }) => id === nodeId);
-  if (!node || nodeId === source || node.type === "input" || node.type === "animation" || node.type === "delay") return null;
+  if (!node || nodeId === source || node.type === "input" || node.type === "groupInput" || node.type === "animation" || node.type === "delay")
+    return null;
   const others = edges.filter(({ id }) => id !== keep);
   let targetHandle: string | undefined;
   if (node.type === "layers") {
@@ -311,7 +353,7 @@ export const linkOntoNode = (
     if (targetHandle === undefined) return null;
   }
   const link: Link = { source, target: nodeId, ...(targetHandle && { targetHandle }) };
-  return canConnect(nodes, others, link) ? link : null;
+  return canConnect(nodes, others, link, scope) ? link : null;
 };
 
 // a link put in place of what its target had (withoutTaken); `keep` — the link being moved, it goes away
@@ -325,7 +367,12 @@ export const withLink = (edges: Edge[], link: Link, keep?: string): Edge[] => [
 // single pixel input (input; layers with several rows linked) leaves nothing; deleted together, A → n1 → n2 → B —
 // A → B. Param links go with the node. Each new link passes canConnect, a refused one is left out.
 // `edges` — what is left after the delete; `removed` — the deleted nodes' ids and edges. The edges with the chain kept
-export const keepChain = (nodes: FlowNode[], edges: Edge[], removed: { nodes: readonly string[]; edges: readonly Edge[] }): Edge[] => {
+export const keepChain = (
+  nodes: FlowNode[],
+  edges: Edge[],
+  removed: { nodes: readonly string[]; edges: readonly Edge[] },
+  scope = ROOT,
+): Edge[] => {
   const gone = new Set(removed.nodes);
   const pixel = pixelLinks(removed.edges.map(toGraphEdge));
   const upstream = (id: string, seen = new Set<string>()): string | null => {
@@ -340,7 +387,7 @@ export const keepChain = (nodes: FlowNode[], edges: Edge[], removed: { nodes: re
     const from = upstream(source);
     if (from === null) continue;
     const link: Link = { source: from, target, ...(targetHandle && { targetHandle }) };
-    if (canConnect(nodes, next, link)) next = withLink(next, link);
+    if (canConnect(nodes, next, link, scope)) next = withLink(next, link);
   }
   return next;
 };
@@ -348,8 +395,9 @@ export const keepChain = (nodes: FlowNode[], edges: Edge[], removed: { nodes: re
 // Alt + drag a node — a copy, like Illustrator (28.10, 10.11): the original stays with its links, the copy goes with
 // the pointer, same params, linked only to the other copies of the same drag. xyflow drags the nodes it has, so the
 // dragged ones play the copies: copies with new ids are left where they stood and take over every link that goes
-// out of the dragged set; a link inside it stays and is cloned between the copies left. Input, output and animation
-// (one per graph) are never copied — dragged along, they just move. The nodes and edges, or null — nothing to copy
+// out of the dragged set; a link inside it stays and is cloned between the copies left. Input, output, a group's
+// input and output and animation (one per graph) are never copied — dragged along, they just move. A group's
+// instance is copied as another instance of the same group. The nodes and edges, or null — nothing to copy
 export const leaveCopiesBehind = (
   nodes: FlowNode[],
   edges: Edge[],
@@ -377,8 +425,8 @@ export const leaveCopiesBehind = (
 
 // toast file: the graph only, imageId: null — a toast is a preset, not a picture.
 // whether to save the picture too is open — docs/backlog/2026-10-13_toast-export-with-image.md
-export const toToastFile = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string => {
-  const graph = toGraph(nodes, edges, settings);
+export const toToastFile = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport, groups?: readonly FlowGroup[]): string => {
+  const graph = toGraph(nodes, edges, settings, groups);
   const withoutImage = graph.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId: null } } : node));
   return `${JSON.stringify({ ...graph, nodes: withoutImage }, null, 2)}\n`;
 };

@@ -2,7 +2,7 @@
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { ANIMATION_FPS, paramBounds, type AnimationTrack } from "@xtc-toaster/contract";
+  import { ANIMATION_FPS, type AnimationTrack } from "@xtc-toaster/contract";
   import {
     addKey,
     addTrack,
@@ -27,6 +27,7 @@
     zoomPxPerFrame,
   } from "../animation";
   import { NODE_LABELS, type FlowNodeOf } from "../graph";
+  import { paramBoundsOf } from "../groups";
   import { moveRow } from "../layers";
   import { session } from "../session.svelte";
   import { DRAG_THRESHOLD } from "../slider";
@@ -46,7 +47,7 @@
 
   // tracks grouped by the node they animate (blender's channel groups); a collapsed group keeps its summary row,
   // its tracks' handles move onto the legend's line. Collapsing is ui only, not in the toast
-  let groups = $derived(trackGroups(session.nodes, session.edges, id, data.tracks));
+  let groups = $derived(trackGroups(session.nodes, session.edges, id, data.tracks, session.groups));
   const collapsed = new SvelteSet<string>();
   const toggleGroup = (group: string) => {
     if (!collapsed.delete(group)) collapsed.add(group);
@@ -145,7 +146,7 @@
   // typed values stop at the bounds of the linked param; an unlinked track has none
   let selectedBounds = $derived.by(() => {
     const param = selectedTrack && trackParam(session.nodes, session.edges, id, selectedTrack.id);
-    return param ? paramBounds(param.node.type, param.param) : null;
+    return param ? paramBoundsOf(session.groups, param.node, param.param) : null;
   });
   const clampToParam = (value: number) =>
     selectedBounds ? Math.min(selectedBounds.max, Math.max(selectedBounds.min, value)) : value;
@@ -175,7 +176,7 @@
       ? (moveKeys(data.tracks, keyDrag.ids, keyDrag.from, keyDrag.to) ?? data.tracks)
       : data.tracks,
   );
-  let shownGroups = $derived(trackGroups(session.nodes, session.edges, id, shownTracks));
+  let shownGroups = $derived(trackGroups(session.nodes, session.edges, id, shownTracks, session.groups));
 
   const onkeydown = (ids: string[], frame: number, select: string | null) => (event: PointerEvent) => {
     if (locked || event.button !== 0 || !content) return;

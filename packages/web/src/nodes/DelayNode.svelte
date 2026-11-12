@@ -33,7 +33,7 @@
     onchange={(frames) => session.setNodeData(id, { ...data, frames })}
   />
   {#each data.rows as row (row.id)}
-    {@const name = delayRowName(session.nodes, session.edges, id, row.id)}
+    {@const name = delayRowName(session.nodes, session.edges, id, row.id, session.groups)}
     <div class="delay-row">
       <!-- in from a param, out to a track — both out of the node's edges, like a layers row's input -->
       <Handle

@@ -1,8 +1,10 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
   drivenValues,
+  expandGroups,
   graphAtFrame,
-  paramBounds,
+  innerId,
+  instanceOf,
   UPLOAD_MAX_MEGAPIXELS,
   type AnimationExport,
   type AnimationFormat,
@@ -21,17 +23,31 @@ import {
   insertOnLink,
   keepChain,
   leaveCopiesBehind,
+  scopeOf,
   toFlow,
   withLink,
   toGraph,
   toToastFile,
   ToastFileError,
   withoutTaken,
+  type Flow,
+  type FlowGroup,
   type FlowNode,
   type FlowNodeOf,
   type Link,
   type MenuNodeType,
 } from "./graph";
+import {
+  createInstance,
+  exposedParams,
+  groupOf,
+  groupSelection,
+  itemGroup,
+  nodeLabel,
+  paramBoundsOf,
+  ungroup,
+  type MenuItem,
+} from "./groups";
 import { History } from "./history";
 import { fromSaved, loadSaved, toSaved } from "./persist";
 import { connectSocket, wsUrl } from "./socket";
@@ -50,9 +66,44 @@ const UPLOAD_ERRORS: Record<string, string> = {
 // the file's extension from the url the server made — the format the file was rendered in
 const extensionOf = (url: string) => url.slice(url.lastIndexOf(".") + 1);
 
+// xyflow keeps what it measured and what is selected on the nodes it was given — a level put back (undo) keeps them
+const keepUi = (next: FlowNode[], was: readonly FlowNode[]): FlowNode[] => {
+  const current = new Map(was.map((node) => [node.id, node]));
+  return next.map((node) => {
+    const old = current.get(node.id);
+    return old ? { ...node, measured: old.measured, selected: old.selected } : node;
+  });
+};
+
 class Session {
-  nodes = $state.raw<FlowNode[]>(initial.nodes);
-  edges = $state.raw<Edge[]>(initial.edges);
+  // the toast's root level and its group definitions (each one's inside a level of its own, with positions)
+  private rootNodes = $state.raw<FlowNode[]>(initial.nodes);
+  private rootEdges = $state.raw<Edge[]>(initial.edges);
+  groups = $state.raw<FlowGroup[]>(initial.groups ?? []);
+  // the level on screen: null — the root, else the group whose inside is open; ui state, not in the toast. A group
+  // gone (an undo before it was made) — the root
+  private view = $state<string | null>(null);
+  openGroup = $derived(this.view === null ? undefined : this.groups.find(({ id }) => id === this.view));
+
+  // the level on screen, as SvelteFlow binds it — the root's nodes and links or the open group's
+  get nodes(): FlowNode[] {
+    return this.openGroup?.nodes ?? this.rootNodes;
+  }
+  set nodes(nodes: FlowNode[]) {
+    const open = this.openGroup;
+    if (open) this.groups = this.groups.map((group) => (group.id === open.id ? { ...group, nodes } : group));
+    else this.rootNodes = nodes;
+  }
+  get edges(): Edge[] {
+    return this.openGroup?.edges ?? this.rootEdges;
+  }
+  set edges(edges: Edge[]) {
+    const open = this.openGroup;
+    if (open) this.groups = this.groups.map((group) => (group.id === open.id ? { ...group, edges } : group));
+    else this.rootEdges = edges;
+  }
+  // the level on screen inside the whole toast — every check of an edit (a link, a drop, a delete) sees what it touches
+  scope = $derived(scopeOf({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, this.openGroup?.id ?? null));
 
   connected = $state(false);
   // the socket closed (a deploy restarts the container, the network dropped) and is reconnecting —
@@ -70,7 +121,7 @@ class Session {
   importError = $state<string | null>(null);
 
   // undo / redo: snapshots of the editor, a step once an edit settles (App → recordHistory)
-  private history = new History(toSaved(initial.nodes, initial.edges, initial.export));
+  private history = new History(toSaved(initial.nodes, initial.edges, initial.export, initial.groups));
   canUndo = $state(false);
   canRedo = $state(false);
 
@@ -81,8 +132,8 @@ class Session {
   dropLink = $state<string | null>(null);
   // the node a pixel wire would go into if let go now, over its frame (linkOntoNode) — Editor highlights it
   dropNode = $state.raw<{ node: string; link: Link } | null>(null);
-  // the node type being dragged out of the left menu — a drag's data can't be read before the drop
-  menuDrag: MenuNodeType | null = null;
+  // the node type (or group) being dragged out of the left menu — a drag's data can't be read before the drop
+  menuDrag: MenuItem | null = null;
 
   // bumped when the graph is replaced as a whole (import, clear) — Editor arranges it (elk) and fits the view
   replaced = $state(0);
@@ -102,19 +153,26 @@ class Session {
   // at a time, and a render sent now would replace the waiting export
   animationLocked = $derived(!this.connected || this.uploading || this.exporting !== null);
   imageId = $derived(
-    this.nodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
+    this.rootNodes.find((node): node is FlowNodeOf<"input"> => node.type === "input")?.data.imageId ?? null,
   );
-  animationNode = $derived(this.nodes.find((node): node is FlowNodeOf<"animation"> => node.type === "animation"));
+  animationNode = $derived(this.rootNodes.find((node): node is FlowNodeOf<"animation"> => node.type === "animation"));
 
   // ui state, not in the toast; the wanted frame stays while `frames` shrinks and grows back
   private playhead = $state(0);
   frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
 
-  private graph = $derived(toGraph(this.nodes, this.edges, this.exportSettings));
-  // what the tracks and the value nodes put into the params at the playhead
-  private driven = $derived(drivenValues(this.graph, this.frame));
-  // what one render needs: the frame under the playhead, without the animation node
-  private frameGraph = $derived(withoutAnimation(graphAtFrame(this.graph, this.frame)));
+  private graph = $derived(toGraph(this.rootNodes, this.rootEdges, this.exportSettings, this.groups));
+  // the groups' instances turned into their insides — what is rendered, what the tracks reach
+  private expanded = $derived(expandGroups(this.graph));
+  // what the tracks and the value nodes put into the params at the playhead; inside a group — what its own value and
+  // factor nodes put there (its instances may each be animated apart)
+  private driven = $derived(
+    this.openGroup
+      ? drivenValues(toGraph(this.openGroup.nodes, this.openGroup.edges), this.frame)
+      : drivenValues(this.expanded, this.frame),
+  );
+  // what one render needs: the frame under the playhead, without the animation node, the groups expanded
+  private frameGraph = $derived(withoutAnimation(graphAtFrame(this.expanded, this.frame)));
   // only what goes to the server — ui fields (position, measured, …) don't count as a graph change
   graphKey = $derived(JSON.stringify(this.frameGraph));
 
@@ -124,8 +182,9 @@ class Session {
   private exportId: number | null = null;
   private socket: ReturnType<typeof connectSocket> | null = null;
 
-  private snapshot() {
-    return toSaved(this.nodes, this.edges, this.exportSettings);
+  // the whole editor as persist saves it and the history steps through it — every level, not just the one on screen
+  snapshot() {
+    return toSaved(this.rootNodes, this.rootEdges, this.exportSettings, this.groups);
   }
 
   private syncHistory() {
@@ -170,16 +229,68 @@ class Session {
       this.syncHistory();
       return;
     }
-    // xyflow keeps what it measured; the selection stays as it was
-    const current = new Map(this.nodes.map((node) => [node.id, node]));
-    this.nodes = flow.nodes.map((node) => {
-      const was = current.get(node.id);
-      return was ? { ...node, measured: was.measured, selected: was.selected } : node;
-    });
-    this.edges = flow.edges;
-    this.exportSettings = flow.export ?? {};
+    // xyflow keeps what it measured; the selection stays as it was. The view stays — on the root if its group is gone
+    this.setFlow(flow, true);
     this.history.settle(this.snapshot());
     this.syncHistory();
+  }
+
+  // a whole flow in place of the editor's (import, clear, an undo); `keep` — the nodes keep what xyflow measured
+  private setFlow(flow: Flow, keep = false) {
+    const groups = flow.groups ?? [];
+    const was = new Map(this.groups.map((group) => [group.id, group.nodes]));
+    this.rootNodes = keep ? keepUi(flow.nodes, this.rootNodes) : flow.nodes;
+    this.rootEdges = flow.edges;
+    this.groups = keep ? groups.map((group) => ({ ...group, nodes: keepUi(group.nodes, was.get(group.id) ?? []) })) : groups;
+    this.exportSettings = flow.export ?? {};
+    if (!keep || !this.groups.some(({ id }) => id === this.view)) this.view = null;
+  }
+
+  // into a group's inside (double click, `open`) and back to the root (the breadcrumb). Not during a drag
+  openView(group: string | null) {
+    if (this.dragging) return;
+    this.view = group !== null && this.groups.some(({ id }) => id === group) ? group : null;
+  }
+
+  // why the last `group` was refused — shown in the selection's toolbar until the selection changes
+  groupError = $state<string | null>(null);
+
+  // the selected nodes of the root into a new group, an instance in their place (groupSelection); one step
+  groupSelected(selected: readonly string[]) {
+    if (this.openGroup) {
+      this.groupError = "no group inside a group yet";
+      return;
+    }
+    const result = groupSelection({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, selected);
+    if ("error" in result) {
+      this.groupError = result.error;
+      return;
+    }
+    this.groupError = null;
+    this.groups = result.groups;
+    this.rootNodes = result.nodes;
+    this.rootEdges = result.edges;
+  }
+
+  // an instance back into its nodes, selected; the group stays in the left menu; one step
+  ungroup(instance: string) {
+    if (this.openGroup) return;
+    const result = ungroup({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, instance);
+    if (!result) return;
+    this.rootNodes = result.nodes;
+    this.rootEdges = result.edges;
+  }
+
+  // how many instances of a group stand at the root
+  instancesOf(group: string): number {
+    return this.rootNodes.filter((node) => node.type === "group" && node.data.group === group).length;
+  }
+
+  // a group's name — its instances' legend, the breadcrumb, the left menu; empty keeps the old one
+  renameGroup(id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    this.groups = this.groups.map((group) => (group.id === id ? { ...group, name: trimmed } : group));
   }
 
   connect() {
@@ -206,7 +317,7 @@ class Session {
     this.uploading = true;
     try {
       const { imageId } = await uploadImage(file);
-      this.nodes = this.nodes.map((node) => (node.type === "input" ? { ...node, data: { imageId } } : node));
+      this.rootNodes = this.rootNodes.map((node) => (node.type === "input" ? { ...node, data: { imageId } } : node));
       this.uploadError = null;
       return true;
     } catch (error) {
@@ -220,16 +331,31 @@ class Session {
 
   // a node from the left menu, dropped at a flow position — unlinked until the user links it, or dropped onto a
   // link — into it; one step either way
-  addNode(type: MenuNodeType, position: XYPosition, link?: string | null) {
-    if (type === "animation" && this.animationNode) return; // one per graph (contract)
-    const node = createNode(type, position);
+  addNode(item: MenuItem, position: XYPosition, link?: string | null) {
+    const node = this.menuNode(item, position);
+    if (!node) return;
     this.nodes = [...this.nodes, node];
     if (link) this.insertOnLink(node.id, link);
   }
 
+  // what a menu item makes: a node of that type, or an instance of that group. None: a second animation node (one per
+  // graph, at the root), anything of a group inside a group (no nesting yet), a group that's gone
+  private menuNode(item: MenuItem, position: XYPosition): FlowNode | null {
+    const group = itemGroup(item);
+    if (group !== null) return this.openGroup || !this.groups.some(({ id }) => id === group) ? null : createInstance(group, position);
+    if (item === "animation" && (this.animationNode || this.openGroup)) return null;
+    return createNode(item as MenuNodeType, position);
+  }
+
+  // a group no instance uses goes from the left menu; one step
+  removeGroup(id: string) {
+    if (this.instancesOf(id) > 0) return;
+    this.groups = this.groups.filter((group) => group.id !== id);
+  }
+
   // a node dragged onto a link and let go goes into it: A → node → B
   insertOnLink(nodeId: string, edgeId: string) {
-    const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId);
+    const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId, this.scope);
     if (edges) this.edges = edges;
   }
 
@@ -237,7 +363,7 @@ class Session {
   keepChain(nodes: string[], edges: Edge[]) {
     const gone = new Set(nodes);
     const left = this.edges.filter(({ source, target }) => !gone.has(source) && !gone.has(target));
-    this.edges = keepChain(this.nodes.filter(({ id }) => !gone.has(id)), left, { nodes, edges });
+    this.edges = keepChain(this.nodes.filter(({ id }) => !gone.has(id)), left, { nodes, edges }, this.scope);
   }
 
   // Alt + drag: copies left where the dragged nodes stood, with their links; the dragged ones go on as the copies
@@ -248,13 +374,13 @@ class Session {
     this.edges = result.edges;
   }
 
-  // a link the node may go into — asked on every move of a drag; a node type — one still in the menu
-  canInsertOnLink(node: string | MenuNodeType, edgeId: string) {
+  // a link the node may go into — asked on every move of a drag; a menu item — one still in the menu
+  canInsertOnLink(node: string | MenuItem, edgeId: string) {
     if (node === this.menuDrag) {
-      const created = createNode(node, { x: 0, y: 0 });
-      return insertOnLink([...this.nodes, created], this.edges, created.id, edgeId) !== null;
+      const created = this.menuNode(node, { x: 0, y: 0 });
+      return created !== null && insertOnLink([...this.nodes, created], this.edges, created.id, edgeId, this.scope) !== null;
     }
-    return insertOnLink(this.nodes, this.edges, node, edgeId) !== null;
+    return insertOnLink(this.nodes, this.edges, node, edgeId, this.scope) !== null;
   }
 
   // a param change is a graph change → App sends a new render
@@ -270,8 +396,12 @@ class Session {
     this.setNodeData(nodeId, { layers: removeLayer(node.data.layers, layerId) });
   }
 
-  // a param's value at the playhead; null — no track with keys and no value node drives it
+  // a param's value at the playhead; null — no track with keys and no value node drives it. An instance's exposed
+  // param is what reaches its inner node
   animatedValue(nodeId: string, param: string): number | null {
+    const node = this.nodes.find(({ id }) => id === nodeId);
+    const exposed = node?.type === "group" ? exposedParams(groupOf(this.groups, node)).find(({ id }) => id === param) : undefined;
+    if (exposed) return this.driven.get(innerId(nodeId, exposed.node))?.[exposed.param] ?? null;
     return this.driven.get(nodeId)?.[param] ?? null;
   }
 
@@ -339,7 +469,7 @@ class Session {
     const node = this.animationNode;
     if (node?.id !== target || !sourceHandle || !targetHandle) return;
     const param = paramOf(this.nodes, this.edges, source, sourceHandle);
-    const value = param && paramValue(this.nodes, param.node.id, param.param);
+    const value = param && paramValue(this.nodes, param.node.id, param.param, this.groups);
     if (value !== null) this.setNodeData(target, { ...node.data, tracks: seedTrack(node.data.tracks, targetHandle, this.frame, value) });
   }
 
@@ -349,10 +479,10 @@ class Session {
     const node = this.nodes.find(({ id }) => id === target);
     if ((node?.type !== "value" && node?.type !== "factor") || !sourceHandle) return;
     if (this.edges.some((edge) => edge.target === target && edge.sourceHandle)) return;
-    const value = paramValue(this.nodes, source, sourceHandle);
+    const value = paramValue(this.nodes, source, sourceHandle, this.groups);
     if (value === null) return;
     if (node.type === "value") return this.setNodeData(target, { value });
-    const bounds = paramBounds(this.nodes.find(({ id }) => id === source)?.type ?? "", sourceHandle);
+    const bounds = paramBoundsOf(this.groups, this.nodes.find(({ id }) => id === source), sourceHandle);
     if (bounds) this.setNodeData(target, { factor: (value - bounds.min) / (bounds.max - bounds.min) });
   }
 
@@ -362,14 +492,14 @@ class Session {
   // once its handle is measured (`linkTrack`) — the link; a link before its handle is drawn nowhere (xyflow #008)
   addLinkedTrack(source: string, sourceHandle: string): Link | null {
     const node = this.animationNode;
-    if (!node || this.animationLocked) return null;
+    if (!node || this.animationLocked || this.openGroup) return null;
     if (this.edges.some((edge) => edge.target === node.id && edge.source === source && edge.sourceHandle === sourceHandle))
       return null;
     const at = linkedTrackIndex(this.nodes, this.edges, node.id, node.data.tracks, paramOf(this.nodes, this.edges, source, sourceHandle)?.node.id ?? source);
     const tracks = addTrack(node.data.tracks, at);
     const link = { source, sourceHandle, target: node.id, targetHandle: tracks[at]!.id };
     const nodes = this.nodes.map((n) => (n.id === node.id ? ({ ...n, data: { ...node.data, tracks } } as FlowNode) : n));
-    if (!canConnect(nodes, this.edges, link)) return null;
+    if (!canConnect(nodes, this.edges, link, this.scope)) return null;
     this.nodes = nodes;
     return link;
   }
@@ -384,12 +514,12 @@ class Session {
   // the param a track drives, its value in the node's own data
   trackParamValue(nodeId: string, trackId: string): number | null {
     const param = trackParam(this.nodes, this.edges, nodeId, trackId);
-    return param ? paramValue(this.nodes, param.node.id, param.param) : null;
+    return param ? paramValue(this.nodes, param.node.id, param.param, this.groups) : null;
   }
 
   // xyflow asks while a link is dragged over a handle: a cycle, a link into the input, … are refused
   canConnect(connection: Link) {
-    return canConnect(this.nodes, this.edges, connection);
+    return canConnect(this.nodes, this.edges, connection, this.scope);
   }
 
   // a wire let go over a node's frame (linkOntoNode): in place of what that input had; `keep` — the link whose end
@@ -411,7 +541,7 @@ class Session {
 
   // the button: a picture to render and keys that move something
   canExport = $derived(
-    this.canRender && !this.uploading && this.exporting === null && hasAnimatedParams(this.graph),
+    this.canRender && !this.uploading && this.exporting === null && hasAnimatedParams(this.expanded),
   );
 
   // the export settings change no picture: frameGraph drops them, no render is sent
@@ -449,8 +579,8 @@ class Session {
         return;
       case "render-error": {
         console.error("render-animation error", message);
-        const type = this.nodes.find(({ id }) => id === message.nodeId)?.type;
-        this.endExport(type ? `${type}: ${message.message}` : message.message);
+        const node = this.rootNodes.find(({ id }) => id === (message.nodeId && instanceOf(this.graph, message.nodeId)));
+        this.endExport(node ? `${nodeLabel(node, this.groups)}: ${message.message}` : message.message);
         return;
       }
       case "rendered":
@@ -469,17 +599,14 @@ class Session {
   }
 
   exportToast() {
-    const file = toToastFile(this.nodes, this.edges, this.exportSettings);
+    const file = toToastFile(this.rootNodes, this.rootEdges, this.exportSettings, this.groups);
     saveBlob(new Blob([file], { type: "application/json" }), outputFileName("json"));
   }
 
   // input → output, the picture stays
   clearGraph() {
     this.recordHistory(); // an edit still settling stays a step of its own
-    const { nodes, edges } = emptyFlow(this.imageId);
-    this.nodes = nodes;
-    this.edges = edges;
-    this.exportSettings = {};
+    this.setFlow(emptyFlow(this.imageId));
     this.stop();
     this.playhead = 0;
     this.replaced++;
@@ -489,11 +616,9 @@ class Session {
   // true — the graph is replaced, the layout rebuilt; the uploaded picture stays
   async importToast(file: File): Promise<boolean> {
     try {
-      const { nodes, edges, export: settings } = fromToastFile(await file.text(), this.imageId);
+      const flow = fromToastFile(await file.text(), this.imageId);
       this.recordHistory();
-      this.nodes = nodes;
-      this.edges = edges;
-      this.exportSettings = settings ?? {};
+      this.setFlow(flow);
       this.stop();
       this.playhead = 0;
       this.replaced++;
@@ -525,7 +650,9 @@ class Session {
 
     // TODO: notify the user (notification toast or something else) — to be designed
     console.error("render-error", message);
-    this.renderError = { message: message.message, ...(message.nodeId && { nodeId: message.nodeId }) };
+    // an issue inside an instance (`<instance>/<inner>`) is shown on the instance
+    const nodeId = message.nodeId && instanceOf(this.graph, message.nodeId);
+    this.renderError = { message: message.message, ...(nodeId && { nodeId }) };
     // the old picture no longer matches the graph
     this.setRendered(null);
   }

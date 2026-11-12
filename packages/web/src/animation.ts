@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/svelte";
 import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
-import { NODE_LABELS, type FlowNode, type MenuNodeType } from "./graph";
+import type { FlowGroup, FlowNode } from "./graph";
+import { nodeLabel, ownParamValue } from "./groups";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
 
@@ -132,26 +133,31 @@ export const trackParam = (nodes: readonly FlowNode[], edges: readonly Edge[], n
   return link ? paramOf(nodes, edges, link.source, link.sourceHandle) : null;
 };
 
-// `move.x`; a shift shows after it — `move.x +3`
-export const paramLabel = ({ node, param, shift }: ParamOf): string =>
-  `${NODE_LABELS[node.type as MenuNodeType] ?? node.type}.${param}${shiftLabel(shift)}`;
+// `move.x`; a shift shows after it — `move.x +3`; a group's instance by its group's name — `group 1.x`
+export const paramLabel = ({ node, param, shift }: ParamOf, groups: readonly FlowGroup[] = []): string =>
+  `${nodeLabel(node, groups)}.${param}${shiftLabel(shift)}`;
 const shiftLabel = (shift: number) => (shift === 0 ? "" : ` ${shift > 0 ? "+" : "−"}${Math.abs(shift)}`);
 
-// the value a param has in the node's own data
-export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string): number | null => {
-  const value = (nodes.find(({ id }) => id === nodeId)?.data as Record<string, unknown> | undefined)?.[param];
-  return typeof value === "number" ? value : null;
-};
+// the value a param has in the node's own data; an instance's exposed one — its own, else the inner node's
+export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string, groups: readonly FlowGroup[] = []): number | null =>
+  ownParamValue(groups, nodes.find(({ id }) => id === nodeId), param);
 
 // the param's name from the link (`move.x`, through a delay `move.x +3`), no link — from the id (`track 3`)
-export const trackName = (nodes: readonly FlowNode[], edges: readonly Edge[], nodeId: string, trackId: string): string => {
+export const trackName = (
+  nodes: readonly FlowNode[],
+  edges: readonly Edge[],
+  nodeId: string,
+  trackId: string,
+  groups: readonly FlowGroup[] = [],
+): string => {
   const param = trackParam(nodes, edges, nodeId, trackId);
-  return param ? paramLabel(param) : trackId.replaceAll("-", " ");
+  return param ? paramLabel(param, groups) : trackId.replaceAll("-", " ");
 };
 
 // Tracks grouped by the node they animate, as blender's channel groups: a group per source node, in the order
 // of its first track; tracks inside in their own order. Unlinked tracks — a group of their own, on top (where
-// `+ track` puts a new one). A group is named by its node's type, numbered when the type repeats (`corners 2`);
+// `+ track` puts a new one). A group is named by its node's label (a group's instance — the group's name), numbered
+// when the label repeats (`corners 2`);
 // a row by its param (`x`, through a delay `x +3`). A track behind a delay goes to the group of the param's node.
 // Derived from the links — nothing of it is in the toast
 export const UNLINKED_GROUP = "unlinked";
@@ -163,25 +169,25 @@ export const trackGroups = (
   edges: readonly Edge[],
   nodeId: string,
   tracks: readonly AnimationTrack[],
+  definitions: readonly FlowGroup[] = [],
 ): TrackGroup[] => {
-  const groups = new Map<string, { type: string | null; rows: TrackRow[] }>();
+  const groups = new Map<string, { label: string | null; rows: TrackRow[] }>();
   tracks.forEach((track, index) => {
     const param = trackParam(nodes, edges, nodeId, track.id);
     const id = param ? param.node.id : UNLINKED_GROUP;
     const name = param ? `${param.param}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
-    const group = groups.get(id) ?? { type: param ? param.node.type : null, rows: [] };
+    const group = groups.get(id) ?? { label: param ? nodeLabel(param.node, definitions) : null, rows: [] };
     group.rows.push({ track, index, name });
     groups.set(id, group);
   });
-  const typeCount = new Map<string, number>();
-  for (const { type } of groups.values()) if (type) typeCount.set(type, (typeCount.get(type) ?? 0) + 1);
+  const labelCount = new Map<string, number>();
+  for (const { label } of groups.values()) if (label) labelCount.set(label, (labelCount.get(label) ?? 0) + 1);
   const seen = new Map<string, number>();
-  const named = [...groups].map(([id, { type, rows }]): TrackGroup => {
-    if (!type) return { id, name: UNLINKED_GROUP, rows };
-    const label = NODE_LABELS[type as MenuNodeType] ?? type;
-    const n = (seen.get(type) ?? 0) + 1;
-    seen.set(type, n);
-    return { id, name: typeCount.get(type)! > 1 ? `${label} ${n}` : label, rows };
+  const named = [...groups].map(([id, { label, rows }]): TrackGroup => {
+    if (!label) return { id, name: UNLINKED_GROUP, rows };
+    const n = (seen.get(label) ?? 0) + 1;
+    seen.set(label, n);
+    return { id, name: labelCount.get(label)! > 1 ? `${label} ${n}` : label, rows };
   });
   return [...named.filter(({ id }) => id === UNLINKED_GROUP), ...named.filter(({ id }) => id !== UNLINKED_GROUP)];
 };

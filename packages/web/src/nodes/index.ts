@@ -21,6 +21,9 @@ import SkewNode from "./SkewNode.svelte";
 import TintNode from "./TintNode.svelte";
 import ValueNode from "./ValueNode.svelte";
 import FactorNode from "./FactorNode.svelte";
+import GroupInputNode from "./GroupInputNode.svelte";
+import GroupNode from "./GroupNode.svelte";
+import GroupOutputNode from "./GroupOutputNode.svelte";
 import Turn3dNode from "./Turn3dNode.svelte";
 
 // one component per contract node type
@@ -47,5 +50,8 @@ export const nodeTypes = {
   delay: DelayNode,
   value: ValueNode,
   factor: FactorNode,
+  group: GroupNode,
+  groupInput: GroupInputNode,
+  groupOutput: GroupOutputNode,
   output: OutputNode,
 } satisfies NodeTypes;

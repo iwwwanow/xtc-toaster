@@ -1,17 +1,23 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
 import type { AnimationExport } from "@xtc-toaster/contract";
-import { fromToastFile, toGraph, type Flow, type FlowNode } from "./graph";
+import { fromToastFile, toGraph, type Flow, type FlowGroup, type FlowNode } from "./graph";
 
-// the editor survives a page reload: the graph with its picture and export settings, and where the nodes stand.
+// the editor survives a page reload: the graph with its picture, groups and export settings, and where the nodes stand
+// (a group's inside — under `groupPositions`, by the group's id).
 // the picture lives on the server for UPLOADS_TTL_HOURS — an expired one is the input's `image not found`
 export const STORAGE_KEY = "xtc-toaster:editor";
 
-type Saved = { graph: unknown; positions: Record<string, XYPosition> };
+type Positions = Record<string, XYPosition>;
+type Saved = { graph: unknown; positions: Positions; groupPositions?: Record<string, Positions> };
 
-export const toSaved = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport): string =>
+const positionsOf = (nodes: readonly FlowNode[]): Positions =>
+  Object.fromEntries(nodes.map(({ id, position: { x, y } }) => [id, { x, y }]));
+
+export const toSaved = (nodes: FlowNode[], edges: Edge[], settings?: AnimationExport, groups: readonly FlowGroup[] = []): string =>
   JSON.stringify({
-    graph: toGraph(nodes, edges, settings),
-    positions: Object.fromEntries(nodes.map(({ id, position: { x, y } }) => [id, { x, y }])),
+    graph: toGraph(nodes, edges, settings, groups),
+    positions: positionsOf(nodes),
+    ...(groups.length > 0 && { groupPositions: Object.fromEntries(groups.map(({ id, nodes }) => [id, positionsOf(nodes)])) }),
   } satisfies Saved);
 
 const imageIdOf = (graph: unknown): string | null => {
@@ -30,13 +36,15 @@ const isPosition = (value: unknown): value is XYPosition =>
 export const fromSaved = (text: string | null): Flow | null => {
   if (!text) return null;
   try {
-    const { graph, positions } = JSON.parse(text) as Partial<Saved>;
+    const { graph, positions, groupPositions } = JSON.parse(text) as Partial<Saved>;
     const flow = fromToastFile(JSON.stringify(graph), imageIdOf(graph));
-    const nodes = flow.nodes.map((node) => {
-      const position = positions?.[node.id];
-      return isPosition(position) ? { ...node, position } : node;
-    });
-    return { ...flow, nodes };
+    const placed = (nodes: FlowNode[], at: Positions | undefined) =>
+      nodes.map((node) => {
+        const position = at?.[node.id];
+        return isPosition(position) ? { ...node, position } : node;
+      });
+    const groups = flow.groups?.map((group) => ({ ...group, nodes: placed(group.nodes, groupPositions?.[group.id]) }));
+    return { ...flow, nodes: placed(flow.nodes, positions), ...(groups && { groups }) };
   } catch (error) {
     console.error("saved editor dropped", error);
     return null;

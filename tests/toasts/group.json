@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "g1", "type": "group", "data": { "group": "spin", "params": { "angle": -20 } } },
+    { "id": "g2", "type": "group", "data": { "group": "spin" } },
+    { "id": "out", "type": "output", "data": {} },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 12,
+        "frames": 12,
+        "tracks": [{ "id": "t1", "keys": [{ "frame": 0, "value": 0.3 }, { "frame": 11, "value": 1 }] }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "1", "source": "in", "target": "g1" },
+    { "id": "2", "source": "g1", "target": "g2" },
+    { "id": "3", "source": "g2", "target": "out" },
+    { "id": "4", "source": "g2", "sourceHandle": "opacity", "target": "anim", "targetHandle": "t1" }
+  ],
+  "groups": [
+    {
+      "id": "spin",
+      "name": "spin fade",
+      "nodes": [
+        { "id": "gi", "type": "groupInput", "data": {} },
+        { "id": "rot", "type": "rotate", "data": { "angle": 15 } },
+        { "id": "sc", "type": "scale", "data": { "x": 0.85, "y": 0.85 } },
+        { "id": "op", "type": "opacity", "data": { "opacity": 0.8 } },
+        { "id": "go", "type": "groupOutput", "data": {} }
+      ],
+      "edges": [
+        { "id": "a", "source": "gi", "target": "rot" },
+        { "id": "b", "source": "rot", "target": "sc" },
+        { "id": "c", "source": "sc", "target": "op" },
+        { "id": "d", "source": "op", "target": "go" }
+      ],
+      "params": [
+        { "id": "angle", "node": "rot", "param": "angle" },
+        { "id": "opacity", "node": "op", "param": "opacity" }
+      ]
+    }
+  ]
+}
