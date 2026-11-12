@@ -566,7 +566,8 @@ legend {
   white-space: nowrap;
 }
 
-/* TODO(uiu): hand-written — uiu has no breadcrumb: inside a group, `toast › name` in a row on the white of a node */
+/* TODO(uiu): hand-written — uiu's breadcrumbs sit on the page; over the canvas they need a panel: white, a 1px LIGHT
+   border, the instance count beside them */
 .group-panel {
   display: flex;
   align-items: center;
