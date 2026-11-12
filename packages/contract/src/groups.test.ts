@@ -64,6 +64,22 @@ describe("expandGroups", () => {
     expect(links(graph)).toEqual(["g/bl>g/op", "g/op>h/bl", "h/bl>h/op", "h/op>out", "in>g/bl"]);
   });
 
+  test("only: one instance expanded under the ids it's given, the others and the groups stay", () => {
+    const graph = expandGroups(
+      toast([instance("g", { r: 9 }), instance("h")], [
+        { id: "1", source: "in", target: "g" },
+        { id: "2", source: "g", target: "h" },
+        { id: "3", source: "h", target: "out" },
+      ]),
+      { only: new Set(["g"]), id: (_, inner) => `new-${inner}` },
+    );
+    expect(ids(graph)).toEqual(["h", "in", "new-bl", "new-op", "out"]);
+    expect(links(graph)).toEqual(["h>out", "in>new-bl", "new-bl>new-op", "new-op>h"]);
+    expect(graph.nodes.find(({ id }) => id === "new-bl")?.data).toEqual({ radius: 9 });
+    expect(graph.groups).toEqual([blurFade()]);
+    expect(validateGraph(graph)).toBeNull();
+  });
+
   test("group input straight to group output passes the picture through: A → B", () => {
     const through = blurFade({
       nodes: [
@@ -125,6 +141,8 @@ describe("validateGraph with groups", () => {
   test.each([
     ["a missing definition", toast([instance("g", undefined, "ghost")], [])],
     ["a param the group doesn't show", toast([instance("g", { z: 1 })], [])],
+    ["a link out of a param the group doesn't show", toast([instance("g"), { id: "v", type: "value", data: { value: 1 } }], [{ id: "1", source: "g", sourceHandle: "z", target: "v" }])],
+    ["a link into an instance's named handle", toast([instance("g")], [{ id: "1", source: "in", target: "g", targetHandle: "a" }])],
     ["a param out of its bounds", toast([instance("g", { r: 99 })], [])],
   ])("refuses an instance with %s", (_, graph) => {
     expect(validateGraph(graph)).toMatchObject({ nodeId: "g" });

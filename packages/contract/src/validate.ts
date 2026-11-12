@@ -145,8 +145,8 @@ const definitionIssue = (definition: GroupDefinition): GraphIssue | null => {
 
 // The group rules zod can't check (docs/sprints/sprint-5.spec.md, «node groups»): unique definitions, each one sound
 // (definitionIssue), group inputs / outputs only inside, an instance names an existing definition and only its params,
-// within their bounds
-const groupsIssue = ({ nodes, groups = [] }: ToastGraph): GraphIssue | null => {
+// within their bounds; links into an instance take no handle, links out of one leave an exposed param or its output
+const groupsIssue = ({ nodes, edges, groups = [] }: ToastGraph): GraphIssue | null => {
   const definitions = new Map<string, GroupDefinition>();
   for (const definition of groups) {
     if (definitions.has(definition.id)) return { message: "duplicate group id", group: definition.id };
@@ -166,6 +166,14 @@ const groupsIssue = ({ nodes, groups = [] }: ToastGraph): GraphIssue | null => {
       if (!bounds) return { message: "not a param of this group", nodeId: node.id };
       if (value < bounds.min || value > bounds.max) return { message: `${id} out of its bounds`, nodeId: node.id };
     }
+  }
+  // an instance's links: one unnamed pixel input, a param out of an exposed param only — expandGroups would drop the rest
+  const instances = new Map(nodes.flatMap((node) => (node.type === "group" ? [[node.id, definitions.get(node.data.group)!]] : [])));
+  for (const { source, sourceHandle, target, targetHandle } of edges) {
+    if (instances.has(target) && targetHandle !== undefined) return { message: "a group has one input", nodeId: target };
+    const from = instances.get(source);
+    if (from && sourceHandle !== undefined && !from.params.some(({ id }) => id === sourceHandle))
+      return { message: "not a param of this group", nodeId: source };
   }
   return null;
 };
