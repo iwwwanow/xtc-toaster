@@ -1,5 +1,5 @@
 # dev stack: sources are mounted, server restarts on change (bun --watch), web is the vite dev server.
-# Only web is published; vite proxies /api and /ws to the server inside the compose network.
+# Published: web (vite proxies /api and /ws to the server inside the compose network) and storybook.
 name: xtc-toaster
 
 x-bun: &bun
@@ -57,6 +57,17 @@ services:
         condition: service_completed_successfully
       server:
         condition: service_started
+
+  # the real nodes and panels on toasts from tests/toasts, for setting up the ui by hand — no server needed
+  storybook:
+    <<: *bun
+    working_dir: /app/packages/web
+    command: bun run storybook --ci --host 0.0.0.0
+    ports:
+      - "${STORYBOOK_PORT:-6006}:6006"
+    depends_on:
+      install:
+        condition: service_completed_successfully
 
 volumes:
   nm_root:

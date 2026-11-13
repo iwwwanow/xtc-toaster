@@ -15,12 +15,13 @@ bun run test         # each package's own `bun test` via `bun run --filter`
 bun run toast-1      # bake toast-1 (degas) → baked/*.mp4
 bun run web:dev      # web: vite dev server, proxies /api + /ws to SERVER_HOST (default localhost:3000)
 bun run server:dev   # bun server with --watch: POST /api/images, /ws (PORT=3000, UPLOADS_DIR=assets/uploads)
+bun run --filter @xtc-toaster/web storybook   # storybook on :6006 — the real nodes / panels / editor on toasts, no server
 bun run --filter @xtc-toaster/web typecheck   # svelte-check — web pins typescript 6 (svelte-check can't run on TS 7)
 
 cp .env.example .env && docker compose up -d   # dev stack: install → server + web, ui on http://localhost:$WEB_PORT
 ```
 
-Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web is published, vite reaches the server as `server:3000`. `DEBUG_IMAGE` (path from the repo root, compose default `poppies.jpg`, empty — off) — the page uploads that picture on open; vite dev server only (`vite.config.ts`). A new package in `packages/*` needs its own node_modules volume there.
+Docker compose (`docker-compose.yml`) is the dev stack: sources mounted, node_modules and uploads in named volumes, only web and storybook are published (`STORYBOOK_PORT`, default 6006), vite reaches the server as `server:3000`. `DEBUG_IMAGE` (path from the repo root, compose default `poppies.jpg`, empty — off) — the page uploads that picture on open; vite dev server only (`vite.config.ts`). A new package in `packages/*` needs its own node_modules volume there.
 
 Prod: `Dockerfile` (multi-stage) — `docker build --target test .` is what CI runs (typecheck + `bun run test` of every package, ffmpeg 7.1 from debian trixie — not the desktop's 8), `docker build .` is the runtime image: one bun process serves the web build (`STATIC_DIR`) + `/api` + `/ws` + `/healthz`, ffmpeg inside (gif export; dev compose builds the server from the same `ffmpeg` stage). Server env: `PORT`, `HOST` (default `0.0.0.0`), `UPLOADS_DIR`, `UPLOADS_TTL_HOURS` (24), `UPLOADS_MAX_TOTAL_MB` (512), `RENDER_MAX_LAYERS` (4 — linked `layers` node rows over one render), `RENDER_MAX_FRAMES` (48 — frames of one gif export), `STATIC_DIR` (unset in dev — vite serves the page). CI — `.github/workflows/release.yml`: any branch → test, `master` → semantic-release (tags + GitHub Releases, `feat` → minor, `fix` → patch while `0.x`) → `ghcr.io/iwwwanow/xtc-toaster:<version>`.
 
@@ -56,6 +57,10 @@ Target structure, dependency rules, the ws/http contract and sprint status — `
 
 - **QA runs once, at the end of the release** (sprint 6, before 28.11 — decided 01.11, confirmed 06.11). During a sprint nobody runs QA, and a sprint closes without it: each sprint only writes its `docs/sprints/sprint-N.qa.md` list, the open items of every list are run all at once at the end. Checks while implementing (tests, a headless browser) are not QA and stay
 - **The UI will be redrawn by the user by hand** (06.11). Until then the ui only has to work: no visual polish, no layout rework beyond what a feature needs
+
+## Storybook — setting up the ui by hand
+
+`packages/web/.storybook` + `src/stories` (13.11). Stories run the real components on the real `session`: `load.svelte.ts` imports a toast (a `tests/toasts` name or `single(type)` — one node with its defaults) through `session.importToast`, from an `$effect` (never from a template — `state_unsafe_mutation`). No server: `connected` unlocks the fields, `picture` puts a fake uuid into the input and lib's `poppies.jpg` in as the render, `renderError` / `errorNode` stand for the server's refusal; `StoryEditor` answers every render request at once (else App's render leaves the editor locked). `StoryCanvas` — nodes only, `StoryEditor` — the whole App. A new node type or state → a story in `nodes.stories.ts`; stories pass the web typecheck (CI).
 
 ## UI styles — uiu first
 
