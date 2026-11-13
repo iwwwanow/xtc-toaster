@@ -22,6 +22,10 @@
 - Headless Chrome на dev-стеке (5174), `?toast=group`. Поля экземпляров `rotate.angle` / `opacity.opacity`, точки справа, дорожка `opacity.opacity`. Внутри у group input строки `rotate.angle`, `opacity.opacity` и свободная, у полей точки слева, group output без параметров, delay и animation в меню выключены. Провода выглядят нормально, длинный от `opacity` к group input пересекает scale — терпимо.
 - Руками в браузере не проверял: провод в свободную строку, снятие провода с undo. Это покрыто юнит-тестами, проверки — в строке `group` в `tests/toasts/README.md`.
 
+## Раскладка внутри группы (отзыв пользователя)
+
+После arrange group input уезжал вправо вверх, над group output, — «выглядит отвратительно». Причина: elk ставит источник провода в столбец левее цели. Провод `rotate.angle → group input` для него значит «group input после rotate». Исправлено в `arrange.ts`: провод из точки на левой стороне ноды elk получает развёрнутым. Правило общее, по стороне точки, особого случая для group input нет; в корне левых точек-источников нет, там ничего не меняется. Тест в `arrange.test.ts` без правки падает. В headless Chrome после arrange внутри `spin fade` всё стоит в одну линию: group input, rotate, scale, opacity, group output.
+
 ## Осталось
 
 - Посмотреть пользователю: строки, точки слева, снятие провода.

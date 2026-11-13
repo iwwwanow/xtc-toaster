@@ -36,8 +36,16 @@ const portId = (node: string, type: ArrangeHandle["type"], handle: string | null
 let elk: Promise<ELK> | null = null;
 const loadElk = () => (elk ??= import("elkjs/lib/elk.bundled.js").then(({ default: Elk }) => new Elk()));
 
+// A wire out of a handle on the node's left side runs right to left: inside a group the fields' param dots are on the
+// left, wired into the group input that stands left of everything (13.11). elk puts a link's source in an earlier
+// column than its target — such a link goes to it reversed, so the group input stays first, not last
 export const arrange = async (nodes: readonly ArrangeNode[], edges: readonly ArrangeEdge[]): Promise<Map<string, XYPosition>> => {
   const ports = new Set<string>();
+  const leftSources = new Set(
+    nodes.flatMap(({ id, handles }) =>
+      handles.filter(({ type, side }) => type === "source" && side === "left").map(({ id: handle }) => portId(id, "source", handle)),
+    ),
+  );
   const graph: ElkNode = {
     id: "root",
     layoutOptions: LAYOUT,
@@ -63,7 +71,8 @@ export const arrange = async (nodes: readonly ArrangeNode[], edges: readonly Arr
     edges: edges.map(({ id, source, target, sourceHandle, targetHandle }) => {
       const from = portId(source, "source", sourceHandle);
       const to = portId(target, "target", targetHandle);
-      return { id, sources: [ports.has(from) ? from : source], targets: [ports.has(to) ? to : target] };
+      const ends = { sources: [ports.has(from) ? from : source], targets: [ports.has(to) ? to : target] };
+      return leftSources.has(from) ? { id, sources: ends.targets, targets: ends.sources } : { id, ...ends };
     }),
   };
   const laid = await (await loadElk()).layout(graph);
