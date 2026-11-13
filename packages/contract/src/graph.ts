@@ -204,6 +204,44 @@ export const DelayNodeSchema = z.object({
   }),
 });
 
+// one number for the params wired into it: param → value, the param takes the value (graphAtFrame), clamped to its
+// bounds. Many params into its one input; no pixels in or out. Its own `value` is a param: animated, or wired into
+// another value
+export const ValueNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("value"),
+  data: z.object({ value: ranged(PARAMS.value.value) }),
+});
+
+// a share of the range for the params wired into it: param → factor, the param takes min + factor · (max − min) of its
+// own bounds (graphAtFrame). Wired like a value: many params into its one input, its own `factor` is a param
+export const FactorNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("factor"),
+  data: z.object({ factor: ranged(PARAMS.factor.factor) }),
+});
+
+// an instance of a group (docs/sprints/sprint-5.spec.md, «node groups»): `group` — the definition's id; `params` — this
+// instance's own values of the exposed params by the group input's row id, a missing one — the inner node's value.
+// Linked: an edit inside changes every instance. One pixel in, one out, a param output per exposed param (the row id)
+export const GroupNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("group"),
+  data: z.object({ group: z.string().min(1), params: z.record(z.string().min(1), z.number()).optional() }),
+});
+
+// a group input's row: one inner param wired into it (inner.param → groupInput:<row id>) is exposed on the instance
+export const GroupInputRowSchema = z.object({ id: z.string().min(1) });
+
+// inside a group's definition only: where the instance's pixel input comes in, where its output leaves. The group
+// input's rows expose params, like a delay's: one param per row, an unwired row exposes nothing
+export const GroupInputNodeSchema = z.object({
+  id: NodeIdSchema,
+  type: z.literal("groupInput"),
+  data: z.object({ rows: z.array(GroupInputRowSchema).superRefine(uniqueIds("row")) }),
+});
+export const GroupOutputNodeSchema = z.object({ id: NodeIdSchema, type: z.literal("groupOutput"), data: z.object({}) });
+
 export const OutputNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("output"),
@@ -231,6 +269,11 @@ export const GraphNodeSchema = z.discriminatedUnion("type", [
   LayersNodeSchema,
   AnimationNodeSchema,
   DelayNodeSchema,
+  ValueNodeSchema,
+  FactorNodeSchema,
+  GroupNodeSchema,
+  GroupInputNodeSchema,
+  GroupOutputNodeSchema,
   OutputNodeSchema,
 ]);
 export type GraphNode = z.infer<typeof GraphNodeSchema>;
@@ -262,20 +305,38 @@ export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
 export type DelayNode = z.infer<typeof DelayNodeSchema>;
 export type DelayRow = z.infer<typeof DelayRowSchema>;
+export type ValueNode = z.infer<typeof ValueNodeSchema>;
+export type FactorNode = z.infer<typeof FactorNodeSchema>;
+// the nodes that set the params wired into them — a value (its number), a factor (a share of the param's range)
+export type DriverNode = ValueNode | FactorNode;
+export type GroupNode = z.infer<typeof GroupNodeSchema>;
+export type GroupInputNode = z.infer<typeof GroupInputNodeSchema>;
+export type GroupInputRow = z.infer<typeof GroupInputRowSchema>;
+export const isDriver = (node: GraphNode | undefined): node is DriverNode => node?.type === "value" || node?.type === "factor";
 export type OutputNode = z.infer<typeof OutputNodeSchema>;
 
 export const GraphEdgeSchema = z.object({
   id: z.string().min(1),
   source: NodeIdSchema,
   target: NodeIdSchema,
-  // a param link (into the animation node or a delay): the param's name, or the delay row it leaves; a pixel link has
-  // no field
+  // a param link (into the animation node, a delay, a value or a group input): the param's name, the delay row it
+  // leaves or an instance's exposed param (its group input row); a pixel link has no field
   sourceHandle: z.string().min(1).optional(),
-  // a layers edge: the layer row it goes into; a param link: the track or the delay row; every other node has one
-  // unnamed handle (no field)
+  // a layers edge: the layer row it goes into; a param link: the track, the delay row or the group input row (into a
+  // value — no field, its one input takes many); every other node has one unnamed handle (no field)
   targetHandle: z.string().min(1).optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdgeSchema>;
+
+// a group's definition: its inside — ordinary nodes plus one groupInput and one groupOutput. The params it shows on its
+// instances are its links into the group input's rows (exposedParams). The rules zod can't check — validateGraph
+export const GroupDefinitionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(LAYER_NAME_MAX),
+  nodes: z.array(GraphNodeSchema),
+  edges: z.array(GraphEdgeSchema),
+});
+export type GroupDefinition = z.infer<typeof GroupDefinitionSchema>;
 
 // also the toast file format (presets, export / import). The link rules are validateGraph, called apart —
 // TODO: into a superRefine here, docs/backlog/2026-11-01_validate-graph-into-zod.md
@@ -284,6 +345,8 @@ export const ToastGraphSchema = z.object({
   nodes: z.array(GraphNodeSchema),
   edges: z.array(GraphEdgeSchema),
   export: AnimationExportSchema.optional(),
+  // node groups' definitions; optional — a toast without groups is unchanged (TOAST_GRAPH_VERSION stays 1)
+  groups: z.array(GroupDefinitionSchema).optional(),
 });
 export type ToastGraph = z.infer<typeof ToastGraphSchema>;
 

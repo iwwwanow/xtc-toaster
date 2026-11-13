@@ -12,20 +12,24 @@
     type Connection,
     type Edge,
     type OnConnectEnd,
+    type Viewport,
   } from "@xyflow/svelte";
   import { tick, untrack } from "svelte";
   import { arrange, type ArrangeHandle, type ArrangeNode } from "./arrange";
   import LinkEdge from "./edges/LinkEdge.svelte";
   import { isMenuNodeType, linkOntoNode, linksUnder, NODE_TYPE_MIME, type FlowNode, type Link } from "./graph";
+  import { itemGroup, type MenuItem } from "./groups";
   import { nodeTypes } from "./nodes";
   import ActionsPanel from "./panels/ActionsPanel.svelte";
   import ConnectionPanel from "./panels/ConnectionPanel.svelte";
   import DragZones from "./panels/DragZones.svelte";
+  import GroupPanel from "./panels/GroupPanel.svelte";
+  import SelectionToolbar from "./panels/SelectionToolbar.svelte";
   import NodeMenu from "./panels/NodeMenu.svelte";
   import VersionPanel from "./panels/VersionPanel.svelte";
   import { session } from "./session.svelte";
 
-  const { screenToFlowPosition, deleteElements, fitView, getInternalNode } = useSvelteFlow<FlowNode, Edge>();
+  const { screenToFlowPosition, deleteElements, fitView, getInternalNode, getViewport, setViewport } = useSvelteFlow<FlowNode, Edge>();
   const nodesInitialized = useNodesInitialized();
 
   // elk needs the real sizes and handle positions — only measured nodes have them; false — not all measured yet
@@ -78,6 +82,22 @@
     });
   });
 
+  // Each level (the root, a group's inside) keeps its own view: going into a group shows it as it was left, or whole
+  // the first time; back at the root — where it was. The viewport lives in the editor, not in the toast
+  const viewports = new Map<string | null, Viewport>();
+  let shownLevel: string | null = null;
+  $effect(() => {
+    const level = session.openGroup?.id ?? null;
+    untrack(() => {
+      if (level === shownLevel) return;
+      viewports.set(shownLevel, getViewport());
+      shownLevel = level;
+      const saved = viewports.get(level);
+      // the level's nodes are mounted first; fitView waits for them to be measured
+      void tick().then(() => (saved ? setViewport(saved) : fitView({ maxZoom: 1 })));
+    });
+  });
+
   // xyflow's default 0.5 can't frame a big toast (degas: 26 nodes) — fitView stops at it
   const MIN_ZOOM = 0.1;
 
@@ -101,11 +121,11 @@
   // a node from the menu appears where it was dropped; onto a highlighted link — into it
   const ondrop = (event: DragEvent) => {
     event.preventDefault();
-    const type = event.dataTransfer?.getData(NODE_TYPE_MIME);
+    const item = event.dataTransfer?.getData(NODE_TYPE_MIME);
     const link = session.dropLink;
     session.dropLink = null;
-    if (!type || !isMenuNodeType(type)) return;
-    session.addNode(type, screenToFlowPosition({ x: event.clientX, y: event.clientY }), link);
+    if (!item || (!isMenuNodeType(item) && itemGroup(item) === null)) return;
+    session.addNode(item as MenuItem, screenToFlowPosition({ x: event.clientX, y: event.clientY }), link);
   };
 
   // right click deletes; input / output are deletable: false, deleteElements skips them
@@ -174,15 +194,17 @@
   };
 
   // a link onto a taken input replaces the one there; refused links (a cycle, …) never get here — canConnect.
-  // A param linked into an empty track makes its first key
+  // A param linked into an empty track makes its first key, into a value nothing is wired into yet — its number
   const onbeforeconnect = (connection: Connection) => {
     session.freeTarget(connection);
     session.seedTrack(connection);
+    session.seedValue(connection);
     return connection;
   };
   const onbeforereconnect = (edge: Edge) => {
     session.freeTarget(edge, edge.id);
     session.seedTrack(edge);
+    session.seedValue(edge);
     return edge;
   };
 
@@ -193,7 +215,7 @@
     const node = top?.closest<HTMLElement>(".svelte-flow__node")?.dataset.id;
     if (!top || !node) return null;
     const row = top.closest<HTMLElement>("[data-row]")?.dataset.row ?? null;
-    const link = linkOntoNode(session.nodes, session.edges, source, node, row, keep);
+    const link = linkOntoNode(session.nodes, session.edges, source, node, row, keep, session.scope);
     return link && { node, link };
   };
 
@@ -307,6 +329,8 @@
     <ActionsPanel />
     <ConnectionPanel />
     <DragZones visible={zonesShown} over={overZone} bind:zone />
+    <GroupPanel />
+    <SelectionToolbar />
     <VersionPanel />
   </SvelteFlow>
 </div>

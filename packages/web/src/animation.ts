@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
-import { NODE_LABELS, type FlowNode, type MenuNodeType } from "./graph";
+import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
+import type { FlowGroup, FlowNode } from "./graph";
+import { nodeLabel, ownParamValue, paramName } from "./groups";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
 
@@ -132,27 +133,33 @@ export const trackParam = (nodes: readonly FlowNode[], edges: readonly Edge[], n
   return link ? paramOf(nodes, edges, link.source, link.sourceHandle) : null;
 };
 
-// `move.x`; a shift shows after it — `move.x +3`
-export const paramLabel = ({ node, param, shift }: ParamOf): string =>
-  `${NODE_LABELS[node.type as MenuNodeType] ?? node.type}.${param}${shiftLabel(shift)}`;
+// `move.x`; a shift shows after it — `move.x +3`; a group's instance by its group's name and what the param
+// exposes — `group 1.rotate.angle`
+export const paramLabel = ({ node, param, shift }: ParamOf, groups: readonly FlowGroup[] = []): string =>
+  `${nodeLabel(node, groups)}.${paramName(groups, node, param)}${shiftLabel(shift)}`;
 const shiftLabel = (shift: number) => (shift === 0 ? "" : ` ${shift > 0 ? "+" : "−"}${Math.abs(shift)}`);
 
-// the value a param has in the node's own data
-export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string): number | null => {
-  const value = (nodes.find(({ id }) => id === nodeId)?.data as Record<string, unknown> | undefined)?.[param];
-  return typeof value === "number" ? value : null;
-};
+// the value a param has in the node's own data; an instance's exposed one — its own, else the inner node's
+export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string, groups: readonly FlowGroup[] = []): number | null =>
+  ownParamValue(groups, nodes.find(({ id }) => id === nodeId), param);
 
 // the param's name from the link (`move.x`, through a delay `move.x +3`), no link — from the id (`track 3`)
-export const trackName = (nodes: readonly FlowNode[], edges: readonly Edge[], nodeId: string, trackId: string): string => {
+export const trackName = (
+  nodes: readonly FlowNode[],
+  edges: readonly Edge[],
+  nodeId: string,
+  trackId: string,
+  groups: readonly FlowGroup[] = [],
+): string => {
   const param = trackParam(nodes, edges, nodeId, trackId);
-  return param ? paramLabel(param) : trackId.replaceAll("-", " ");
+  return param ? paramLabel(param, groups) : trackId.replaceAll("-", " ");
 };
 
 // Tracks grouped by the node they animate, as blender's channel groups: a group per source node, in the order
 // of its first track; tracks inside in their own order. Unlinked tracks — a group of their own, on top (where
-// `+ track` puts a new one). A group is named by its node's type, numbered when the type repeats (`corners 2`);
-// a row by its param (`x`, through a delay `x +3`). A track behind a delay goes to the group of the param's node.
+// `+ track` puts a new one). A group is named by its node's label (a group's instance — the group's name), numbered
+// when the label repeats (`corners 2`);
+// a row by its param (`x`, through a delay `x +3`, an instance's — what it exposes, `rotate.angle`). A track behind a delay goes to the group of the param's node.
 // Derived from the links — nothing of it is in the toast
 export const UNLINKED_GROUP = "unlinked";
 export type TrackRow = { track: AnimationTrack; index: number; name: string };
@@ -163,25 +170,25 @@ export const trackGroups = (
   edges: readonly Edge[],
   nodeId: string,
   tracks: readonly AnimationTrack[],
+  definitions: readonly FlowGroup[] = [],
 ): TrackGroup[] => {
-  const groups = new Map<string, { type: string | null; rows: TrackRow[] }>();
+  const groups = new Map<string, { label: string | null; rows: TrackRow[] }>();
   tracks.forEach((track, index) => {
     const param = trackParam(nodes, edges, nodeId, track.id);
     const id = param ? param.node.id : UNLINKED_GROUP;
-    const name = param ? `${param.param}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
-    const group = groups.get(id) ?? { type: param ? param.node.type : null, rows: [] };
+    const name = param ? `${paramName(definitions, param.node, param.param)}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
+    const group = groups.get(id) ?? { label: param ? nodeLabel(param.node, definitions) : null, rows: [] };
     group.rows.push({ track, index, name });
     groups.set(id, group);
   });
-  const typeCount = new Map<string, number>();
-  for (const { type } of groups.values()) if (type) typeCount.set(type, (typeCount.get(type) ?? 0) + 1);
+  const labelCount = new Map<string, number>();
+  for (const { label } of groups.values()) if (label) labelCount.set(label, (labelCount.get(label) ?? 0) + 1);
   const seen = new Map<string, number>();
-  const named = [...groups].map(([id, { type, rows }]): TrackGroup => {
-    if (!type) return { id, name: UNLINKED_GROUP, rows };
-    const label = NODE_LABELS[type as MenuNodeType] ?? type;
-    const n = (seen.get(type) ?? 0) + 1;
-    seen.set(type, n);
-    return { id, name: typeCount.get(type)! > 1 ? `${label} ${n}` : label, rows };
+  const named = [...groups].map(([id, { label, rows }]): TrackGroup => {
+    if (!label) return { id, name: UNLINKED_GROUP, rows };
+    const n = (seen.get(label) ?? 0) + 1;
+    seen.set(label, n);
+    return { id, name: labelCount.get(label)! > 1 ? `${label} ${n}` : label, rows };
   });
   return [...named.filter(({ id }) => id === UNLINKED_GROUP), ...named.filter(({ id }) => id !== UNLINKED_GROUP)];
 };
@@ -249,11 +256,12 @@ export const clampPlayhead = (frame: number, frames: number): number => Math.max
 // play: the frame after this one, the last goes back to the first
 export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
 
-// what one frame's render needs: no animation node, no delays, no param links. Fps, keys elsewhere, track order,
-// a delay's shift once applied don't touch the picture, so they don't change this graph and don't start a render
+// what one frame's render needs: no animation node, no delays, no value / factor nodes, no param links. Fps, keys elsewhere,
+// track order, a delay's shift or a value's number once applied don't touch the picture, so they don't change this
+// graph and don't start a render
 export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGraph => ({
   ...graph,
-  nodes: graph.nodes.filter(({ type }) => type !== "animation" && type !== "delay"),
+  nodes: graph.nodes.filter((node) => node.type !== "animation" && node.type !== "delay" && !isDriver(node)),
   edges: graph.edges.filter(({ sourceHandle }) => sourceHandle === undefined),
 });
 

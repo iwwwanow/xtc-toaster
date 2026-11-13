@@ -176,12 +176,14 @@ test("withoutAnimation keeps only what the picture depends on", () => {
       { id: "in", type: "input", data: { imageId: null } },
       { id: "m", type: "move", data: { x: 1, y: 2 } },
       { id: "a", type: "animation", data: { fps: 24, frames: 2, tracks: [{ id: "t", keys: [] }] } },
+      { id: "v", type: "value", data: { value: 5 } },
       { id: "out", type: "output", data: {} },
     ],
     edges: [
       { id: "1", source: "in", target: "m" },
       { id: "2", source: "m", target: "out" },
       { id: "3", source: "m", sourceHandle: "x", target: "a", targetHandle: "t" },
+      { id: "4", source: "m", sourceHandle: "y", target: "v" },
     ],
     export: { format: "mp4" },
   };

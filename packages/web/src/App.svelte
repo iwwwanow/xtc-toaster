@@ -7,7 +7,7 @@
   import "./app.css";
   import { untrack } from "svelte";
   import Editor from "./Editor.svelte";
-  import { save, toSaved } from "./persist";
+  import { save } from "./persist";
   import { session } from "./session.svelte";
 
   // every graph change → new render; reconnect re-sends the current graph; no image → no render. Not during an
@@ -23,7 +23,7 @@
   const SAVE_DELAY_MS = 300;
   $effect(() => {
     if (session.dragging) return;
-    const text = toSaved(session.nodes, session.edges, session.exportSettings);
+    const text = session.snapshot();
     const timer = setTimeout(() => {
       save(text);
       session.recordHistory(text);

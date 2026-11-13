@@ -3,6 +3,7 @@
 // for the clip (docs/backlog/2026-11-06_animation-frames-in-memory.md) — then lib assembles the file from it.
 import { join } from "node:path";
 import {
+  expandGroups,
   graphAtFrame,
   type AnimationExport,
   type AnimationFormat,
@@ -63,8 +64,10 @@ export const renderAnimation = async ({
   const { fps, frames } = node.data;
   if (frames > maxFrames) throw new GraphError(`frames: at most ${maxFrames}`, node.id);
 
+  // groups expanded once: a track wired to a group's param drives the inner node's param through the plain graphAtFrame
+  const plain = expandGroups(graph);
   for (let frame = 0; frame < frames; frame++) {
-    await renderFrameTo(graphAtFrame(graph, frame), join(framesDir, sequenceFrameName(frame)));
+    await renderFrameTo(graphAtFrame(plain, frame), join(framesDir, sequenceFrameName(frame)));
     onFrame?.(frame + 1, frames);
   }
   const length = animationLength(node.data, graph.export);

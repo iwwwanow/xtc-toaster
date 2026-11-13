@@ -565,3 +565,34 @@ legend {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* TODO(uiu): hand-written — uiu's breadcrumbs sit on the page; over the canvas they need a panel: white, a 1px LIGHT
+   border, the instance count beside them */
+.group-panel {
+  display: flex;
+  align-items: center;
+  gap: var(--GRID-GAP-4);
+  padding: var(--GRID-GAP-4);
+  background-color: var(--WHITE);
+  border: 1px solid var(--LIGHT);
+}
+.group-panel__name {
+  width: 16ch;
+}
+/* TODO(uiu): hand-written — uiu has no toolbar: the buttons over a selection in a row, the reason a `group` was refused
+   under them */
+.selection-toolbar {
+  display: flex;
+  justify-content: center;
+  gap: var(--GRID-GAP-4);
+}
+.selection-toolbar__error {
+  max-width: 40ch;
+  text-align: center;
+  background-color: var(--WHITE);
+}
+/* TODO(uiu): hand-written — uiu has no list row with an action: a group in the left menu and its `×` in one row */
+.node-menu__group {
+  display: flex;
+  gap: var(--GRID-GAP-4);
+}

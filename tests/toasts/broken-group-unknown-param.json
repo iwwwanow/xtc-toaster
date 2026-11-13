@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "g", "type": "group", "data": { "group": "pass" } },
+    { "id": "v", "type": "value", "data": { "value": 1 } },
+    { "id": "out", "type": "output", "data": {} }
+  ],
+  "edges": [
+    { "id": "1", "source": "in", "target": "g" },
+    { "id": "2", "source": "g", "target": "out" },
+    { "id": "3", "source": "g", "sourceHandle": "angle", "target": "v" }
+  ],
+  "groups": [
+    {
+      "id": "pass",
+      "name": "pass",
+      "nodes": [
+        { "id": "gi", "type": "groupInput", "data": { "rows": [{ "id": "angle" }] } },
+        { "id": "go", "type": "groupOutput", "data": {} }
+      ],
+      "edges": [{ "id": "a", "source": "gi", "target": "go" }]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import type { Edge } from "@xyflow/svelte";
 import type { DelayRow } from "@xtc-toaster/contract";
 import { paramLabel, paramOf } from "./animation";
-import type { FlowNode } from "./graph";
+import type { FlowGroup, FlowNode } from "./graph";
 
 // A delay's rows: param → row → track, one shift for all. Pure — the node applies the result to its data.
 
@@ -29,8 +29,14 @@ export const withFreeRow = (rows: readonly DelayRow[], edges: readonly Edge[], n
 };
 
 // what goes through a row: the param wired into it (`move.x`, behind another delay `move.x +2`); free — a hint
-export const delayRowName = (nodes: readonly FlowNode[], edges: readonly Edge[], nodeId: string, rowId: string): string => {
+export const delayRowName = (
+  nodes: readonly FlowNode[],
+  edges: readonly Edge[],
+  nodeId: string,
+  rowId: string,
+  groups: readonly FlowGroup[] = [],
+): string => {
   const link = edges.find(({ target, targetHandle }) => target === nodeId && targetHandle === rowId);
   const param = link && paramOf(nodes, edges, link.source, link.sourceHandle);
-  return param ? paramLabel(param) : "wire a param here";
+  return param ? paramLabel(param, groups) : "wire a param here";
 };

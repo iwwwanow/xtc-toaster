@@ -74,4 +74,39 @@ describe("arrange", () => {
     );
     expect(at.get("a")!.x + 100).toBeLessThan(at.get("b")!.x);
   });
+
+  test("inside a group: a param wired from a field's left dot into the group input keeps the group input first", async () => {
+    // group input → rotate → group output; rotate.angle (its dot on the left) → the group input's row
+    const at = await arrange(
+      [
+        {
+          id: "gi",
+          width: 240,
+          height: 120,
+          handles: [
+            { id: null, type: "source", side: "right", y: 110 },
+            { id: "row-1", type: "target", side: "right", y: 50 },
+          ],
+        },
+        {
+          id: "rot",
+          width: 240,
+          height: 60,
+          handles: [
+            { id: null, type: "target", side: "left", y: 10 },
+            { id: "angle", type: "source", side: "left", y: 30 },
+            { id: null, type: "source", side: "right", y: 58 },
+          ],
+        },
+        { id: "go", width: 240, height: 60, handles: [{ id: null, type: "target", side: "left", y: 10 }] },
+      ],
+      [
+        { id: "gi-rot", source: "gi", target: "rot" },
+        { id: "rot-go", source: "rot", target: "go" },
+        { id: "angle", source: "rot", sourceHandle: "angle", target: "gi", targetHandle: "row-1" },
+      ],
+    );
+    expect(at.get("gi")!.x).toBeLessThan(at.get("rot")!.x);
+    expect(at.get("rot")!.x).toBeLessThan(at.get("go")!.x);
+  });
 });

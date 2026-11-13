@@ -1,13 +1,17 @@
 <script lang="ts">
   import { Handle, Position, type NodeProps } from "@xyflow/svelte";
   import type { FlowNodeOf } from "../graph";
+  import { nodeLabel } from "../groups";
   import { session } from "../session.svelte";
 
   // node data is not used here — state lives in session
   let {}: NodeProps<FlowNodeOf<"output">> = $props();
 
-  // the node the error points at, by its type — a broken link is easier to find
-  let errorNode = $derived(session.nodes.find(({ id }) => id === session.renderError?.nodeId)?.type);
+  // the node the error points at, by its label (an instance — its group's name) — a broken link is easier to find
+  let errorNode = $derived.by(() => {
+    const node = session.nodes.find(({ id }) => id === session.renderError?.nodeId);
+    return node && nodeLabel(node, session.groups);
+  });
 </script>
 
 <Handle type="target" position={Position.Left} />

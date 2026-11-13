@@ -197,6 +197,60 @@ describe("validateGraph, a delay", () => {
   });
 });
 
+describe("validateGraph, a value", () => {
+  const move: GraphNode = { id: "mv", type: "move", data: { x: 0, y: 0 } };
+  const rotate: GraphNode = { id: "rt", type: "rotate", data: { angle: 0 } };
+  const value = (id = "v"): GraphNode => ({ id, type: "value", data: { value: 10 } });
+  const animation: GraphNode = { id: "anim", type: "animation", data: { fps: 24, frames: 10, tracks: [{ id: "t1", keys: [] }] } };
+  const delay: GraphNode = { id: "dl", type: "delay", data: { frames: 3, rows: [{ id: "r1" }] } };
+  const link = (source: string, sourceHandle: string | undefined, target: string, targetHandle?: string): GraphEdge => ({
+    id: `${source}.${sourceHandle}-${target}.${targetHandle}`,
+    source,
+    target,
+    ...(sourceHandle && { sourceHandle }),
+    ...(targetHandle && { targetHandle }),
+  });
+  const g = (edges: GraphEdge[], extra: GraphNode[] = []) => graph([input, move, rotate, value(), output, ...extra], edges);
+
+  test.each([
+    ["an unlinked value", g([])],
+    ["one param into it", g([link("mv", "x", "v")])],
+    ["many params into its one input", g([link("mv", "x", "v"), link("mv", "y", "v"), link("rt", "angle", "v")])],
+    ["its own param animated", g([link("mv", "x", "v"), link("v", "value", "anim", "t1")], [animation])],
+    ["its own param through a delay", g([link("v", "value", "dl", "r1"), link("dl", "r1", "anim", "t1")], [animation, delay])],
+    ["value → value", g([link("mv", "x", "v"), link("v", "value", "v2")], [value("v2")])],
+  ])("accepts %s", (_, graph) => {
+    expect(validateGraph(graph)).toBeNull();
+  });
+
+  test.each([
+    ["a pixel link into it", g([link("in", undefined, "v")]), "v"],
+    ["a pixel link out of it", g([link("v", undefined, "out")]), "v"],
+    ["a link into a named handle", g([link("mv", "x", "v", "h")]), "v"],
+    ["a non-param into it", g([link("mv", "z", "v")]), "mv"],
+    ["a delay row into it", g([link("mv", "x", "dl", "r1"), link("dl", "r1", "v")], [delay]), "dl"],
+    ["one param into a value and a track", g([link("mv", "x", "v"), link("mv", "x", "anim", "t1")], [animation]), "anim"],
+    ["one param into two values", g([link("mv", "x", "v"), link("mv", "x", "v2")], [value("v2")]), "v2"],
+    ["two values in a loop", g([link("v", "value", "v2"), link("v2", "value", "v")], [value("v2")]), "v"],
+  ])("rejects %s, pointing at the node", (_, graph, nodeId) => {
+    expect(validateGraph(graph)).toMatchObject({ nodeId });
+  });
+
+  test("a factor is wired the same way", () => {
+    const factor: GraphNode = { id: "f", type: "factor", data: { factor: 0.5 } };
+    expect(validateGraph(g([link("mv", "x", "f"), link("rt", "angle", "f"), link("f", "factor", "v")], [factor]))).toBeNull();
+    expect(validateGraph(g([link("in", undefined, "f")], [factor]))).toMatchObject({ nodeId: "f" });
+    expect(validateGraph(g([link("f", undefined, "out")], [factor]))).toMatchObject({ nodeId: "f" });
+    expect(validateGraph(g([link("mv", "x", "f"), link("mv", "x", "v")], [factor]))).toMatchObject({ nodeId: "v" });
+  });
+
+  test("its number stays within −1000…1000", () => {
+    const file = (number: number) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ ...value(), data: { value: number } }], edges: [] });
+    expect(() => parseToastGraph(file(-12.5))).not.toThrow();
+    expect(() => parseToastGraph(file(5000))).toThrow();
+  });
+});
+
 describe("the animation node in parseToastGraph", () => {
   const nodeWith = (data: unknown) => ({ version: TOAST_GRAPH_VERSION, nodes: [{ id: "anim", type: "animation", data }], edges: [] });
   const base = { fps: 24, frames: 48, tracks: [] };

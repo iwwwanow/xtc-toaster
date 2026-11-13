@@ -1,4 +1,5 @@
 import {
+  expandGroups,
   validateGraph,
   type AnimationNode,
   type DelayNode,
@@ -176,12 +177,14 @@ type Flow = { data: ImageRawDataArray; opacity: number };
 // hands every link but the last a copy and the last its own buffer — lib ops are eager and some
 // (fill / tint) write in place, so consumers never share a buffer.
 export const runGraph = async (
-  graph: ToastGraph,
+  toast: ToastGraph,
   loadImage: LoadImage,
   maxLayers = RENDER_MAX_LAYERS_DEFAULT,
 ): Promise<{ data: ImageRawDataArray } & LayerDimensions> => {
-  const issue = validateGraph(graph);
+  const issue = validateGraph(toast);
   if (issue) throw new GraphError(issue.message, issue.nodeId);
+  // node groups → their insides, wired in (`<instance>/<inner>` ids); the web sends a frame expanded already
+  const graph = expandGroups(toast);
 
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
   const into = new Map<NodeId, GraphEdge[]>();
@@ -225,8 +228,20 @@ export const runGraph = async (
     if (node.type === "layers") return compose(node, links);
 
     const flow = pull(links[0]!.source);
-    // the animation node and a delay are never on the way (no pixel links out of them), this only narrows the type
-    if (node.type === "output" || node.type === "animation" || node.type === "delay") return flow;
+    // the animation node, a delay, a value and a factor are never on the way (no pixel links out of them), this only
+    // narrows the type — what a value or a factor gives is already in the params (graphAtFrame)
+    // (group nodes never reach here either — expanded above)
+    if (
+      node.type === "output" ||
+      node.type === "animation" ||
+      node.type === "delay" ||
+      node.type === "value" ||
+      node.type === "factor" ||
+      node.type === "group" ||
+      node.type === "groupInput" ||
+      node.type === "groupOutput"
+    )
+      return flow;
     const layer = new Composition(width, height).createLayerFromPixelData(flow.data);
     try {
       const opacity = applyNode({ node, layer, width, height }, flow.opacity);
