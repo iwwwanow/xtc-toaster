@@ -28,8 +28,8 @@
   <legend><h6>{group?.name ?? "group"}</h6></legend>
   {#each params as param (param.id)}
     <Slider
-      label={param.id}
-      hint="{param.id} — {innerType(param.node) ?? ''}.{param.param} inside the group, this instance's own value"
+      label={param.name}
+      hint="{param.name} inside the group, this instance's own value"
       node={id}
       param={param.id}
       bounds={param.bounds}

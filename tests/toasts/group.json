@@ -26,7 +26,7 @@
       "id": "spin",
       "name": "spin fade",
       "nodes": [
-        { "id": "gi", "type": "groupInput", "data": {} },
+        { "id": "gi", "type": "groupInput", "data": { "rows": [{ "id": "angle" }, { "id": "opacity" }, { "id": "row-3" }] } },
         { "id": "rot", "type": "rotate", "data": { "angle": 15 } },
         { "id": "sc", "type": "scale", "data": { "x": 0.85, "y": 0.85 } },
         { "id": "op", "type": "opacity", "data": { "opacity": 0.8 } },
@@ -36,11 +36,9 @@
         { "id": "a", "source": "gi", "target": "rot" },
         { "id": "b", "source": "rot", "target": "sc" },
         { "id": "c", "source": "sc", "target": "op" },
-        { "id": "d", "source": "op", "target": "go" }
-      ],
-      "params": [
-        { "id": "angle", "node": "rot", "param": "angle" },
-        { "id": "opacity", "node": "op", "param": "opacity" }
+        { "id": "d", "source": "op", "target": "go" },
+        { "id": "e", "source": "rot", "sourceHandle": "angle", "target": "gi", "targetHandle": "angle" },
+        { "id": "f", "source": "op", "sourceHandle": "opacity", "target": "gi", "targetHandle": "opacity" }
       ]
     }
   ]

@@ -1,7 +1,7 @@
 import type { Edge } from "@xyflow/svelte";
 import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
-import { nodeLabel, ownParamValue } from "./groups";
+import { nodeLabel, ownParamValue, paramName } from "./groups";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
 
@@ -133,9 +133,10 @@ export const trackParam = (nodes: readonly FlowNode[], edges: readonly Edge[], n
   return link ? paramOf(nodes, edges, link.source, link.sourceHandle) : null;
 };
 
-// `move.x`; a shift shows after it — `move.x +3`; a group's instance by its group's name — `group 1.x`
+// `move.x`; a shift shows after it — `move.x +3`; a group's instance by its group's name and what the param
+// exposes — `group 1.rotate.angle`
 export const paramLabel = ({ node, param, shift }: ParamOf, groups: readonly FlowGroup[] = []): string =>
-  `${nodeLabel(node, groups)}.${param}${shiftLabel(shift)}`;
+  `${nodeLabel(node, groups)}.${paramName(groups, node, param)}${shiftLabel(shift)}`;
 const shiftLabel = (shift: number) => (shift === 0 ? "" : ` ${shift > 0 ? "+" : "−"}${Math.abs(shift)}`);
 
 // the value a param has in the node's own data; an instance's exposed one — its own, else the inner node's
@@ -158,7 +159,7 @@ export const trackName = (
 // of its first track; tracks inside in their own order. Unlinked tracks — a group of their own, on top (where
 // `+ track` puts a new one). A group is named by its node's label (a group's instance — the group's name), numbered
 // when the label repeats (`corners 2`);
-// a row by its param (`x`, through a delay `x +3`). A track behind a delay goes to the group of the param's node.
+// a row by its param (`x`, through a delay `x +3`, an instance's — what it exposes, `rotate.angle`). A track behind a delay goes to the group of the param's node.
 // Derived from the links — nothing of it is in the toast
 export const UNLINKED_GROUP = "unlinked";
 export type TrackRow = { track: AnimationTrack; index: number; name: string };
@@ -175,7 +176,7 @@ export const trackGroups = (
   tracks.forEach((track, index) => {
     const param = trackParam(nodes, edges, nodeId, track.id);
     const id = param ? param.node.id : UNLINKED_GROUP;
-    const name = param ? `${param.param}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
+    const name = param ? `${paramName(definitions, param.node, param.param)}${shiftLabel(param.shift)}` : track.id.replaceAll("-", " ");
     const group = groups.get(id) ?? { label: param ? nodeLabel(param.node, definitions) : null, rows: [] };
     group.rows.push({ track, index, name });
     groups.set(id, group);

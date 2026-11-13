@@ -7,6 +7,20 @@ export const innerId = (instance: NodeId, inner: NodeId) => `${instance}${GROUP_
 const isInstance = (node: GraphNode | undefined): node is GroupNode => node?.type === "group";
 const isGroupEnd = ({ type }: GraphNode) => type === "groupInput" || type === "groupOutput";
 
+// an exposed param: the inner node's `param` wired into the group input's row `id` — on the instance a field and a
+// param output, both named by the row id
+export type GroupParam = { id: string; node: NodeId; param: string };
+
+// the params a definition exposes, in its group input's row order; an unwired row exposes nothing
+export const exposedParams = ({ nodes, edges }: Pick<GroupDefinition, "nodes" | "edges">): GroupParam[] => {
+  const input = nodes.find((node) => node.type === "groupInput");
+  if (input?.type !== "groupInput") return [];
+  return input.data.rows.flatMap(({ id }) => {
+    const link = edges.find(({ target, targetHandle }) => target === input.id && targetHandle === id);
+    return link?.sourceHandle === undefined ? [] : [{ id, node: link.source, param: link.sourceHandle }];
+  });
+};
+
 // the instance an expanded node came from, or the id itself — a root node
 export const instanceOf = (graph: ToastGraph, id: NodeId): NodeId => {
   const instance = graph.nodes.find((node) => isInstance(node) && id.startsWith(`${node.id}${GROUP_SEPARATOR}`));
@@ -31,6 +45,7 @@ export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: Ex
   if (instances.length === 0) return groups && !only ? rest : graph;
 
   const definitions = new Map<string, GroupDefinition>((groups ?? []).map((group) => [group.id, group]));
+  const exposed = new Map<string, GroupParam[]>((groups ?? []).map((group) => [group.id, exposedParams(group)]));
   const byId = new Map<NodeId, GraphNode>(graph.nodes.map((node) => [node.id, node]));
   const definitionOf = (id: NodeId) => {
     const node = byId.get(id);
@@ -46,7 +61,7 @@ export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: Ex
     if (!definition) return [{ node, ...(handle !== undefined && { handle }) }];
     if (depth > graph.nodes.length) return [];
     if (handle !== undefined) {
-      const param = definition.params.find(({ id }) => id === handle);
+      const param = exposed.get(definition.id)!.find(({ id }) => id === handle);
       return param ? [{ node: idOf(node, param.node), handle: param.param }] : [];
     }
     const output = endOfType(definition, "groupOutput");
@@ -82,7 +97,7 @@ export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: Ex
     for (const node of definition.nodes) {
       if (isGroupEnd(node)) continue;
       const values = Object.fromEntries(
-        definition.params.flatMap(({ id, node: inner, param }) => (inner === node.id && id in own ? [[param, own[id]]] : [])),
+        exposed.get(definition.id)!.flatMap(({ id, node: inner, param }) => (inner === node.id && id in own ? [[param, own[id]]] : [])),
       );
       nodes.push({ ...node, id: idOf(instance.id, node.id), data: { ...node.data, ...values } } as GraphNode);
     }

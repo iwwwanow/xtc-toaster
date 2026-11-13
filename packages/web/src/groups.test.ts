@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import type { Edge } from "@xyflow/svelte";
 import { expandGroups, TOAST_GRAPH_VERSION, validateGraph, type ToastGraph } from "@xtc-toaster/contract";
-import { trackGroups } from "./animation";
+import { paramLabel, trackGroups } from "./animation";
 import { canConnect, scopeOf, toFlow, toGraph, type FlowGroup, type FlowNode } from "./graph";
-import { createInstance, groupSelection, nodeLabel, nextGroupName, ownParamValue, paramBoundsOf, ungroup, type Grouped } from "./groups";
+import {
+  createInstance,
+  exposedParams,
+  groupSelection,
+  nodeLabel,
+  nextGroupName,
+  ownParamValue,
+  paramBoundsOf,
+  ungroup,
+  withoutUnexposed,
+  type Grouped,
+} from "./groups";
 import { fromSaved, toSaved } from "./persist";
 
 // in → blur → opacity → out, opacity's param on a track; a value drives blur's radius
@@ -46,21 +57,24 @@ const grouped = (selected: string[], graph = toast()): Grouped => {
 const whole = ({ nodes, edges, groups }: { nodes: FlowNode[]; edges: Edge[]; groups: FlowGroup[] }) => toGraph(nodes, edges, undefined, groups);
 
 describe("groupSelection", () => {
-  test("the selection into a group: pixels in and out through the instance, a param wired out — exposed", () => {
+  test("the selection into a group: pixels in and out through the instance, a param wired out — a group input row", () => {
     const result = grouped(["bl", "op"]);
     // id1 group, id2 instance, id3 group input, id4 group output
     expect(result.group).toBe("id1");
     expect(result.instance).toBe("id2");
     expect(result.nodes.map(({ id }) => id).sort()).toEqual(["anim", "free", "id2", "in", "out", "v"]);
-    expect(links(result.edges)).toEqual(["id2.opacity>anim:t1", "id2.radius>v", "id2>out", "in>id2"]);
+    // a row per param wired out, in the links' order, a free one under them
+    expect(links(result.edges)).toEqual(["id2.row-1>anim:t1", "id2.row-2>v", "id2>out", "in>id2"]);
     const [definition] = result.groups;
     expect(definition!.name).toBe("group 1");
-    expect(definition!.params).toEqual([
-      { id: "opacity", node: "op", param: "opacity" },
-      { id: "radius", node: "bl", param: "radius" },
+    const input = definition!.nodes.find(({ type }) => type === "groupInput")!;
+    expect(input.data).toEqual({ rows: [{ id: "row-1" }, { id: "row-2" }, { id: "row-3" }] });
+    expect(input.deletable).toBe(false);
+    expect(links(definition!.edges)).toEqual(["bl.radius>id3:row-2", "bl>op", "id3>bl", "op.opacity>id3:row-1", "op>id4"]);
+    expect(exposedParams(definition).map(({ id, name }) => [id, name])).toEqual([
+      ["row-1", "opacity.opacity"],
+      ["row-2", "blur.radius"],
     ]);
-    expect(links(definition!.edges)).toEqual(["bl>op", "id3>bl", "op>id4"]);
-    expect(definition!.nodes.find(({ type }) => type === "groupInput")?.deletable).toBe(false);
     expect(validateGraph(whole(result))).toBeNull();
   });
 
@@ -120,7 +134,7 @@ describe("groupSelection", () => {
     expect(groupSelection(root(), ["bl", "v"], ids())).not.toHaveProperty("error");
   });
 
-  test("a delay wired out — refused", () => {
+  test("a delay in the selection — refused: inside there's no track for it", () => {
     const graph = toast();
     graph.nodes.push({ id: "d", type: "delay", data: { frames: 2, rows: [{ id: "r1" }] } });
     graph.edges = [
@@ -128,7 +142,7 @@ describe("groupSelection", () => {
       { id: "6", source: "op", sourceHandle: "opacity", target: "d", targetHandle: "r1" },
       { id: "7", source: "d", sourceHandle: "r1", target: "anim", targetHandle: "t1" },
     ];
-    expect(groupSelection(root(graph), ["op", "d"], ids())).toEqual({ error: "a delay wired out of a group — not yet" });
+    expect(groupSelection(root(graph), ["op", "d"], ids())).toEqual({ error: "the delay stays outside a group" });
     expect(groupSelection(root(graph), ["op"], ids())).not.toHaveProperty("error");
   });
 
@@ -147,7 +161,7 @@ describe("groupSelection", () => {
 describe("ungroup", () => {
   test("an instance back into its nodes under new ids, its own values in, wired where it stood", () => {
     const result = grouped(["bl", "op"]);
-    const nodes = result.nodes.map((node) => (node.type === "group" ? { ...node, data: { ...node.data, params: { radius: 9 } } } : node));
+    const nodes = result.nodes.map((node) => (node.type === "group" ? { ...node, data: { ...node.data, params: { "row-2": 9 } } } : node));
     const back = ungroup({ ...result, nodes }, result.instance, ids())!;
     expect(links(back.edges)).toEqual(["id1.radius>v", "id1>id2", "id2.opacity>anim:t1", "id2>out", "in>id1"]);
     expect(back.nodes.find(({ id }) => id === "id1")?.data).toEqual({ radius: 9 });
@@ -188,8 +202,33 @@ describe("inside a group", () => {
     const result = grouped(["bl", "op"]);
     const scope = scopeOf(result, null);
     const edges = result.edges.filter(({ target }) => target !== "v");
-    expect(canConnect(result.nodes, edges, { source: "id2", sourceHandle: "radius", target: "v" }, scope)).toBe(true);
-    expect(canConnect(result.nodes, edges, { source: "id2", sourceHandle: "nope", target: "v" }, scope)).toBe(false);
+    expect(canConnect(result.nodes, edges, { source: "id2", sourceHandle: "row-2", target: "v" }, scope)).toBe(true);
+    expect(canConnect(result.nodes, edges, { source: "id2", sourceHandle: "row-3", target: "v" }, scope)).toBe(false);
+  });
+
+  test("inside, a param wired into the group input's free row is exposed; into the group output — refused", () => {
+    // `free` alone: id1 group, id2 instance, id3 group input (one free row), id4 group output
+    const result = grouped(["free"]);
+    const definition = result.groups[0]!;
+    const scope = scopeOf(result, definition.id);
+    const expose = { source: "free", sourceHandle: "opacity", target: "id3", targetHandle: "row-1" };
+    expect(canConnect(definition.nodes, definition.edges, expose, scope)).toBe(true);
+    expect(canConnect(definition.nodes, definition.edges, { ...expose, targetHandle: "ghost" }, scope)).toBe(false);
+    expect(canConnect(definition.nodes, definition.edges, { source: "free", sourceHandle: "opacity", target: "id4" }, scope)).toBe(false);
+  });
+
+  test("a row unwired inside: the instances lose their own value and their links out of it", () => {
+    const result = grouped(["bl", "op"]);
+    const nodes = result.nodes.map((node) => (node.type === "group" ? { ...node, data: { ...node.data, params: { "row-1": 0.3, "row-2": 9 } } } : node));
+    const groups = result.groups.map((group) => ({ ...group, edges: group.edges.filter(({ targetHandle }) => targetHandle !== "row-2") }));
+    const pruned = withoutUnexposed(nodes as FlowNode[], result.edges, groups);
+    expect(links(pruned.edges)).toEqual(["id2.row-1>anim:t1", "id2>out", "in>id2"]);
+    expect(pruned.nodes.find(({ id }) => id === "id2")?.data).toEqual({ group: "id1", params: { "row-1": 0.3 } });
+    expect(validateGraph(whole({ ...pruned, groups }))).toBeNull();
+    // nothing to take — the same arrays back
+    const same = withoutUnexposed(nodes as FlowNode[], result.edges, result.groups);
+    expect(same.nodes).toBe(nodes as FlowNode[]);
+    expect(same.edges).toBe(result.edges);
   });
 });
 
@@ -197,11 +236,11 @@ describe("an instance's params", () => {
   test("own value, else the inner node's; the inner node's bounds", () => {
     const result = grouped(["bl", "op"]);
     const instance = result.nodes.find(({ type }) => type === "group")!;
-    expect(ownParamValue(result.groups, instance, "radius")).toBe(4);
-    const own = { ...instance, data: { group: result.group, params: { radius: 12 } } } as FlowNode;
-    expect(ownParamValue(result.groups, own, "radius")).toBe(12);
-    expect(ownParamValue(result.groups, own, "nope")).toBeNull();
-    expect(paramBoundsOf(result.groups, instance, "radius")).toEqual({ min: 0, max: 20, initial: 4 });
+    expect(ownParamValue(result.groups, instance, "row-2")).toBe(4);
+    const own = { ...instance, data: { group: result.group, params: { "row-2": 12 } } } as FlowNode;
+    expect(ownParamValue(result.groups, own, "row-2")).toBe(12);
+    expect(ownParamValue(result.groups, own, "row-3")).toBeNull();
+    expect(paramBoundsOf(result.groups, instance, "row-2")).toEqual({ min: 0, max: 20, initial: 4 });
   });
 
   test("labels: an instance by its group's name, the ends readable", () => {
@@ -216,8 +255,10 @@ describe("an instance's params", () => {
     const anim = result.nodes.find(({ type }) => type === "animation")!;
     const tracks = anim.type === "animation" ? anim.data.tracks : [];
     expect(trackGroups(result.nodes, result.edges, "anim", tracks, result.groups).map(({ name, rows }) => [name, rows.map(({ name }) => name)])).toEqual([
-      ["group 1", ["opacity"]],
+      ["group 1", ["opacity.opacity"]],
     ]);
+    const instance = result.nodes.find(({ type }) => type === "group")!;
+    expect(paramLabel({ node: instance, param: "row-2", shift: 0 }, result.groups)).toBe("group 1.blur.radius");
   });
 
   test("nextGroupName skips the taken numbers; createInstance — no own values", () => {

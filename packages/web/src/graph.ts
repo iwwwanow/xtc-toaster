@@ -144,7 +144,7 @@ export type Flow = { nodes: FlowNode[]; edges: Edge[]; groups?: FlowGroup[]; exp
 // group definitions as the toast keeps them: none — no field
 const groupsField = (groups: readonly (FlowGroup | GroupDefinition)[] | undefined) =>
   groups && groups.length > 0
-    ? { groups: groups.map(({ id, name, nodes, edges, params }) => ({ id, name, nodes: nodes.map(toGraphNode), edges: edges.map(toGraphEdge), params })) }
+    ? { groups: groups.map(({ id, name, nodes, edges }) => ({ id, name, nodes: nodes.map(toGraphNode), edges: edges.map(toGraphEdge) })) }
     : {};
 
 const toGraphNode = ({ id, type, data }: FlowNode | GraphNode) => ({ id, type, data }) as GraphNode;
@@ -240,11 +240,11 @@ export const scopeOf = (flow: Pick<Flow, "nodes" | "edges" | "groups">, group: s
   const definitions = groupsField(others).groups ?? [];
   const opened = flow.groups?.find(({ id }) => id === group);
   if (!opened) return (level) => ({ version: TOAST_GRAPH_VERSION, ...level, ...groupsField(definitions) });
-  const { id, name, params } = opened;
-  return (level) => ({ version: TOAST_GRAPH_VERSION, ...root, groups: [...definitions, { id, name, params, ...level }] });
+  const { id, name } = opened;
+  return (level) => ({ version: TOAST_GRAPH_VERSION, ...root, groups: [...definitions, { id, name, ...level }] });
 };
 
-const levelOf = (nodes: readonly FlowNode[], edges: readonly (Edge | GraphEdge)[]): Level => ({
+export const levelOf = (nodes: readonly FlowNode[], edges: readonly (Edge | GraphEdge)[]): Level => ({
   nodes: nodes.map(toGraphNode),
   edges: edges.map(toGraphEdge),
 });

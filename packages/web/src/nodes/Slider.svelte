@@ -148,12 +148,14 @@
     </div>
   {/if}
   {#if node !== undefined && param !== undefined}
-    <!-- out of the node's right edge (past the frame's padding and 1px border), closer than the node's own handles -->
+    <!-- out of the node's right edge (past the frame's padding and 1px border), closer than the node's own handles;
+         inside a group — out of the left one: the group input its params are wired into stands left of everything -->
+    {@const side = session.openGroup ? "left" : "right"}
     <Handle
       type="source"
-      position={Position.Right}
+      position={side === "left" ? Position.Left : Position.Right}
       id={param}
-      style="right: calc(-1 * var(--GRID-GAP-2) - 1px - var(--param-handle-offset))"
+      style="{side}: calc(-1 * var(--GRID-GAP-2) - 1px - var(--param-handle-offset))"
     />
   {/if}
 </div>

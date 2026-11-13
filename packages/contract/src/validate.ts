@@ -1,5 +1,16 @@
-import { isDriver, type AnimationNode, type DelayNode, type DriverNode, type GraphEdge, type GraphNode, type GroupDefinition, type NodeId, type ToastGraph } from "./graph";
-import { expandGroups, instanceOf } from "./groups";
+import {
+  isDriver,
+  type AnimationNode,
+  type DelayNode,
+  type DriverNode,
+  type GraphEdge,
+  type GraphNode,
+  type GroupDefinition,
+  type GroupInputNode,
+  type NodeId,
+  type ToastGraph,
+} from "./graph";
+import { expandGroups, exposedParams, instanceOf } from "./groups";
 import { paramBounds } from "./params";
 
 // what is wrong and where — server sends it as render-error, web refuses the link; `group` — inside that group's
@@ -116,35 +127,55 @@ const validatePlain = ({ nodes, edges }: Pick<ToastGraph, "nodes" | "edges">): G
 };
 
 // what may not sit inside a group's definition: no nesting in v1, the one animation node stays outside, the toast's
-// input / output are the root's
-const NOT_IN_A_GROUP = new Set<GraphNode["type"]>(["group", "animation", "input", "output"]);
+// input / output are the root's; a delay only feeds a track, and there is none inside (13.11)
+const NOT_IN_A_GROUP = new Set<GraphNode["type"]>(["group", "animation", "delay", "input", "output"]);
 
-// a definition's own links, judged like a graph: its groupInput / groupOutput stand for the input / output
+// the param links into the group input — what the definition exposes: a numeric param of a node inside into a row of
+// the group input, one per row; a param exposed is driven from outside, so it feeds nothing else inside (`others` —
+// the definition's other links)
+const exposingIssue = (definition: GroupDefinition, input: GroupInputNode, exposing: GraphEdge[], others: GraphEdge[]): GraphIssue | null => {
+  const rows = new Set<string>();
+  const params = new Set<string>();
+  for (const { source, sourceHandle, targetHandle } of exposing) {
+    const from = definition.nodes.find(({ id }) => id === source);
+    if (!from) return { message: "edge points to a missing node" };
+    if (!paramBounds(from.type, sourceHandle!)) return { message: "only a numeric param can be exposed", nodeId: source };
+    if (targetHandle === undefined || !input.data.rows.some(({ id }) => id === targetHandle))
+      return { message: "link a group input row", nodeId: input.id };
+    if (rows.has(targetHandle)) return { message: "one link per input", nodeId: input.id };
+    rows.add(targetHandle);
+    const param = `${source}\0${sourceHandle}`;
+    const elsewhere = others.some((link) => link.source === source && link.sourceHandle === sourceHandle);
+    if (params.has(param) || elsewhere) return { message: "one track per param", nodeId: source };
+    params.add(param);
+  }
+  return null;
+};
+
+// a definition's own links, judged like a graph: its groupInput / groupOutput stand for the input / output, the param
+// links into the group input apart (exposingIssue)
 const definitionIssue = (definition: GroupDefinition): GraphIssue | null => {
   const at = (issue: GraphIssue): GraphIssue => ({ ...issue, group: definition.id });
   const count = (type: GraphNode["type"]) => definition.nodes.filter((node) => node.type === type).length;
   if (count("groupInput") !== 1 || count("groupOutput") !== 1) return at({ message: "a group needs one group input and one group output" });
   const misplaced = definition.nodes.find(({ type }) => NOT_IN_A_GROUP.has(type));
   if (misplaced) return at({ message: `no ${misplaced.type} inside a group`, nodeId: misplaced.id });
+  const input = definition.nodes.find((node) => node.type === "groupInput") as GroupInputNode;
+  const exposes = (link: GraphEdge) => link.target === input.id && link.sourceHandle !== undefined;
+  const exposing = definition.edges.filter(exposes);
+  const others = definition.edges.filter((link) => !exposes(link));
   const asGraph = definition.nodes.map((node): GraphNode => {
     if (node.type === "groupInput") return { id: node.id, type: "input", data: { imageId: null } };
     if (node.type === "groupOutput") return { id: node.id, type: "output", data: {} };
     return node;
   });
-  const issue = validatePlain({ nodes: asGraph, edges: definition.edges });
-  if (issue) return at(issue);
-  const ids = new Set<string>();
-  for (const { id, node, param } of definition.params) {
-    if (ids.has(id)) return at({ message: "duplicate group param id" });
-    ids.add(id);
-    const inner = definition.nodes.find(({ id }) => id === node);
-    if (!inner || !paramBounds(inner.type, param)) return at({ message: "a group param shows a numeric param of a node inside", nodeId: node });
-  }
-  return null;
+  const issue = validatePlain({ nodes: asGraph, edges: others }) ?? exposingIssue(definition, input, exposing, others);
+  return issue && at(issue);
 };
 
 // The group rules zod can't check (docs/sprints/sprint-5.spec.md, «node groups»): unique definitions, each one sound
-// (definitionIssue), group inputs / outputs only inside, an instance names an existing definition and only its params,
+// (definitionIssue), group inputs / outputs only inside, an instance names an existing definition and only its exposed
+// params (exposedParams),
 // within their bounds; links into an instance take no handle, links out of one leave an exposed param or its output
 const groupsIssue = ({ nodes, edges, groups = [] }: ToastGraph): GraphIssue | null => {
   const definitions = new Map<string, GroupDefinition>();
@@ -160,7 +191,7 @@ const groupsIssue = ({ nodes, edges, groups = [] }: ToastGraph): GraphIssue | nu
     const definition = definitions.get(node.data.group);
     if (!definition) return { message: "a group that isn't there", nodeId: node.id };
     for (const [id, value] of Object.entries(node.data.params ?? {})) {
-      const param = definition.params.find((param) => param.id === id);
+      const param = exposedParams(definition).find((param) => param.id === id);
       const inner = param && definition.nodes.find(({ id }) => id === param.node);
       const bounds = inner && paramBounds(inner.type, param.param);
       if (!bounds) return { message: "not a param of this group", nodeId: node.id };
@@ -168,11 +199,13 @@ const groupsIssue = ({ nodes, edges, groups = [] }: ToastGraph): GraphIssue | nu
     }
   }
   // an instance's links: one unnamed pixel input, a param out of an exposed param only — expandGroups would drop the rest
-  const instances = new Map(nodes.flatMap((node) => (node.type === "group" ? [[node.id, definitions.get(node.data.group)!]] : [])));
+  const instances = new Map(
+    nodes.flatMap((node) => (node.type === "group" ? [[node.id, exposedParams(definitions.get(node.data.group)!)]] : [])),
+  );
   for (const { source, sourceHandle, target, targetHandle } of edges) {
     if (instances.has(target) && targetHandle !== undefined) return { message: "a group has one input", nodeId: target };
     const from = instances.get(source);
-    if (from && sourceHandle !== undefined && !from.params.some(({ id }) => id === sourceHandle))
+    if (from && sourceHandle !== undefined && !from.some(({ id }) => id === sourceHandle))
       return { message: "not a param of this group", nodeId: source };
   }
   return null;

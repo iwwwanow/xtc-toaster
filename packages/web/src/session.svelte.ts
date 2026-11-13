@@ -46,6 +46,7 @@ import {
   nodeLabel,
   paramBoundsOf,
   ungroup,
+  withoutUnexposed,
   type MenuItem,
 } from "./groups";
 import { History } from "./history";
@@ -91,7 +92,7 @@ class Session {
   }
   set nodes(nodes: FlowNode[]) {
     const open = this.openGroup;
-    if (open) this.groups = this.groups.map((group) => (group.id === open.id ? { ...group, nodes } : group));
+    if (open) this.setOpenGroup({ ...open, nodes });
     else this.rootNodes = nodes;
   }
   get edges(): Edge[] {
@@ -99,8 +100,16 @@ class Session {
   }
   set edges(edges: Edge[]) {
     const open = this.openGroup;
-    if (open) this.groups = this.groups.map((group) => (group.id === open.id ? { ...group, edges } : group));
+    if (open) this.setOpenGroup({ ...open, edges });
     else this.rootEdges = edges;
+  }
+  // an edit inside a group, and what it takes from the instances at the root: a param no longer exposed — their own
+  // values for it and their links out of it (withoutUnexposed); the same edit, the same history step
+  private setOpenGroup(edited: FlowGroup) {
+    this.groups = this.groups.map((group) => (group.id === edited.id ? edited : group));
+    const root = withoutUnexposed(this.rootNodes, this.rootEdges, this.groups);
+    if (root.nodes !== this.rootNodes) this.rootNodes = root.nodes;
+    if (root.edges !== this.rootEdges) this.rootEdges = root.edges;
   }
   // the level on screen inside the whole toast — every check of an edit (a link, a drop, a delete) sees what it touches
   scope = $derived(scopeOf({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, this.openGroup?.id ?? null));

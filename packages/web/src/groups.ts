@@ -1,6 +1,13 @@
 import type { Edge, XYPosition } from "@xyflow/svelte";
-import { expandGroups, paramBounds, validateGraph, type GroupParam, type ParamBounds } from "@xtc-toaster/contract";
-import { NODE_LABELS, scopeOf, toGraph, type FlowGroup, type FlowNode, type FlowNodeOf, type MenuNodeType } from "./graph";
+import {
+  expandGroups,
+  exposedParams as wiredParams,
+  paramBounds,
+  validateGraph,
+  type GroupParam,
+  type ParamBounds,
+} from "@xtc-toaster/contract";
+import { levelOf, NODE_LABELS, scopeOf, toGraph, type FlowGroup, type FlowNode, type FlowNodeOf, type MenuNodeType } from "./graph";
 
 // Node groups in the editor (docs/sprints/sprint-5.spec.md, «node groups»): a definition's inside is a level of its
 // own, an instance at the root stands for it. Pure — session applies the result
@@ -14,15 +21,44 @@ export const nodeLabel = (node: FlowNode, groups: readonly FlowGroup[] = []): st
   return NODE_LABELS[node.type as MenuNodeType] ?? node.type.replace(/^group(I|O)/, (_, c: string) => `group ${c.toLowerCase()}`);
 };
 
-// an exposed param as an instance shows it: the inner node, its param, the bounds and the inner node's own value
-export type Exposed = GroupParam & { bounds: ParamBounds; value: number };
+// an exposed param as an instance shows it: the group input's row (`id`), the inner node and its param wired into it,
+// its name `node.param` (as a delay row names it), the bounds and the inner node's own value
+export type Exposed = GroupParam & { name: string; bounds: ParamBounds; value: number };
 export const exposedParams = (group: FlowGroup | undefined): Exposed[] =>
-  (group?.params ?? []).flatMap((param) => {
-    const inner = group!.nodes.find(({ id }) => id === param.node);
-    const bounds = inner && paramBounds(inner.type, param.param);
-    const value = (inner?.data as Record<string, unknown> | undefined)?.[param.param];
-    return bounds && typeof value === "number" ? [{ ...param, bounds, value }] : [];
+  group
+    ? wiredParams(levelOf(group.nodes, group.edges)).flatMap((param) => {
+        const inner = group.nodes.find(({ id }) => id === param.node);
+        const bounds = inner && paramBounds(inner.type, param.param);
+        const value = (inner?.data as Record<string, unknown> | undefined)?.[param.param];
+        return bounds && typeof value === "number" ? [{ ...param, name: `${nodeLabel(inner)}.${param.param}`, bounds, value }] : [];
+      })
+    : [];
+
+// a param's name on its node — an instance's exposed one by what it exposes (`rotate.angle`), not its row id
+export const paramName = (groups: readonly FlowGroup[], node: FlowNode, param: string): string =>
+  isInstance(node) ? (exposedParams(groupOf(groups, node)).find(({ id }) => id === param)?.name ?? param) : param;
+
+// What an edit inside a group takes away from its instances (12.11): a row unwired, the param it exposed is gone, and
+// with it each instance's own value for it and its links out of it — blender drops a socket's links with the socket.
+// The same arrays back when nothing goes
+export const withoutUnexposed = (nodes: FlowNode[], edges: Edge[], groups: readonly FlowGroup[]): { nodes: FlowNode[]; edges: Edge[] } => {
+  const exposed = new Map(groups.map((group) => [group.id, new Set(exposedParams(group).map(({ id }) => id))]));
+  const rowsOf = (id: string) => {
+    const node = nodes.find((node) => node.id === id);
+    return isInstance(node) ? exposed.get(node.data.group) : undefined;
+  };
+  const kept = edges.filter(({ source, sourceHandle }) => !sourceHandle || (rowsOf(source)?.has(sourceHandle) ?? true));
+  let changed = false;
+  const pruned = nodes.map((node) => {
+    const rows = isInstance(node) ? exposed.get(node.data.group) : undefined;
+    const own = isInstance(node) ? node.data.params : undefined;
+    if (!rows || !own || Object.keys(own).every((id) => rows.has(id))) return node;
+    changed = true;
+    const params = Object.fromEntries(Object.entries(own).filter(([id]) => rows.has(id)));
+    return { ...node, data: { ...node.data, params } } as FlowNode;
   });
+  return { nodes: changed ? pruned : nodes, edges: kept.length === edges.length ? edges : kept };
+};
 
 export const groupOf = (groups: readonly FlowGroup[], node: FlowNode | undefined): FlowGroup | undefined =>
   isInstance(node) ? groups.find(({ id }) => id === node.data.group) : undefined;
@@ -88,9 +124,10 @@ export type Grouped = Root & { group: string; instance: string };
 // - pixel links in — all from one source (one output may feed several nodes inside): the group input feeds those
 //   nodes, the source feeds the instance;
 // - pixel links out — all from one node inside: it feeds the group output, the instance feeds what it fed;
-// - param links out (into a track, a delay, a value, a factor) — exposed params, wired out of the instance.
-// Refused, with the reason: nothing selected, input / output / animation / a group in it, pixels from two sources or
-// out of two nodes, a param wired in from outside, a delay wired out. The new toast passes validateGraph.
+// - param links out (into a track, a delay, a value, a factor) — exposed params: each wired into a row of the group
+//   input (`row-1`, …, a free one under them), the instance's param of that row wired where it went.
+// Refused, with the reason: nothing selected, input / output / animation / delay / a group in it, pixels from two
+// sources or out of two nodes, a param wired in from outside. The new toast passes validateGraph.
 // The root, the groups and the new group's and instance's ids, or the reason it can't
 export const groupSelection = (
   { nodes, edges, groups }: Root,
@@ -100,7 +137,8 @@ export const groupSelection = (
   const inside = nodes.filter(({ id }) => selected.includes(id));
   if (inside.length === 0) return { error: "select the nodes to group" };
   const ids = new Set(inside.map(({ id }) => id));
-  const stays = inside.find(({ type }) => ["input", "output", "animation"].includes(type));
+  // a delay only feeds a track, and there is none inside (13.11)
+  const stays = inside.find(({ type }) => ["input", "output", "animation", "delay"].includes(type));
   if (stays) return { error: `the ${stays.type} stays outside a group` };
   if (inside.some(({ type }) => type === "group")) return { error: "no group inside a group yet" };
 
@@ -113,20 +151,14 @@ export const groupSelection = (
   const pixelOut = out.filter(({ sourceHandle }) => !sourceHandle);
   if (new Set(pixelOut.map(({ source }) => source)).size > 1) return { error: "a group gives pixels out of one node" };
   const paramOut = out.filter(({ sourceHandle }) => sourceHandle);
-  const byId = new Map(inside.map((node) => [node.id, node]));
-  if (paramOut.some(({ source }) => byId.get(source)?.type === "delay")) return { error: "a delay wired out of a group — not yet" };
 
-  // an exposed param is named as its param, numbered when two share it: `x`, `x 2`
-  const params: GroupParam[] = [];
-  const exposedOf = new Map<string, string>();
+  // a row per param wired out (a param has one link out — the contract's «one track per param»)
+  const rowOf = new Map<string, string>();
   for (const { source, sourceHandle } of paramOut) {
     const key = `${source}\0${sourceHandle}`;
-    if (exposedOf.has(key)) continue;
-    let id = sourceHandle!;
-    for (let n = 2; params.some((param) => param.id === id); n++) id = `${sourceHandle} ${n}`;
-    params.push({ id, node: source, param: sourceHandle! });
-    exposedOf.set(key, id);
+    if (!rowOf.has(key)) rowOf.set(key, `row-${rowOf.size + 1}`);
   }
+  const rows = [...rowOf.values(), `row-${rowOf.size + 1}`].map((id) => ({ id }));
 
   const group = newId();
   const instance = newId();
@@ -137,9 +169,8 @@ export const groupSelection = (
   const definition: FlowGroup = {
     id: group,
     name: nextGroupName(groups),
-    params,
     nodes: [
-      { id: input, type: "groupInput", position: { x: box.left - NODE_GAP_X, y: middle }, data: {}, deletable: false },
+      { id: input, type: "groupInput", position: { x: box.left - NODE_GAP_X, y: middle }, data: { rows }, deletable: false },
       ...inside.map((node) => ({ ...node, selected: false, dragging: false })),
       { id: output, type: "groupOutput", position: { x: box.right + NODE_GAP_X / 2, y: middle }, data: {}, deletable: false },
     ],
@@ -150,6 +181,10 @@ export const groupSelection = (
         return { id: `${input}-${target}${targetHandle ?? ""}`, ...link };
       }),
       ...[...new Set(pixelOut.map(({ source }) => source))].map((source) => ({ id: `${source}-${output}`, source, target: output })),
+      ...[...rowOf].map(([key, row]) => {
+        const [source, sourceHandle] = key.split("\0") as [string, string];
+        return { id: `${source}-${sourceHandle}-${input}-${row}`, source, sourceHandle, target: input, targetHandle: row };
+      }),
     ],
   };
   const source = [...sources][0];
@@ -161,7 +196,7 @@ export const groupSelection = (
       ...edge,
       id: `${instance}-${edge.id}`,
       source: instance,
-      sourceHandle: exposedOf.get(`${edge.source}\0${edge.sourceHandle}`)!,
+      sourceHandle: rowOf.get(`${edge.source}\0${edge.sourceHandle}`)!,
     })),
   ];
   const root: Root = {

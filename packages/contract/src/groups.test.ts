@@ -2,15 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { graphAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
 import { parseToastGraph, type GraphEdge, type GraphNode, type GroupDefinition, type ToastGraph } from "./graph";
-import { expandGroups, instanceOf } from "./groups";
+import { expandGroups, exposedParams, instanceOf } from "./groups";
 import { validateGraph } from "./validate";
 
-// a group: in → blur → opacity → out, blur's radius shown as `r`
+// a group: in → blur → opacity → out, blur's radius shown as `r` (wired into the group input's row `r`)
 const blurFade = (extra: Partial<GroupDefinition> = {}): GroupDefinition => ({
   id: "bf",
   name: "blur fade",
   nodes: [
-    { id: "gi", type: "groupInput", data: {} },
+    { id: "gi", type: "groupInput", data: { rows: [{ id: "r" }, { id: "free" }] } },
     { id: "bl", type: "blur", data: { radius: 4 } },
     { id: "op", type: "opacity", data: { opacity: 0.5 } },
     { id: "go", type: "groupOutput", data: {} },
@@ -19,8 +19,8 @@ const blurFade = (extra: Partial<GroupDefinition> = {}): GroupDefinition => ({
     { id: "a", source: "gi", target: "bl" },
     { id: "b", source: "bl", target: "op" },
     { id: "c", source: "op", target: "go" },
+    { id: "p", source: "bl", sourceHandle: "radius", target: "gi", targetHandle: "r" },
   ],
-  params: [{ id: "r", node: "bl", param: "radius" }],
   ...extra,
 });
 const instance = (id: string, params?: Record<string, number>, group = "bf"): GraphNode => ({
@@ -83,11 +83,10 @@ describe("expandGroups", () => {
   test("group input straight to group output passes the picture through: A → B", () => {
     const through = blurFade({
       nodes: [
-        { id: "gi", type: "groupInput", data: {} },
+        { id: "gi", type: "groupInput", data: { rows: [] } },
         { id: "go", type: "groupOutput", data: {} },
       ],
       edges: [{ id: "a", source: "gi", target: "go" }],
-      params: [],
     });
     const graph = expandGroups(toast([instance("g")], [{ id: "1", source: "in", target: "g" }, { id: "2", source: "g", target: "out" }], [through]));
     expect(links(graph)).toEqual(["in>out"]);
@@ -119,6 +118,19 @@ describe("expandGroups", () => {
   });
 });
 
+describe("exposedParams", () => {
+  test("the wired rows in their order, an unwired one exposes nothing", () => {
+    const definition = blurFade({
+      nodes: [{ id: "gi", type: "groupInput", data: { rows: [{ id: "o" }, { id: "free" }, { id: "r" }] } }, ...blurFade().nodes.slice(1)],
+      edges: [...blurFade().edges, { id: "q", source: "op", sourceHandle: "opacity", target: "gi", targetHandle: "o" }],
+    });
+    expect(exposedParams(definition)).toEqual([
+      { id: "o", node: "op", param: "opacity" },
+      { id: "r", node: "bl", param: "radius" },
+    ]);
+  });
+});
+
 describe("validateGraph with groups", () => {
   const chain = (params?: Record<string, number>) =>
     toast([instance("g", params)], [{ id: "1", source: "in", target: "g" }, { id: "2", source: "g", target: "out" }]);
@@ -132,8 +144,20 @@ describe("validateGraph with groups", () => {
     ["a group inside", blurFade({ nodes: [...blurFade().nodes, instance("x")] })],
     ["the animation node inside", blurFade({ nodes: [...blurFade().nodes, { id: "an", type: "animation", data: { fps: 24, frames: 1, tracks: [] } }] })],
     ["a loop inside", blurFade({ edges: [...blurFade().edges, { id: "d", source: "op", target: "bl" }] })],
-    ["a shown param that isn't numeric", blurFade({ params: [{ id: "r", node: "bl", param: "color" }] })],
-    ["a shown param of a missing node", blurFade({ params: [{ id: "r", node: "ghost", param: "radius" }] })],
+    ["a delay inside", blurFade({ nodes: [...blurFade().nodes, { id: "d", type: "delay", data: { frames: 1, rows: [] } }] })],
+    ["a shown param that isn't numeric", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "bl", sourceHandle: "color", target: "gi", targetHandle: "r" }] })],
+    ["a shown param of a missing node", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "ghost", sourceHandle: "radius", target: "gi", targetHandle: "r" }] })],
+    ["a param into a missing row", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "bl", sourceHandle: "radius", target: "gi", targetHandle: "ghost" }] })],
+    ["two params into one row", blurFade({ edges: [...blurFade().edges, { id: "q", source: "op", sourceHandle: "opacity", target: "gi", targetHandle: "r" }] })],
+    ["one param into two rows", blurFade({ edges: [...blurFade().edges, { id: "q", source: "bl", sourceHandle: "radius", target: "gi", targetHandle: "free" }] })],
+    [
+      "a shown param a value inside drives too",
+      blurFade({
+        nodes: [...blurFade().nodes, { id: "v", type: "value", data: { value: 3 } }],
+        edges: [...blurFade().edges, { id: "q", source: "bl", sourceHandle: "radius", target: "v" }],
+      }),
+    ],
+    ["a pixel link into the group input", blurFade({ edges: [...blurFade().edges, { id: "q", source: "op", target: "gi" }] })],
   ])("refuses a definition with %s, pointing at the group", (_, definition) => {
     expect(validateGraph(toast([], [{ id: "1", source: "in", target: "out" }], [definition]))).toMatchObject({ group: "bf" });
   });
@@ -148,8 +172,22 @@ describe("validateGraph with groups", () => {
     expect(validateGraph(graph)).toMatchObject({ nodeId: "g" });
   });
 
+  test("a value's own param exposed drives every param wired into it", () => {
+    const shared = blurFade({
+      nodes: [...blurFade().nodes, { id: "v", type: "value", data: { value: 3 } }],
+      edges: [
+        ...blurFade().edges.slice(0, 3),
+        { id: "q", source: "bl", sourceHandle: "radius", target: "v" },
+        { id: "p", source: "v", sourceHandle: "value", target: "gi", targetHandle: "r" },
+      ],
+    });
+    const graph = toast([instance("g", { r: 7 })], [{ id: "1", source: "in", target: "g" }, { id: "2", source: "g", target: "out" }], [shared]);
+    expect(validateGraph(graph)).toBeNull();
+    expect(graphAtFrame(expandGroups(graph), 0).nodes.find(({ id }) => id === "g/bl")?.data).toEqual({ radius: 7 });
+  });
+
   test("a group input outside a group is refused", () => {
-    expect(validateGraph(toast([{ id: "gi", type: "groupInput", data: {} }], [{ id: "1", source: "in", target: "out" }]))).toMatchObject({ nodeId: "gi" });
+    expect(validateGraph(toast([{ id: "gi", type: "groupInput", data: { rows: [] } }], [{ id: "1", source: "in", target: "out" }]))).toMatchObject({ nodeId: "gi" });
   });
 
   test("an issue of the expanded graph points at the instance", () => {

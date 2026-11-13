@@ -16,11 +16,10 @@
       "id": "pass",
       "name": "pass",
       "nodes": [
-        { "id": "gi", "type": "groupInput", "data": {} },
+        { "id": "gi", "type": "groupInput", "data": { "rows": [{ "id": "angle" }] } },
         { "id": "go", "type": "groupOutput", "data": {} }
       ],
-      "edges": [{ "id": "a", "source": "gi", "target": "go" }],
-      "params": []
+      "edges": [{ "id": "a", "source": "gi", "target": "go" }]
     }
   ]
 }

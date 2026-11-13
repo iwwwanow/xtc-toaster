@@ -226,15 +226,15 @@ describe("runGraph: the animation node", () => {
       id: "fade",
       name: "fade",
       nodes: [
-        { id: "gi", type: "groupInput", data: {} },
+        { id: "gi", type: "groupInput", data: { rows: [{ id: "o" }] } },
         opacity("op", 1),
         { id: "go", type: "groupOutput", data: {} },
       ],
       edges: [
         { id: "a", source: "gi", target: "op" },
         { id: "b", source: "op", target: "go" },
+        { id: "p", source: "op", sourceHandle: "opacity", target: "gi", targetHandle: "o" },
       ],
-      params: [{ id: "o", node: "op", param: "opacity" }],
     };
     const instance: GraphNode = { id: "g", type: "group", data: { group: "fade", params: { o: 0.5 } } };
     const toast = {

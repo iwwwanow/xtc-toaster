@@ -37,8 +37,11 @@
       <fieldset class="hr_fieldset"><legend><h6>{name}</h6></legend></fieldset>
       {#each types as type (type)}
         <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included.
-             One animation node per graph (contract), at the root — never inside a group -->
-        {@const taken = type === "animation" && (session.animationNode !== undefined || session.openGroup !== undefined)}
+             One animation node per graph (contract), at the root — never inside a group; nor a delay: it feeds only a
+             track, and there is none inside -->
+        {@const taken =
+          (type === "animation" && session.animationNode !== undefined) ||
+          ((type === "animation" || type === "delay") && session.openGroup !== undefined)}
         <div
           class="btn_ai-generated btn-sm_ai-generated"
           draggable={!taken}
