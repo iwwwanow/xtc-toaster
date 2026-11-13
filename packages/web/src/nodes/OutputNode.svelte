@@ -21,7 +21,8 @@
     <div class="field__hint_ai-generated">upload an image</div>
   {:else if session.renderError}
     <div class="field__error_ai-generated">
-      {#if errorNode}{errorNode}: {/if}{session.renderError.message}
+      <!-- a string, not text before {/if}: svelte trims the space at the end of a block -->
+      {errorNode ? `${errorNode}: ` : ""}{session.renderError.message}
     </div>
   {:else if session.rendered}
     <!-- rendered at the stored image size, shown scaled down -->
