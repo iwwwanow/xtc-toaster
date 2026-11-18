@@ -407,7 +407,7 @@ describe("insertOnLink", () => {
     expect(links(insertOnLink(nodes, animated, "bl", "in-out"))).toEqual(["bl>an:t", "bl>out", "in>bl"]);
   });
 
-  test("input, output, animation and delay never go in; a param link takes nothing", () => {
+  test("input, output, animation and delay never go into a pixel link; a param link takes nothing but a delay", () => {
     const { nodes, edges } = chain(
       { id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } } as GraphNode,
       { id: "dl", type: "delay", data: structuredClone(INITIAL_DATA.delay) } as unknown as GraphNode,
@@ -422,6 +422,42 @@ describe("insertOnLink", () => {
   test("a layers node with no rows stays out", () => {
     const { nodes, edges } = chain({ id: "ly", type: "layers", data: { layers: [] } });
     expect(insertOnLink(nodes, edges, "ly", "in-out")).toBeNull();
+  });
+
+  describe("a delay onto a param link", () => {
+    const params = (...rows: string[]) =>
+      chain(
+        { id: "an", type: "animation", data: { ...INITIAL_DATA.animation, tracks: [{ id: "t", keys: [] }] } } as GraphNode,
+        { id: "dl", type: "delay", data: { frames: 3, rows: rows.map((id) => ({ id })) } },
+        { id: "v", type: "value", data: { value: 1 } },
+      );
+    const paramLinks = (edges: Edge[] | null) =>
+      edges?.filter(({ sourceHandle }) => sourceHandle).map(({ source, sourceHandle, target, targetHandle }) =>
+        `${source}.${sourceHandle}>${target}${targetHandle ? `:${targetHandle}` : ""}`).sort();
+
+    test("goes in through its free row: param → delay → track", () => {
+      const { nodes, edges } = params("r1");
+      const param = [...edges, { id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" }];
+      expect(paramLinks(insertOnLink(nodes, param, "dl", "p"))).toEqual(["bl.radius>dl:r1", "dl.r1>an:t"]);
+    });
+
+    test("into a value's input too", () => {
+      const { nodes, edges } = params("r1");
+      const param = [...edges, { id: "p", source: "bl", sourceHandle: "radius", target: "v" }];
+      expect(paramLinks(insertOnLink(nodes, param, "dl", "p"))).toEqual(["bl.radius>dl:r1", "dl.r1>v"]);
+    });
+
+    test("a delay carrying params takes the next one into its first free row; none free — it stays out", () => {
+      const { nodes, edges } = params("r1", "r2");
+      const taken = [
+        ...edges,
+        { id: "x", source: "v", sourceHandle: "value", target: "dl", targetHandle: "r1" },
+        { id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" },
+      ];
+      expect(paramLinks(insertOnLink(nodes, taken, "dl", "p"))).toContain("dl.r2>an:t");
+      const full = taken.concat({ id: "y", source: "x", sourceHandle: "x", target: "dl", targetHandle: "r2" });
+      expect(insertOnLink(nodes, full, "dl", "p")).toBeNull();
+    });
   });
 });
 

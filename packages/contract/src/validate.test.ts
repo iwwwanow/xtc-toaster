@@ -219,6 +219,7 @@ describe("validateGraph, a value", () => {
     ["its own param animated", g([link("mv", "x", "v"), link("v", "value", "anim", "t1")], [animation])],
     ["its own param through a delay", g([link("v", "value", "dl", "r1"), link("dl", "r1", "anim", "t1")], [animation, delay])],
     ["value → value", g([link("mv", "x", "v"), link("v", "value", "v2")], [value("v2")])],
+    ["a param through a delay into it", g([link("mv", "x", "dl", "r1"), link("dl", "r1", "v")], [delay])],
   ])("accepts %s", (_, graph) => {
     expect(validateGraph(graph)).toBeNull();
   });
@@ -228,10 +229,10 @@ describe("validateGraph, a value", () => {
     ["a pixel link out of it", g([link("v", undefined, "out")]), "v"],
     ["a link into a named handle", g([link("mv", "x", "v", "h")]), "v"],
     ["a non-param into it", g([link("mv", "z", "v")]), "mv"],
-    ["a delay row into it", g([link("mv", "x", "dl", "r1"), link("dl", "r1", "v")], [delay]), "dl"],
     ["one param into a value and a track", g([link("mv", "x", "v"), link("mv", "x", "anim", "t1")], [animation]), "anim"],
     ["one param into two values", g([link("mv", "x", "v"), link("mv", "x", "v2")], [value("v2")]), "v2"],
     ["two values in a loop", g([link("v", "value", "v2"), link("v2", "value", "v")], [value("v2")]), "v"],
+    ["two values in a loop through a delay", g([link("v", "value", "dl", "r1"), link("dl", "r1", "v2"), link("v2", "value", "v")], [value("v2"), delay]), "v"],
   ])("rejects %s, pointing at the node", (_, graph, nodeId) => {
     expect(validateGraph(graph)).toMatchObject({ nodeId });
   });

@@ -189,11 +189,11 @@ export const AnimationNodeSchema = z.object({
   }),
 });
 
-// a row: one param in, one track (or the next delay) out, both handles named by the row's id
+// a row: one param in, one track (the next delay, a value, a factor) out, both handles named by the row's id
 export const DelayRowSchema = z.object({ id: z.string().min(1) });
 
 // shifts the animation of the params wired through it: param → a row → a track, the param reads the track
-// `frames` later (graphAtFrame). One shift for every row — several params under one delay. No pixels in or out:
+// `frames` later (graphAtFrame); → a value or a factor — it takes their number `frames` later (18.11). One shift for every row — several params under one delay. No pixels in or out:
 // like the animation node, the output's ancestry never reaches it. An unlinked row is allowed, like a layers row
 export const DelayNodeSchema = z.object({
   id: NodeIdSchema,

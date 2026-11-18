@@ -62,34 +62,45 @@ export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Re
 // What the value and factor nodes put into `data` on a frame: every param wired into one takes — after the tracks, so
 // an animated one moves them all — a value's number clamped to the param's bounds, or a factor's share of the param's
 // range (min + factor · (max − min)). A value or a factor wired into another one takes what that one gives its own
-// param, and passes it on. `animated` — the tracks' values on this frame (animatedValues)
-const driverValues = (graph: ToastGraph, animated: Map<NodeId, Record<string, number>>): Map<NodeId, Record<string, number>> => {
+// param, and passes it on. A param wired in through delays takes it `shift` frames later — the driver is read on
+// frame − shift, like a track. `animatedAt` — the tracks' values on a frame (animatedValues)
+const driverValues = (
+  graph: ToastGraph,
+  frame: number,
+  animatedAt: (frame: number) => Map<NodeId, Record<string, number>>,
+): Map<NodeId, Record<string, number>> => {
   const values = new Map<NodeId, Record<string, number>>();
   const byId = new Map<NodeId, GraphNode>(graph.nodes.map((node) => [node.id, node]));
-  const links = graph.edges.filter(({ target, sourceHandle }) => sourceHandle !== undefined && isDriver(byId.get(target)));
+  const sourceOf = paramSources(graph);
+  // every param wired into a driver: the param behind any delays, the driver and the delays' shift
+  const links = graph.edges.flatMap(({ source, sourceHandle, target }) => {
+    if (sourceHandle === undefined || !isDriver(byId.get(target))) return [];
+    const from = sourceOf(source, sourceHandle);
+    return from ? [{ ...from, target }] : [];
+  });
   if (links.length === 0) return values;
-  const wiredInto = new Map<NodeId, NodeId>();
-  for (const { source, target } of links) if (isDriver(byId.get(source))) wiredInto.set(source, target);
-  // what driver `id` gives a param of these bounds; `depth` — bounded: validateGraph refuses a loop, an unvalidated
-  // graph mustn't hang
-  const give = (id: NodeId, bounds: ParamBounds, depth = 0): number | null => {
+  const wiredInto = new Map<NodeId, { target: NodeId; shift: number }>();
+  for (const { node, target, shift } of links) if (isDriver(byId.get(node))) wiredInto.set(node, { target, shift });
+  // what driver `id` gives a param of these bounds on `at`; `depth` — bounded: validateGraph refuses a loop, an
+  // unvalidated graph mustn't hang
+  const give = (id: NodeId, bounds: ParamBounds, at: number, depth = 0): number | null => {
     const node = byId.get(id);
     if (!isDriver(node) || depth > graph.nodes.length) return null;
     // a driver's own param is named as its type: value.value, factor.factor
     const next = wiredInto.get(id);
     const own =
       next !== undefined
-        ? give(next, paramBounds(node.type, node.type)!, depth + 1)
-        : (animated.get(id)?.[node.type] ?? (node.data as Record<string, number>)[node.type]!);
+        ? give(next.target, paramBounds(node.type, node.type)!, at - next.shift, depth + 1)
+        : (animatedAt(at).get(id)?.[node.type] ?? (node.data as Record<string, number>)[node.type]!);
     if (own === null) return null;
     const value = node.type === "value" ? own : bounds.min + own * (bounds.max - bounds.min);
     return Math.min(bounds.max, Math.max(bounds.min, value));
   };
-  for (const { source, sourceHandle, target } of links) {
-    const bounds = paramBounds(byId.get(source)?.type ?? "", sourceHandle!);
-    const value = bounds && give(target, bounds);
+  for (const { node, param, shift, target } of links) {
+    const bounds = paramBounds(byId.get(node)?.type ?? "", param);
+    const value = bounds && give(target, bounds, frame - shift);
     if (value === null || value === undefined) continue;
-    values.set(source, { ...values.get(source), [sourceHandle!]: value });
+    values.set(node, { ...values.get(node), [param]: value });
   }
   return values;
 };
@@ -98,8 +109,11 @@ const driverValues = (graph: ToastGraph, animated: Map<NodeId, Record<string, nu
 // factor nodes. node → param → value; a param has one source, never two (validateGraph: one place per param)
 export const drivenValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
   const animated = animatedValues(graph, frame);
+  // a driver behind a delay is read on another frame — its tracks there, once per frame
+  const frames = new Map([[frame, animated]]);
+  const animatedAt = (at: number) => frames.get(at) ?? frames.set(at, animatedValues(graph, at)).get(at)!;
   const values = new Map(animated);
-  for (const [node, params] of driverValues(graph, animated)) values.set(node, { ...values.get(node), ...params });
+  for (const [node, params] of driverValues(graph, frame, animatedAt)) values.set(node, { ...values.get(node), ...params });
   return values;
 };
 

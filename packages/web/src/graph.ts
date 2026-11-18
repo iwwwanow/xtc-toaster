@@ -268,22 +268,44 @@ export const withoutTaken = (edges: Edge[], { source, sourceHandle, target, targ
 const linkId = ({ source, sourceHandle, target, targetHandle }: Link) =>
   `xy-edge__${source}${sourceHandle ?? ""}-${target}${targetHandle ?? ""}`;
 
-// A node dropped onto a pixel link A → B goes into it: A → node → B, like blender's auto-attach (28.10). Only a node
-// with no pixel link yet and with a pixel input and output — not input / output, not animation / delay (params only);
-// a layers node takes the link into its top row. The new graph passes validateGraph like any drawn link.
+// A node dropped onto a link A → B goes into it: A → node → B, like blender's auto-attach (28.10). Onto a pixel link —
+// a node with no pixel link yet and with a pixel input and output — not input / output, not animation / delay (params
+// only); a layers node takes the link into its top row. Onto a param link (18.11) — a delay, through its first free
+// row: the param goes on `frames` later. The new graph passes validateGraph like any drawn link.
 // The edges with the node in the link, or null — it doesn't go there
 export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, edgeId: string, scope = ROOT): Edge[] | null => {
   const node = nodes.find(({ id }) => id === nodeId);
   const link = edges.find(({ id }) => id === edgeId);
-  if (!node || !link || link.sourceHandle || link.source === nodeId || link.target === nodeId) return null;
+  if (!node || !link || link.source === nodeId || link.target === nodeId) return null;
+  const between = link.sourceHandle ? throughDelay(node, edges, link) : throughPixels(node, edges, link);
+  if (!between) return null;
+  const next = [...edges.filter(({ id }) => id !== edgeId), ...between.map((part) => ({ id: linkId(part), ...part }))];
+  return validateGraph(scope(levelOf(nodes, next))) ? null : next;
+};
+
+// a pixel link → into the node's input (a layers node's top row), out of its output
+const throughPixels = (node: FlowNode, edges: Edge[], link: Edge): [Link, Link] | null => {
   if (isFixed(node.type) || node.type === "animation" || node.type === "delay") return null;
-  if (edges.some(({ source, sourceHandle, target }) => (source === nodeId && !sourceHandle) || target === nodeId)) return null;
+  if (edges.some(({ source, sourceHandle, target }) => (source === node.id && !sourceHandle) || target === node.id)) return null;
   const into = node.type === "layers" ? node.data.layers[0]?.id : undefined;
   if (node.type === "layers" && into === undefined) return null;
-  const before: Link = { source: link.source, target: nodeId, ...(into && { targetHandle: into }) };
-  const after: Link = { source: nodeId, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) };
-  const next = [...edges.filter(({ id }) => id !== edgeId), { id: linkId(before), ...before }, { id: linkId(after), ...after }];
-  return validateGraph(scope(levelOf(nodes, next))) ? null : next;
+  return [
+    { source: link.source, target: node.id, ...(into && { targetHandle: into }) },
+    { source: node.id, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) },
+  ];
+};
+
+// a param link → into a delay's first row linked on neither side, out of the same row
+const throughDelay = (node: FlowNode, edges: Edge[], link: Edge): [Link, Link] | null => {
+  if (node.type !== "delay") return null;
+  const linked = (row: string) =>
+    edges.some((edge) => (edge.target === node.id && edge.targetHandle === row) || (edge.source === node.id && edge.sourceHandle === row));
+  const row = node.data.rows.find(({ id }) => !linked(id))?.id;
+  if (row === undefined) return null;
+  return [
+    { source: link.source, sourceHandle: link.sourceHandle, target: node.id, targetHandle: row },
+    { source: node.id, sourceHandle: row, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) },
+  ];
 };
 
 type Point = { x: number; y: number };

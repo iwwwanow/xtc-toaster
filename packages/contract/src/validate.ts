@@ -24,8 +24,8 @@ export type GraphIssue = { message: string; nodeId?: NodeId; group?: string };
 // The first issue found or null.
 // TODO: call it from ToastGraphSchema.superRefine — one entry point, fromToastFile's own checks go; stays a
 // plain function for web canConnect, nodeId must reach the issue — docs/backlog/2026-11-01_validate-graph-into-zod.md
-// a param link: from a numeric param of the source's type or out of a delay row, into a track or a delay row; into a
-// value or a factor — from a numeric param only (a delay shifts a track's time, they have none), their one unnamed input
+// a param link: from a numeric param of the source's type or out of a delay row, into a track, a delay row or a value's
+// or a factor's one unnamed input (through a delay the param takes their number `frames` later — an animated one moves)
 const paramLinkIssue = (
   from: GraphNode,
   to: AnimationNode | DelayNode | DriverNode,
@@ -33,7 +33,6 @@ const paramLinkIssue = (
 ): GraphIssue | null => {
   if (sourceHandle === undefined) return { message: "link a param", nodeId: to.id };
   if (from.type === "delay") {
-    if (isDriver(to)) return { message: "a delay links only into a track or a delay", nodeId: from.id };
     if (!from.data.rows.some(({ id }) => id === sourceHandle)) return { message: "link out of a delay row", nodeId: from.id };
   } else if (!paramBounds(from.type, sourceHandle)) return { message: "only a numeric param can be animated", nodeId: from.id };
   if (isDriver(to)) return targetHandle === undefined ? null : { message: `a ${to.type} has one input`, nodeId: to.id };
@@ -90,7 +89,7 @@ const validatePlain = ({ nodes, edges }: Pick<ToastGraph, "nodes" | "edges">): G
       const param = `${source}\0${sourceHandle}`;
       if (animated.has(param)) return { message: "one track per param", nodeId: target };
       animated.add(param);
-    } else if (from.type === "delay") return { message: "a delay links only into a track or a delay", nodeId: source };
+    } else if (from.type === "delay") return { message: "a delay links only into a track, a delay, a value or a factor", nodeId: source };
     else if (sourceHandle !== undefined) return { message: "a param links only into a track, a delay, a value or a factor", nodeId: source };
     else if (isDriver(from)) return { message: `a ${from.type} links only its param`, nodeId: source };
 

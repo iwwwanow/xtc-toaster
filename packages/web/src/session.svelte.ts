@@ -483,15 +483,16 @@ class Session {
   }
 
   // a param wired into a value or a factor nothing is wired into yet: it takes the param's number (a factor — where it
-  // sits in the param's range) — the picture doesn't jump (like a track's first key)
+  // sits in the param's range) — the picture doesn't jump (like a track's first key). Through a delay — the param behind it
   seedValue({ source, sourceHandle, target }: Link) {
     const node = this.nodes.find(({ id }) => id === target);
     if ((node?.type !== "value" && node?.type !== "factor") || !sourceHandle) return;
     if (this.edges.some((edge) => edge.target === target && edge.sourceHandle)) return;
-    const value = paramValue(this.nodes, source, sourceHandle, this.groups);
+    const param = paramOf(this.nodes, this.edges, source, sourceHandle);
+    const value = param && paramValue(this.nodes, param.node.id, param.param, this.groups);
     if (value === null) return;
     if (node.type === "value") return this.setNodeData(target, { value });
-    const bounds = paramBoundsOf(this.groups, this.nodes.find(({ id }) => id === source), sourceHandle);
+    const bounds = paramBoundsOf(this.groups, param!.node, param!.param);
     if (bounds) this.setNodeData(target, { factor: (value - bounds.min) / (bounds.max - bounds.min) });
   }
 

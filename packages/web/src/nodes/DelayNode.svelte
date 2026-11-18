@@ -6,7 +6,8 @@
   import { session } from "../session.svelte";
   import Slider from "./Slider.svelte";
 
-  // param → a row → a track: every param wired through plays `frames` later (graphAtFrame). No pixels in or out
+  // param → a row → a track (a value, a factor): every param wired through plays `frames` later (graphAtFrame).
+  // No pixels in or out
   let { id, data }: NodeProps<FlowNodeOf<"delay">> = $props();
 
   // the handles are inside the rows — xyflow re-measures them once the rows change

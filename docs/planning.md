@@ -184,6 +184,7 @@
    - new user test (+ the sister's cursor lag: Windows + Chrome)
    - QA: every open item of `docs/sprints/sprint-*.qa.md` at once (sprint 4: sections 2.4–7; sprint 5 — its own list) — decided 01.11, confirmed 06.11: QA only at the end of the release, never during a sprint (`CLAUDE.md`)
    - final fixes
+     - [x] 18.11 (the user) a delay links into a value / factor: the param takes the driver's number `frames` later (contract `driverValues` reads it on `frame − shift`, like a track; a loop through a delay is still refused); a delay dropped onto a param wire goes into it through its first free row (`param → delay → track / value`, `insertOnLink`)
    - cut if behind:
      - (#5) 2 toasts instead of 3
 7. [ ] 23.11-29.11. free buffer

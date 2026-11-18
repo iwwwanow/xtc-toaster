@@ -257,6 +257,25 @@ describe("graphAtFrame with a value", () => {
     expect(data(at, "v")).toEqual({ value: -7 });
   });
 
+  test("a param through a delay takes an animated value's number that many frames later", () => {
+    // move.x straight in, move.y through a delay of 3; the value goes 0 → 100 over frames 0…10
+    const graph = valued(0, true);
+    graph.nodes.push({ id: "dl", type: "delay", data: { frames: 3, rows: [{ id: "r1" }] } });
+    graph.edges.push({ id: "5", source: "mv", sourceHandle: "y", target: "dl", targetHandle: "r1" }, { id: "6", source: "dl", sourceHandle: "r1", target: "v" });
+    expect(data(graphAtFrame(graph, 5), "mv")).toEqual({ x: 50, y: 20 });
+    expect(data(graphAtFrame(graph, 2), "mv")).toEqual({ x: 20, y: 0 });
+  });
+
+  test("value → delay → value: the first one takes the last one's number that many frames later", () => {
+    const graph = valued(45, true);
+    // the animated value's own track drives v2 now: v (and its params) → delay of 2 → v2
+    graph.nodes.push({ id: "v2", type: "value", data: { value: 0 } }, { id: "dl", type: "delay", data: { frames: 2, rows: [{ id: "r1" }] } });
+    graph.edges = graph.edges.map((edge) => (edge.id === "4" ? { ...edge, source: "v2" } : edge));
+    graph.edges.push({ id: "5", source: "v", sourceHandle: "value", target: "dl", targetHandle: "r1" }, { id: "6", source: "dl", sourceHandle: "r1", target: "v2" });
+    expect(data(graphAtFrame(graph, 7), "v")).toEqual({ value: 50 });
+    expect(data(graphAtFrame(graph, 7), "mv")).toEqual({ x: 50, y: 0 });
+  });
+
   test("no params wired in — the graph as is", () => {
     const graph = { ...valued(45), edges: [] };
     expect(graphAtFrame(graph, 0)).toBe(graph);
