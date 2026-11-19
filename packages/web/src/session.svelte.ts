@@ -385,10 +385,14 @@ class Session {
     this.groups = this.groups.filter((group) => group.id !== id);
   }
 
-  // a node dragged onto a link and let go goes into it: A → node → B
+  // a node dragged onto a link and let go goes into it: A → node → B. A value onto a param link takes the param's
+  // number, as one wired in by hand (seedValue) — the field shows it, an unkeyed track changes nothing
   insertOnLink(nodeId: string, edgeId: string) {
+    const link = this.edges.find(({ id }) => id === edgeId);
     const edges = insertOnLink(this.nodes, this.edges, nodeId, edgeId, this.scope);
-    if (edges) this.edges = edges;
+    if (!edges) return;
+    if (link?.sourceHandle) this.seedValue({ source: link.source, sourceHandle: link.sourceHandle, target: nodeId });
+    this.edges = edges;
   }
 
   // after a delete: the deleted nodes' sources linked to what they fed (keepChain)

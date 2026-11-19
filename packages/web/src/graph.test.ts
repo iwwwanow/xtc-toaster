@@ -447,6 +447,26 @@ describe("insertOnLink", () => {
       expect(paramLinks(insertOnLink(nodes, param, "dl", "p"))).toEqual(["bl.radius>dl:r1", "dl.r1>v"]);
     });
 
+    test("a value goes in too: param → value → track, what drove the param drives the value", () => {
+      const { nodes, edges } = params("r1");
+      const param = [...edges, { id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" }];
+      expect(paramLinks(insertOnLink(nodes, param, "v", "p"))).toEqual(["bl.radius>v", "v.value>an:t"]);
+      // through a delay row: param → value → delay
+      const delayed = [...edges, { id: "p", source: "bl", sourceHandle: "radius", target: "dl", targetHandle: "r1" }];
+      expect(paramLinks(insertOnLink(nodes, delayed, "v", "p"))).toEqual(["bl.radius>v", "v.value>dl:r1"]);
+    });
+
+    test("a value already linked stays out; a value onto a pixel link too", () => {
+      const { nodes, edges } = params("r1");
+      const param = [
+        ...edges,
+        { id: "p", source: "bl", sourceHandle: "radius", target: "an", targetHandle: "t" },
+        { id: "q", source: "v", sourceHandle: "value", target: "dl", targetHandle: "r1" },
+      ];
+      expect(insertOnLink(nodes, param, "v", "p")).toBeNull();
+      expect(insertOnLink(nodes, edges, "v", "in-out")).toBeNull();
+    });
+
     test("a delay carrying params takes the next one into its first free row; none free — it stays out", () => {
       const { nodes, edges } = params("r1", "r2");
       const taken = [

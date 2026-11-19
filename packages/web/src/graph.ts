@@ -271,13 +271,19 @@ const linkId = ({ source, sourceHandle, target, targetHandle }: Link) =>
 // A node dropped onto a link A → B goes into it: A → node → B, like blender's auto-attach (28.10). Onto a pixel link —
 // a node with no pixel link yet and with a pixel input and output — not input / output, not animation / delay (params
 // only); a layers node takes the link into its top row. Onto a param link (18.11) — a delay, through its first free
-// row: the param goes on `frames` later. The new graph passes validateGraph like any drawn link.
+// row: the param goes on `frames` later; a value with no links yet (19.11): the param takes the value's number, and
+// what drove the param (a track, a delay, another value) drives the value. The new graph passes validateGraph like
+// any drawn link.
 // The edges with the node in the link, or null — it doesn't go there
 export const insertOnLink = (nodes: FlowNode[], edges: Edge[], nodeId: string, edgeId: string, scope = ROOT): Edge[] | null => {
   const node = nodes.find(({ id }) => id === nodeId);
   const link = edges.find(({ id }) => id === edgeId);
   if (!node || !link || link.source === nodeId || link.target === nodeId) return null;
-  const between = link.sourceHandle ? throughDelay(node, edges, link) : throughPixels(node, edges, link);
+  const between = !link.sourceHandle
+    ? throughPixels(node, edges, link)
+    : node.type === "value"
+      ? throughValue(node, edges, link)
+      : throughDelay(node, edges, link);
   if (!between) return null;
   const next = [...edges.filter(({ id }) => id !== edgeId), ...between.map((part) => ({ id: linkId(part), ...part }))];
   return validateGraph(scope(levelOf(nodes, next))) ? null : next;
@@ -305,6 +311,15 @@ const throughDelay = (node: FlowNode, edges: Edge[], link: Edge): [Link, Link] |
   return [
     { source: link.source, sourceHandle: link.sourceHandle, target: node.id, targetHandle: row },
     { source: node.id, sourceHandle: row, target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) },
+  ];
+};
+
+// a param link → into a value's one input, out of its own param; a value already linked either way stays out
+const throughValue = (node: FlowNode, edges: Edge[], link: Edge): [Link, Link] | null => {
+  if (edges.some(({ source, target }) => source === node.id || target === node.id)) return null;
+  return [
+    { source: link.source, sourceHandle: link.sourceHandle, target: node.id },
+    { source: node.id, sourceHandle: "value", target: link.target, ...(link.targetHandle && { targetHandle: link.targetHandle }) },
   ];
 };
 
