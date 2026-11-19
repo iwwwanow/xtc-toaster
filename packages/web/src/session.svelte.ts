@@ -3,7 +3,7 @@ import {
   drivenValues,
   expandGroups,
   graphAtFrame,
-  innerId,
+  GROUP_SEPARATOR,
   instanceOf,
   UPLOAD_MAX_MEGAPIXELS,
   type AnimationExport,
@@ -42,6 +42,7 @@ import {
   exposedParams,
   groupOf,
   groupSelection,
+  holds,
   itemGroup,
   nodeLabel,
   paramBoundsOf,
@@ -81,10 +82,20 @@ class Session {
   private rootNodes = $state.raw<FlowNode[]>(initial.nodes);
   private rootEdges = $state.raw<Edge[]>(initial.edges);
   groups = $state.raw<FlowGroup[]>(initial.groups ?? []);
-  // the level on screen: null — the root, else the group whose inside is open; ui state, not in the toast. A group
-  // gone (an undo before it was made) — the root
-  private view = $state<string | null>(null);
-  openGroup = $derived(this.view === null ? undefined : this.groups.find(({ id }) => id === this.view));
+  // the levels opened, from the root down: empty — the root on screen, else the last group's inside (a group opened
+  // inside another goes on the path, 19.11); ui state, not in the toast. A group gone (an undo before it was made) —
+  // the path stops above it
+  private view = $state<string[]>([]);
+  openPath = $derived.by(() => {
+    const path: FlowGroup[] = [];
+    for (const id of this.view) {
+      const group = this.groups.find((group) => group.id === id);
+      if (!group) break;
+      path.push(group);
+    }
+    return path;
+  });
+  openGroup = $derived(this.openPath.at(-1));
 
   // the level on screen, as SvelteFlow binds it — the root's nodes and links or the open group's
   get nodes(): FlowNode[] {
@@ -103,13 +114,15 @@ class Session {
     if (open) this.setOpenGroup({ ...open, edges });
     else this.rootEdges = edges;
   }
-  // an edit inside a group, and what it takes from the instances at the root: a param no longer exposed — their own
-  // values for it and their links out of it (withoutUnexposed); the same edit, the same history step
+  // an edit inside a group, and what it takes from its instances, at the root and inside other groups: a param no
+  // longer exposed — their own values for it and their links out of it (withoutUnexposed); the same edit, the same
+  // history step
   private setOpenGroup(edited: FlowGroup) {
-    this.groups = this.groups.map((group) => (group.id === edited.id ? edited : group));
-    const root = withoutUnexposed(this.rootNodes, this.rootEdges, this.groups);
-    if (root.nodes !== this.rootNodes) this.rootNodes = root.nodes;
-    if (root.edges !== this.rootEdges) this.rootEdges = root.edges;
+    const groups = this.groups.map((group) => (group.id === edited.id ? edited : group));
+    const pruned = withoutUnexposed({ nodes: this.rootNodes, edges: this.rootEdges, groups });
+    this.groups = pruned.groups;
+    if (pruned.nodes !== this.rootNodes) this.rootNodes = pruned.nodes;
+    if (pruned.edges !== this.rootEdges) this.rootEdges = pruned.edges;
   }
   // the level on screen inside the whole toast — every check of an edit (a link, a drop, a delete) sees what it touches
   scope = $derived(scopeOf({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, this.openGroup?.id ?? null));
@@ -252,25 +265,27 @@ class Session {
     this.rootEdges = flow.edges;
     this.groups = keep ? groups.map((group) => ({ ...group, nodes: keepUi(group.nodes, was.get(group.id) ?? []) })) : groups;
     this.exportSettings = flow.export ?? {};
-    if (!keep || !this.groups.some(({ id }) => id === this.view)) this.view = null;
+    this.view = keep ? this.openPath.map(({ id }) => id) : [];
   }
 
-  // into a group's inside (double click, `open`) and back to the root (the breadcrumb). Not during a drag
+  // into a group's inside (double click, `open`) — one level down from the one on screen; back up to a group on the
+  // path or to the root, null (the breadcrumbs). Not during a drag
   openView(group: string | null) {
     if (this.dragging) return;
-    this.view = group !== null && this.groups.some(({ id }) => id === group) ? group : null;
+    const path = this.openPath.map(({ id }) => id);
+    if (group === null) this.view = [];
+    else if (path.includes(group)) this.view = path.slice(0, path.indexOf(group) + 1);
+    else if (this.groups.some(({ id }) => id === group)) this.view = [...path, group];
   }
 
   // why the last `group` was refused — shown in the selection's toolbar until the selection changes
   groupError = $state<string | null>(null);
 
-  // the selected nodes of the root into a new group, an instance in their place (groupSelection); one step
+  // the selected nodes of the level on screen into a new group, an instance in their place (groupSelection) — inside
+  // a group it nests there; one step
   groupSelected(selected: readonly string[]) {
-    if (this.openGroup) {
-      this.groupError = "no group inside a group yet";
-      return;
-    }
-    const result = groupSelection({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, selected);
+    const root = { nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups };
+    const result = groupSelection(root, selected, this.openGroup?.id ?? null);
     if ("error" in result) {
       this.groupError = result.error;
       return;
@@ -283,16 +298,24 @@ class Session {
 
   // an instance back into its nodes, selected; the group stays in the left menu; one step
   ungroup(instance: string) {
-    if (this.openGroup) return;
-    const result = ungroup({ nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups }, instance);
+    const root = { nodes: this.rootNodes, edges: this.rootEdges, groups: this.groups };
+    const result = ungroup(root, instance, this.openGroup?.id ?? null);
     if (!result) return;
+    this.groups = result.groups;
     this.rootNodes = result.nodes;
     this.rootEdges = result.edges;
   }
 
-  // how many instances of a group stand at the root
+  // how many instances of a group stand at the root and inside other groups
   instancesOf(group: string): number {
-    return this.rootNodes.filter((node) => node.type === "group" && node.data.group === group).length;
+    const isOf = (node: FlowNode) => node.type === "group" && node.data.group === group;
+    return [this.rootNodes, ...this.groups.map(({ nodes }) => nodes)].reduce((sum, nodes) => sum + nodes.filter(isOf).length, 0);
+  }
+
+  // whether an instance of the group may go onto the level on screen — not into itself or a group it holds (19.11)
+  canNest(group: string): boolean {
+    const open = this.openGroup;
+    return !open || !holds(this.groups, group, open.id);
   }
 
   // a group's name — its instances' legend, the breadcrumb, the left menu; empty keeps the old one
@@ -348,10 +371,10 @@ class Session {
   }
 
   // what a menu item makes: a node of that type, or an instance of that group. None: a second animation node (one per
-  // graph, at the root), anything of a group inside a group (no nesting yet), a group that's gone
+  // graph, at the root), an animation inside a group, a group into itself or one it holds (canNest), a group that's gone
   private menuNode(item: MenuItem, position: XYPosition): FlowNode | null {
     const group = itemGroup(item);
-    if (group !== null) return this.openGroup || !this.groups.some(({ id }) => id === group) ? null : createInstance(group, position);
+    if (group !== null) return this.canNest(group) && this.groups.some(({ id }) => id === group) ? createInstance(group, position) : null;
     if (item === "animation" && (this.animationNode || this.openGroup)) return null;
     return createNode(item as MenuNodeType, position);
   }
@@ -409,8 +432,8 @@ class Session {
   // param is what reaches its inner node
   animatedValue(nodeId: string, param: string): number | null {
     const node = this.nodes.find(({ id }) => id === nodeId);
-    const exposed = node?.type === "group" ? exposedParams(groupOf(this.groups, node)).find(({ id }) => id === param) : undefined;
-    if (exposed) return this.driven.get(innerId(nodeId, exposed.node))?.[exposed.param] ?? null;
+    const exposed = node?.type === "group" ? exposedParams(this.groups, groupOf(this.groups, node)).find(({ id }) => id === param) : undefined;
+    if (exposed) return this.driven.get([nodeId, ...exposed.path].join(GROUP_SEPARATOR))?.[exposed.endParam] ?? null;
     return this.driven.get(nodeId)?.[param] ?? null;
   }
 

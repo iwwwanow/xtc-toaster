@@ -1,7 +1,7 @@
 import type { Edge } from "@xyflow/svelte";
 import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
-import { nodeLabel, ownParamValue, paramName } from "./groups";
+import { nodeLabel, ownParamValue, paramName, shiftLabel } from "./groups";
 
 // Animation tracks, top first, and their keys. Pure — session and the node apply the result to the node data.
 
@@ -137,7 +137,6 @@ export const trackParam = (nodes: readonly FlowNode[], edges: readonly Edge[], n
 // exposes — `group 1.rotate.angle`
 export const paramLabel = ({ node, param, shift }: ParamOf, groups: readonly FlowGroup[] = []): string =>
   `${nodeLabel(node, groups)}.${paramName(groups, node, param)}${shiftLabel(shift)}`;
-const shiftLabel = (shift: number) => (shift === 0 ? "" : ` ${shift > 0 ? "+" : "−"}${Math.abs(shift)}`);
 
 // the value a param has in the node's own data; an instance's exposed one — its own, else the inner node's
 export const paramValue = (nodes: readonly FlowNode[], nodeId: string, param: string, groups: readonly FlowGroup[] = []): number | null =>

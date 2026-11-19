@@ -4,12 +4,12 @@
   import { isFixed } from "../graph";
   import { session } from "../session.svelte";
 
-  // Over the selected nodes (10.11, agreed): `group` — the selection into a new group (the root only, no nesting yet);
-  // one instance selected — `ungroup` and `open` too. Hidden while dragging. A refused `group` says why here
+  // Over the selected nodes (10.11, agreed): `group` — the selection into a new group (inside a group — nested in it,
+  // 19.11); one instance selected — `ungroup` and `open` too. Hidden while dragging. A refused `group` says why here
   let selected = $derived(session.nodes.filter(({ selected }) => selected));
   let ids = $derived(selected.map(({ id }) => id));
   let instance = $derived(selected.length === 1 && selected[0]!.type === "group" ? selected[0] : undefined);
-  let canGroup = $derived(!session.openGroup && selected.some(({ type }) => !isFixed(type)));
+  let canGroup = $derived(selected.some(({ type }) => !isFixed(type)));
 
   // the reason belongs to the selection it was refused for
   $effect(() => {

@@ -11,8 +11,7 @@
   let { id, data }: NodeProps<FlowNodeOf<"group">> = $props();
 
   let group = $derived(session.groups.find(({ id }) => id === data.group));
-  let params = $derived(exposedParams(group));
-  const innerType = (node: string) => group?.nodes.find(({ id }) => id === node)?.type;
+  let params = $derived(exposedParams(session.groups, group));
 
   const open = () => session.openView(data.group);
   // a double click on a field types into it — only the frame itself opens the group
@@ -33,7 +32,7 @@
       node={id}
       param={param.id}
       bounds={param.bounds}
-      step={stepOf(param.bounds, innerType(param.node))}
+      step={stepOf(param.bounds, param.type)}
       value={data.params?.[param.id] ?? param.value}
       onchange={(value) => session.setNodeData(id, { ...data, params: { ...data.params, [param.id]: value } })}
     />
