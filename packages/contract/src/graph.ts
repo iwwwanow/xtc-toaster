@@ -170,11 +170,18 @@ export const AnimationLoopSchema = z.union([
 export const ANIMATION_FORMATS = ["gif", "mp4"] as const;
 export const AnimationFormatSchema = z.enum(ANIMATION_FORMATS);
 
+// a part of the timeline to export (19.11): frames `from` … `to`, both included, numbered as the timeline does — from 0.
+// It is the cycle the loop repeats
+export const AnimationRangeSchema = z
+  .strictObject({ from: z.int().min(0), to: z.int().min(0) })
+  .refine(({ from, to }) => from <= to, "a range runs from its first frame to a later one");
+
 // how `render-animation` writes the file — the toast's, not the animation node's: the node is the timeline.
-// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle)
+// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle), absent range — every frame
 export const AnimationExportSchema = z.object({
   format: AnimationFormatSchema.optional(),
   loop: AnimationLoopSchema.optional(),
+  range: AnimationRangeSchema.optional(),
 });
 
 // no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
@@ -303,6 +310,7 @@ export type AnimationKey = z.infer<typeof AnimationKeySchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
+export type AnimationRange = z.infer<typeof AnimationRangeSchema>;
 export type DelayNode = z.infer<typeof DelayNodeSchema>;
 export type DelayRow = z.infer<typeof DelayRowSchema>;
 export type ValueNode = z.infer<typeof ValueNodeSchema>;

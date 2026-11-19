@@ -1,4 +1,4 @@
-import { isDriver, type AnimationKey, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
+import { isDriver, type AnimationKey, type AnimationRange, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
 import { paramBounds, type ParamBounds } from "./params";
 
 // linear between keys, the nearest key's value outside them (blender's constant extrapolation); null — no keys.
@@ -128,4 +128,11 @@ export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
     return driven ? ({ ...node, data: { ...node.data, ...driven } } as GraphNode) : node;
   });
   return { ...graph, nodes };
+};
+
+// The frames an export renders: the range (absent — the whole timeline), `count` of them from `first`. Null — the range
+// runs past the timeline's last frame (`frames` − 1)
+export const exportedFrames = (frames: number, range?: AnimationRange): { first: number; count: number } | null => {
+  if (!range) return { first: 0, count: frames };
+  return range.to < frames ? { first: range.from, count: range.to - range.from + 1 } : null;
 };

@@ -530,6 +530,16 @@ describe("ws render-animation", () => {
     expect(probe.stdout.toString().trim()).toBe("h264,yuv420p,6");
   });
 
+  test("a range: only its frames go into the file", async () => {
+    send({ type: "render-animation", requestId: 103, graph: animated(60, { range: { from: 1, to: 2 } }) });
+    for (const frame of [1, 2]) expect(await nextMessage()).toMatchObject({ type: "animation-progress", requestId: 103, frame, frames: 2 });
+    const done = await nextMessage();
+    expect(done).toMatchObject({ type: "animation-rendered", requestId: 103 });
+    const { url } = done as Extract<ServerMessage, { type: "animation-rendered" }>;
+    const bytes = Buffer.from(await (await fetch(new URL(url, server.url))).arrayBuffer());
+    expect(bytes.toString("latin1").match(/\x21\xf9\x04[\s\S]{5}\x2c/g)?.length).toBe(2);
+  });
+
   test("more frames than RENDER_MAX_FRAMES → render-error on the animation node, no progress", async () => {
     send({ type: "render-animation", requestId: 101, graph: animated(49) });
     expect(await nextMessage()).toMatchObject({ type: "render-error", requestId: 101, nodeId: "anim", message: "frames: at most 48" });

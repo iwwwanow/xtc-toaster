@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { drivenValues, graphAtFrame, paramSources, valueAtFrame } from "./animation";
+import { drivenValues, exportedFrames, graphAtFrame, paramSources, valueAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
+import { AnimationExportSchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
 import { PARAMS } from "./params";
 
 const keys = (...pairs: [frame: number, value: number][]) => pairs.map(([frame, value]) => ({ frame, value }));
@@ -331,5 +331,20 @@ describe("graphAtFrame with a factor", () => {
     // the value's own param takes the half of −1000…1000 — 0; move.x takes the value's 0
     expect(data(graphAtFrame(back, 0), "mv")).toEqual({ x: 0, y: 0 });
     expect(data(graphAtFrame(back, 0), "v")).toEqual({ value: 0 });
+  });
+});
+
+describe("exportedFrames", () => {
+  test("no range — every frame; a range — its frames, both ends included; past the last frame — null", () => {
+    expect(exportedFrames(24)).toEqual({ first: 0, count: 24 });
+    expect(exportedFrames(24, { from: 8, to: 12 })).toEqual({ first: 8, count: 5 });
+    expect(exportedFrames(24, { from: 23, to: 23 })).toEqual({ first: 23, count: 1 });
+    expect(exportedFrames(24, { from: 20, to: 24 })).toBeNull();
+  });
+
+  test("the toast takes a range from a frame to a later one", () => {
+    expect(AnimationExportSchema.safeParse({ range: { from: 8, to: 12 } }).success).toBe(true);
+    expect(AnimationExportSchema.safeParse({ range: { from: 12, to: 8 } }).success).toBe(false);
+    expect(AnimationExportSchema.safeParse({ range: { from: -1, to: 8 } }).success).toBe(false);
   });
 });

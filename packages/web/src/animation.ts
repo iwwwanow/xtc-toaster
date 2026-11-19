@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationRange, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
 import { nodeLabel, ownParamValue, paramName, shiftLabel } from "./groups";
 
@@ -267,3 +267,18 @@ export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGrap
 // a gif worth exporting: some linked track with keys drives a param — else every frame is the same picture.
 // A track's value holds before its first key and after its last, so frame 0 tells
 export const hasAnimatedParams = (graph: ToastGraph): boolean => animatedValues(graph, 0).size > 0;
+
+// The frames to export as typed in the export settings (19.11): `8-12` — two frame numbers with anything between them
+// that isn't a digit (`8–12`, `8:12`, `8 12`, `8..12`), both included; one number — that frame alone; reversed ends
+// are put in order. Empty — null, every frame; undefined — not a range
+export const parseFrameRange = (text: string): AnimationRange | null | undefined => {
+  if (text.trim() === "") return null;
+  const match = /^\s*(\d+)(?:\D+(\d+))?\s*$/.exec(text);
+  if (!match) return undefined;
+  const [a, b] = [Number(match[1]), Number(match[2] ?? match[1])];
+  return { from: Math.min(a, b), to: Math.max(a, b) };
+};
+
+// how the field shows a range: `8-12`, one frame — `8`, none — empty
+export const frameRangeText = (range: AnimationRange | undefined): string =>
+  !range ? "" : range.from === range.to ? `${range.from}` : `${range.from}-${range.to}`;

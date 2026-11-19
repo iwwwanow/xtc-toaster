@@ -33,6 +33,8 @@ import {
   timelineEnd,
   trackName,
   withoutAnimation,
+  parseFrameRange,
+  frameRangeText,
 } from "./animation";
 import { delayRowName, withFreeRow } from "./delay";
 import type { FlowNode } from "./graph";
@@ -325,5 +327,30 @@ describe("tracks behind a delay", () => {
   test("a row shows the param wired into it, a free one — a hint", () => {
     expect(delayRowName(nodes, edges, "d2", "r1")).toBe("move.y +3");
     expect(delayRowName(nodes, [], "d", "r1")).toBe("wire a param here");
+  });
+});
+
+describe("frame range", () => {
+  test.each([
+    ["8-12", { from: 8, to: 12 }],
+    [" 8 – 12 ", { from: 8, to: 12 }],
+    ["8:12", { from: 8, to: 12 }],
+    ["8..12", { from: 8, to: 12 }],
+    ["8 12", { from: 8, to: 12 }],
+    ["12-8", { from: 8, to: 12 }],
+    ["5", { from: 5, to: 5 }],
+    ["", null],
+    ["  ", null],
+    ["a-b", undefined],
+    ["-3", undefined],
+    ["1-2-3", undefined],
+  ])("%j → %j", (text, range) => {
+    expect(parseFrameRange(text)).toEqual(range as ReturnType<typeof parseFrameRange>);
+  });
+
+  test("shown back: a range, one frame, none", () => {
+    expect(frameRangeText({ from: 8, to: 12 })).toBe("8-12");
+    expect(frameRangeText({ from: 5, to: 5 })).toBe("5");
+    expect(frameRangeText(undefined)).toBe("");
   });
 });
