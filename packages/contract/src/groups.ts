@@ -23,18 +23,21 @@ export const exposedParams = ({ nodes, edges }: Pick<GroupDefinition, "nodes" | 
   });
 };
 
-// the param a link out of `node`'s `param` inside a definition carries, back through any delays: the node and the
-// param it sets — an inner instance's row is one too. Null — a delay row nothing is wired into
+// the param a link out of `node`'s `param` inside a definition carries, back through any delays: the node, the param
+// it sets — an inner instance's row is one too — and the frames the delays shift it by. Null — a delay row nothing
+// is wired into
 export const behindDelays = (
   { nodes, edges }: Pick<GroupDefinition, "nodes" | "edges">,
   node: NodeId,
   param: string,
-): { node: GraphNode; param: string } | null => {
+): { node: GraphNode; param: string; shift: number } | null => {
+  let shift = 0;
   // bounded: validateGraph refuses a loop, an unvalidated definition mustn't hang
   for (let step = 0; step <= nodes.length; step++) {
     const found = nodes.find(({ id }) => id === node);
     if (!found) return null;
-    if (found.type !== "delay") return { node: found, param };
+    if (found.type !== "delay") return { node: found, param, shift };
+    shift += found.data.frames;
     const link = edges.find(({ target, targetHandle }) => target === node && targetHandle === param);
     if (link?.sourceHandle === undefined) return null;
     ({ source: node, sourceHandle: param } = { source: link.source, sourceHandle: link.sourceHandle });
@@ -44,9 +47,10 @@ export const behindDelays = (
 
 // An exposed param as an instance takes it (nested groups, 19.11): the param it ends at — through delays and inner
 // instances down to a plain node's — its bounds and the value it has there: an inner instance's own one on the way
-// wins over the node's. The inner `node` and `param` — the plain node the row ends at. Null — it ends at nothing
-// numeric (a missing node, an unwired delay row, a definition that isn't there)
-export type ExposedEnd = { node: GraphNode; param: string; bounds: ParamBounds; value: number };
+// wins over the node's. The inner `node` and `param` — the plain node the row ends at; `path` — the ids down to it,
+// the inner instances' and its own (expanded, it is `<instance>/<path joined>`). Null — it ends at nothing numeric
+// (a missing node, an unwired delay row, a definition that isn't there)
+export type ExposedEnd = { node: GraphNode; param: string; path: NodeId[]; bounds: ParamBounds; value: number };
 export const exposedEnd = (groups: readonly GroupDefinition[], definition: GroupDefinition, row: string): ExposedEnd | null => {
   const walk = (definition: GroupDefinition, row: string, depth: number): ExposedEnd | null => {
     const exposed = exposedParams(definition).find(({ id }) => id === row);
@@ -56,11 +60,11 @@ export const exposedEnd = (groups: readonly GroupDefinition[], definition: Group
       const { group, params } = end.node.data;
       const inner = groups.find(({ id }) => id === group);
       const found = inner && walk(inner, end.param, depth + 1);
-      return found ? { ...found, value: params?.[end.param] ?? found.value } : null;
+      return found ? { ...found, path: [end.node.id, ...found.path], value: params?.[end.param] ?? found.value } : null;
     }
     const bounds = paramBounds(end.node.type, end.param);
     const value = (end.node.data as Record<string, unknown>)[end.param];
-    return bounds && typeof value === "number" ? { node: end.node, param: end.param, bounds, value } : null;
+    return bounds && typeof value === "number" ? { node: end.node, param: end.param, path: [end.node.id], bounds, value } : null;
   };
   return walk(definition, row, 0);
 };

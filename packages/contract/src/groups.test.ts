@@ -283,7 +283,7 @@ describe("nested groups", () => {
   });
 
   test("exposedEnd: through an inner instance and through a delay to the node's param", () => {
-    expect(exposedEnd([blurFade(), outer()], outer(), "R")).toMatchObject({ node: { id: "bl" }, param: "radius", value: 6, bounds: { min: 0 } });
+    expect(exposedEnd([blurFade(), outer()], outer(), "R")).toMatchObject({ node: { id: "bl" }, param: "radius", path: ["i", "bl"], value: 6, bounds: { min: 0 } });
     expect(exposedEnd([delayed], delayed, "r")).toMatchObject({ node: { id: "bl" }, param: "radius", value: 4 });
     expect(exposedEnd([delayed], delayed, "free")).toBeNull();
   });
