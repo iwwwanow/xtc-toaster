@@ -27,7 +27,7 @@
   <legend><h6>group input</h6></legend>
   <div class="field__hint_ai-generated">the picture wired into the group</div>
   {#each data.rows as row (row.id)}
-    {@const name = delayRowName(session.nodes, session.edges, id, row.id)}
+    {@const name = delayRowName(session.nodes, session.edges, id, row.id, session.groups)}
     <div class="delay-row">
       <span class="delay-row__name" title={name}>{name}</span>
       <!-- in from a param inside (its dot on the left of its field), out as the instance's field -->

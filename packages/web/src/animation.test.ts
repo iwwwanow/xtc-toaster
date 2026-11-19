@@ -33,6 +33,7 @@ import {
   timelineEnd,
   trackName,
   withoutAnimation,
+  setTrackInterpolation,
 } from "./animation";
 import { delayRowName, withFreeRow } from "./delay";
 import type { FlowNode } from "./graph";
@@ -94,19 +95,25 @@ describe("timeline", () => {
     expect(timelineEnd({ fps: 24, frames: 48, tracks: [track()] })).toBe(48);
     expect(timelineEnd({ fps: 24, frames: 5, tracks: [track()] })).toBe(11);
     expect(timelineEnd({ fps: 24, frames: 5, tracks: [] })).toBe(5);
+    // a window from 20: as far as its end
+    expect(timelineEnd({ fps: 24, start: 20, frames: 5, tracks: [track()] })).toBe(25);
   });
 
-  test("the playhead stops at the last rendered frame", () => {
-    expect(clampPlayhead(100, 48)).toBe(47);
-    expect(clampPlayhead(-1, 48)).toBe(0);
-    expect(clampPlayhead(3, 48)).toBe(3);
+  test("the playhead stays in the window", () => {
+    expect(clampPlayhead(100, { frames: 48 })).toBe(47);
+    expect(clampPlayhead(-1, { frames: 48 })).toBe(0);
+    expect(clampPlayhead(3, { frames: 48 })).toBe(3);
+    expect(clampPlayhead(3, { start: 23, frames: 25 })).toBe(23);
+    expect(clampPlayhead(60, { start: 23, frames: 25 })).toBe(47);
   });
 
-  test("next frame: one on, the last back to the first, a playhead past the end from the last", () => {
-    expect(nextFrame(0, 48)).toBe(1);
-    expect(nextFrame(47, 48)).toBe(0);
-    expect(nextFrame(100, 48)).toBe(0);
-    expect(nextFrame(0, 1)).toBe(0);
+  test("next frame: one on, the window's last back to its first, a playhead outside from the nearest end", () => {
+    expect(nextFrame(0, { frames: 48 })).toBe(1);
+    expect(nextFrame(47, { frames: 48 })).toBe(0);
+    expect(nextFrame(100, { frames: 48 })).toBe(0);
+    expect(nextFrame(0, { frames: 1 })).toBe(0);
+    expect(nextFrame(47, { start: 23, frames: 25 })).toBe(23);
+    expect(nextFrame(30, { start: 23, frames: 25 })).toBe(31);
   });
 
   test("ruler labels: 1 / 2 / 5 / 10 … frames apart, at least 32 px, bounded on a far key", () => {
@@ -144,6 +151,9 @@ describe("timeline", () => {
     expect(prevKeyFrame(data, 10)).toBe(4);
     expect(prevKeyFrame(data, 7)).toBe(4);
     expect(prevKeyFrame(data, 0)).toBeNull();
+    // a window 4–20: the key on 0 is before it
+    expect(prevKeyFrame({ ...data, start: 4, frames: 17 }, 10)).toBe(4);
+    expect(prevKeyFrame({ ...data, start: 4, frames: 17 }, 4)).toBeNull();
   });
 });
 
@@ -325,5 +335,19 @@ describe("tracks behind a delay", () => {
   test("a row shows the param wired into it, a free one — a hint", () => {
     expect(delayRowName(nodes, edges, "d2", "r1")).toBe("move.y +3");
     expect(delayRowName(nodes, [], "d", "r1")).toBe("wire a param here");
+  });
+});
+
+describe("setTrackInterpolation", () => {
+  test("set on one track; linear takes the field off; keyValueAt follows it", () => {
+    const tracks: AnimationTrack[] = [
+      { id: "t", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] },
+      { id: "u", keys: [] },
+    ];
+    const eased = setTrackInterpolation(tracks, "t", "ease-in");
+    expect(eased[0]).toEqual({ ...tracks[0]!, interpolation: "ease-in" });
+    expect(eased[1]).toBe(tracks[1]!);
+    expect(keyValueAt(eased[0]!, 5, null)).toBe(0.125);
+    expect(setTrackInterpolation(eased, "t", "linear")[0]).toEqual(tracks[0]!);
   });
 });

@@ -37,11 +37,9 @@
       <fieldset class="hr_fieldset"><legend><h6>{name}</h6></legend></fieldset>
       {#each types as type (type)}
         <!-- dragged onto the canvas, not clicked — a button only by its look (uiu), hover included.
-             One animation node per graph (contract), at the root — never inside a group; nor a delay: it feeds only a
-             track, and there is none inside -->
+             One animation node per graph (contract), at the root — never inside a group -->
         {@const taken =
-          (type === "animation" && session.animationNode !== undefined) ||
-          ((type === "animation" || type === "delay") && session.openGroup !== undefined)}
+          (type === "animation" && session.animationNode !== undefined) || (type === "animation" && session.openGroup !== undefined)}
         <div
           class="btn_ai-generated btn-sm_ai-generated"
           draggable={!taken}
@@ -59,11 +57,11 @@
       {/each}
     {/each}
     {#if session.groups.length > 0}
-      <!-- the groups of this toast: each dragged out is another instance, linked to the rest; none inside a group (no
-           nesting yet). One no instance uses can be deleted -->
+      <!-- the groups of this toast: each dragged out is another instance, linked to the rest; inside a group — nested
+           there, except the group itself and the ones holding it (19.11). One no instance uses can be deleted -->
       <fieldset class="hr_fieldset"><legend><h6>groups</h6></legend></fieldset>
       {#each session.groups as { id, name } (id)}
-        {@const nested = session.openGroup !== undefined}
+        {@const nested = !session.canNest(id)}
         {@const unused = session.instancesOf(id) === 0}
         <div class="node-menu__group">
           <div
@@ -76,7 +74,7 @@
             ondragstart={(event) => ondragstart(event, groupItem(id))}
             {ondragend}
             onmouseenter={(event) =>
-              onenter(nested ? "no group inside a group yet" : "another instance — an edit inside changes every one", event)}
+              onenter(nested ? "it holds the group open here — a group can't hold itself" : "another instance — an edit inside changes every one", event)}
             onmouseleave={() => (hint = null)}
           >
             {name}

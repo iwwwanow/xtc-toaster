@@ -1,16 +1,26 @@
-import { isDriver, type AnimationKey, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
+import { isDriver, type AnimationKey, type AnimationNode, type Interpolation, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
 import { paramBounds, type ParamBounds } from "./params";
 
-// linear between keys, the nearest key's value outside them (blender's constant extrapolation); null — no keys.
-// Clamped to the two keys: float noise past a bound would fail the param's schema on that one frame
-export const valueAtFrame = (keys: readonly AnimationKey[], frame: number): number | null => {
+// the share of the way from a key to the next at `t` (0–1 of the time between them), by the track's interpolation
+const EASE: Record<Interpolation, (t: number) => number> = {
+  linear: (t) => t,
+  constant: () => 0,
+  "ease-in": (t) => t ** 3,
+  "ease-out": (t) => 1 - (1 - t) ** 3,
+  "ease-in-out": (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2),
+};
+
+// between keys by the track's interpolation, the nearest key's value outside them (blender's constant
+// extrapolation); null — no keys. Clamped to the two keys: float noise past a bound would fail the param's schema on
+// that one frame
+export const valueAtFrame = (keys: readonly AnimationKey[], frame: number, interpolation: Interpolation = "linear"): number | null => {
   const sorted = keys.toSorted((a, b) => a.frame - b.frame);
   const after = sorted.findIndex((key) => key.frame > frame);
   if (after === 0) return sorted[0]!.value;
   if (after === -1) return sorted.at(-1)?.value ?? null;
   const { frame: fromFrame, value: from } = sorted[after - 1]!;
   const { frame: toFrame, value: to } = sorted[after]!;
-  const value = from + (to - from) * ((frame - fromFrame) / (toFrame - fromFrame));
+  const value = from + (to - from) * EASE[interpolation]((frame - fromFrame) / (toFrame - fromFrame));
   return Math.min(Math.max(from, to), Math.max(Math.min(from, to), value));
 };
 
@@ -37,7 +47,7 @@ export const paramSources = (graph: ToastGraph) => {
 };
 
 // What the tracks put into `data` on a frame: node → param → value. A track without keys or without a link gives
-// nothing; a track behind a delay is read `shift` frames earlier. A value is clamped to the param's bounds: the keys
+// nothing; a track behind a delay is read `shift` frames earlier — on a cycling timeline, wrapped round its window. A value is clamped to the param's bounds: the keys
 // stay as they are, so a track rewired to another param and back loses nothing
 export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
   const values = new Map<NodeId, Record<string, number>>();
@@ -46,12 +56,14 @@ export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Re
 
   const typeOf = new Map(graph.nodes.map(({ id, type }) => [id, type]));
   const sourceOf = paramSources(graph);
+  const { first, count } = timelineWindow(animation.data);
+  const wrap = (at: number) => (animation.data.cycle ? first + ((((at - first) % count) + count) % count) : at);
   for (const { source, sourceHandle, target, targetHandle } of graph.edges) {
     if (target !== animation.id || sourceHandle === undefined) continue;
     const from = sourceOf(source, sourceHandle);
     const track = animation.data.tracks.find(({ id }) => id === targetHandle);
     if (!from || !track) continue;
-    const value = valueAtFrame(track.keys, frame - from.shift);
+    const value = valueAtFrame(track.keys, wrap(frame - from.shift), track.interpolation);
     const bounds = paramBounds(typeOf.get(from.node) ?? "", from.param);
     if (value === null || !bounds) continue;
     values.set(from.node, { ...values.get(from.node), [from.param]: Math.min(bounds.max, Math.max(bounds.min, value)) });
@@ -129,3 +141,11 @@ export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
   });
   return { ...graph, nodes };
 };
+
+// The timeline's window — what plays, renders, exports and, with `cycle`, goes round: `count` frames from `first`,
+// the last one `last`
+export const timelineWindow = ({ start = 0, frames }: Pick<AnimationNode["data"], "start" | "frames">) => ({
+  first: start,
+  last: start + frames - 1,
+  count: frames,
+});

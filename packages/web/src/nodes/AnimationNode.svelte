@@ -2,7 +2,7 @@
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { ANIMATION_FPS, type AnimationTrack } from "@xtc-toaster/contract";
+  import { ANIMATION_FPS, INTERPOLATIONS, timelineWindow, type AnimationTrack, type Interpolation } from "@xtc-toaster/contract";
   import {
     addKey,
     addTrack,
@@ -19,6 +19,7 @@
     prevKeyFrame,
     removeKey,
     rulerLabels,
+    setTrackInterpolation,
     setKeyValue,
     timelineEnd,
     trackGroups,
@@ -63,6 +64,13 @@
   );
 
   let end = $derived(timelineEnd(data));
+  // the window (19.11, blender's start / end): what plays, renders, exports and, with `cycle`, goes round
+  let win = $derived(timelineWindow(data));
+  // a new window from its first and last frame; start 0 leaves the toast (setNodeData — setData would keep the field)
+  const setWindow = (first: number, last: number) => {
+    const { start: _, ...rest } = data;
+    session.setNodeData(id, { ...rest, ...(first > 0 && { start: first }), frames: last - first + 1 });
+  };
 
   // zoom — px a frame takes: fit (blender's View All) until Ctrl+wheel sets one; `fit` goes back to fit.
   // The timeline's width in layout px (clientWidth isn't scaled by the canvas zoom)
@@ -82,11 +90,11 @@
     return (clientX - rect.left) * (element.offsetWidth / rect.width);
   };
 
-  // the transport: every move stops play and stays among the rendered frames; null — nowhere to go
+  // the transport: every move stops play and stays in the window; null — nowhere to go
   const go = (frame: number | null) => {
     if (frame === null || !canMove) return;
     session.stop();
-    session.setPlayhead(clampPlayhead(frame, data.frames));
+    session.setPlayhead(clampPlayhead(frame, data));
   };
   let prevKey = $derived(prevKeyFrame(data, session.frame));
   let nextKey = $derived(nextKeyFrame(data, session.frame));
@@ -223,7 +231,7 @@
        instead of its icons, the key in the title -->
   <div class="animation__header">
     <div class="animation__transport">
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the first frame" disabled={!canMove} onclick={() => go(0)}>start</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the window's first frame" disabled={!canMove} onclick={() => go(win.first)}>start</button>
       <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key before" disabled={!canMove || prevKey === null} onclick={() => go(prevKey)}>‹ key</button>
       <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame back" disabled={!canMove} onclick={() => go(session.frame - 1)}>‹</button>
       <button
@@ -235,18 +243,18 @@
       >
       <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="a frame on" disabled={!canMove} onclick={() => go(session.frame + 1)}>›</button>
       <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the key after" disabled={!canMove || nextKey === null} onclick={() => go(nextKey)}>key ›</button>
-      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the last frame" disabled={!canMove} onclick={() => go(data.frames - 1)}>end</button>
+      <button class="nodrag btn_ai-generated btn-sm_ai-generated" type="button" title="to the window's last frame" disabled={!canMove} onclick={() => go(win.last)}>end</button>
     </div>
     <label class="field__label_ai-generated" for="{id}-frame">frame</label>
     <input
       id="{id}-frame"
       class="nodrag input_ai-generated input-sm_ai-generated animation__number"
       type="number"
-      min="0"
-      max={data.frames - 1}
+      min={win.first}
+      max={win.last}
       value={session.frame}
       disabled={!canMove}
-      onchange={numberField(() => session.frame, wholeFrom(0, data.frames - 1), go)}
+      onchange={numberField(() => session.frame, wholeFrom(win.first, win.last), go)}
     />
     <label class="field__label_ai-generated" for="{id}-fps">fps</label>
     <input
@@ -259,16 +267,45 @@
       disabled={locked}
       onchange={numberField(() => data.fps, wholeFrom(ANIMATION_FPS.min, ANIMATION_FPS.max), (fps) => setData({ fps }))}
     />
-    <label class="field__label_ai-generated" for="{id}-frames">frames</label>
+    <!-- the window, both ends included: start keeps the end, the end keeps the start -->
+    <label class="field__label_ai-generated" for="{id}-start" title="the window's first frame — what plays, renders and exports starts here">start</label>
     <input
-      id="{id}-frames"
+      id="{id}-start"
       class="nodrag input_ai-generated input-sm_ai-generated animation__number"
       type="number"
-      min="1"
-      value={data.frames}
+      min="0"
+      max={win.last}
+      value={win.first}
       disabled={locked}
-      onchange={numberField(() => data.frames, wholeFrom(1), (frames) => setData({ frames }))}
+      onchange={numberField(() => win.first, wholeFrom(0, win.last), (first) => setWindow(first, win.last))}
     />
+    <label class="field__label_ai-generated" for="{id}-end" title="the window's last frame, included">end</label>
+    <input
+      id="{id}-end"
+      class="nodrag input_ai-generated input-sm_ai-generated animation__number"
+      type="number"
+      min={win.first}
+      value={win.last}
+      disabled={locked}
+      onchange={numberField(() => win.last, wholeFrom(win.first), (last) => setWindow(win.first, last))}
+    />
+    <!-- the window goes round: a delay before start reads the cycle before — a trail loops seamlessly (19.11) -->
+    <label
+      class="nodrag checkbox_ai-generated"
+      title="the window goes round: a param behind a delay reads the end of the cycle before start, its start past the end — delayed copies loop without a seam"
+    >
+      <input
+        type="checkbox"
+        checked={data.cycle === true}
+        disabled={locked}
+        onchange={({ currentTarget }) => {
+          const { cycle: _, ...rest } = data;
+          // off leaves the toast — setData merges, it would keep the old field
+          session.setNodeData(id, currentTarget.checked ? { ...rest, cycle: true } : rest);
+        }}
+      />
+      cycle
+    </label>
     <button
       class="nodrag btn_ai-generated btn-sm_ai-generated"
       type="button"
@@ -333,6 +370,20 @@
                   ondragend={drag.end}>⠿</span
                 >
                 <span class="animation__name" title={name}>{name}</span>
+                <!-- the track's curve between every two keys (interpolation, 19.11) -->
+                <select
+                  class="select_ai-generated input-sm_ai-generated animation__curve"
+                  aria-label="{name} curve"
+                  title="interpolation: how the value goes from key to key on this track"
+                  value={track.interpolation ?? "linear"}
+                  disabled={locked}
+                  onchange={({ currentTarget }) =>
+                    setData({ tracks: setTrackInterpolation(data.tracks, track.id, currentTarget.value as Interpolation) })}
+                >
+                  {#each INTERPOLATIONS as interpolation (interpolation)}
+                    <option value={interpolation}>{interpolation.replaceAll("-", " ")}</option>
+                  {/each}
+                </select>
                 {#if linked}
                   <button
                     class="btn_ai-generated btn-sm_ai-generated"
@@ -377,8 +428,8 @@
           role="slider"
           tabindex="-1"
           aria-label="the playhead — press and drag"
-          aria-valuemin={0}
-          aria-valuemax={data.frames - 1}
+          aria-valuemin={win.first}
+          aria-valuemax={win.last}
           aria-valuenow={session.frame}
           onpointerdown={onrulerdown}
           onpointermove={onrulermove}
@@ -398,7 +449,7 @@
                 <button
                   class="animation__key animation__key_summary"
                   class:animation__key_selected={selected?.frame === frame && group.rows.some(({ track }) => track.id === selected?.track)}
-                  class:animation__key_past={frame >= data.frames}
+                  class:animation__key_past={frame < win.first || frame > win.last}
                   type="button"
                   style:left="{frameX(frame)}px"
                   aria-label="keys of {group.name} on frame {frame}"
@@ -426,7 +477,7 @@
                     <button
                       class="animation__key"
                       class:animation__key_selected={selected?.track === track.id && selected.frame === key.frame}
-                      class:animation__key_past={key.frame >= data.frames}
+                      class:animation__key_past={key.frame < win.first || key.frame > win.last}
                       type="button"
                       style:left="{frameX(key.frame)}px"
                       aria-label="key on frame {key.frame}"
@@ -439,8 +490,11 @@
             {/if}
           </div>
         {/each}
-        <!-- past the rendered frames, only as far as a key goes -->
-        <div class="animation__past" style:left="{data.frames * px}px"></div>
+        <!-- outside the window: before start, past the end only as far as a key goes -->
+        {#if win.first > 0}
+          <div class="animation__past animation__past_before" style:width="{win.first * px}px"></div>
+        {/if}
+        <div class="animation__past" style:left="{(win.last + 1) * px}px"></div>
         <div class="animation__playhead" style:left="{frameX(session.frame)}px"></div>
       </div>
     </div>

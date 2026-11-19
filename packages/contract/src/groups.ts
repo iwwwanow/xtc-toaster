@@ -1,4 +1,5 @@
 import type { GraphEdge, GraphNode, GroupDefinition, GroupNode, NodeId, ToastGraph } from "./graph";
+import { paramBounds, type ParamBounds } from "./params";
 
 // an expanded inner node's id: `<instance>/<inner>` — an issue there is shown on the instance (instanceOf)
 export const GROUP_SEPARATOR = "/";
@@ -7,7 +8,8 @@ export const innerId = (instance: NodeId, inner: NodeId) => `${instance}${GROUP_
 const isInstance = (node: GraphNode | undefined): node is GroupNode => node?.type === "group";
 const isGroupEnd = ({ type }: GraphNode) => type === "groupInput" || type === "groupOutput";
 
-// an exposed param: the inner node's `param` wired into the group input's row `id` — on the instance a field and a
+// an exposed param: what is wired into the group input's row `id` — an inner node's `param`, a delay's row (the param
+// behind it plays `frames` later) or an inner instance's exposed param (its row id); on the instance a field and a
 // param output, both named by the row id
 export type GroupParam = { id: string; node: NodeId; param: string };
 
@@ -21,6 +23,52 @@ export const exposedParams = ({ nodes, edges }: Pick<GroupDefinition, "nodes" | 
   });
 };
 
+// the param a link out of `node`'s `param` inside a definition carries, back through any delays: the node, the param
+// it sets — an inner instance's row is one too — and the frames the delays shift it by. Null — a delay row nothing
+// is wired into
+export const behindDelays = (
+  { nodes, edges }: Pick<GroupDefinition, "nodes" | "edges">,
+  node: NodeId,
+  param: string,
+): { node: GraphNode; param: string; shift: number } | null => {
+  let shift = 0;
+  // bounded: validateGraph refuses a loop, an unvalidated definition mustn't hang
+  for (let step = 0; step <= nodes.length; step++) {
+    const found = nodes.find(({ id }) => id === node);
+    if (!found) return null;
+    if (found.type !== "delay") return { node: found, param, shift };
+    shift += found.data.frames;
+    const link = edges.find(({ target, targetHandle }) => target === node && targetHandle === param);
+    if (link?.sourceHandle === undefined) return null;
+    ({ source: node, sourceHandle: param } = { source: link.source, sourceHandle: link.sourceHandle });
+  }
+  return null;
+};
+
+// An exposed param as an instance takes it (nested groups, 19.11): the param it ends at — through delays and inner
+// instances down to a plain node's — its bounds and the value it has there: an inner instance's own one on the way
+// wins over the node's. The inner `node` and `param` — the plain node the row ends at; `path` — the ids down to it,
+// the inner instances' and its own (expanded, it is `<instance>/<path joined>`). Null — it ends at nothing numeric
+// (a missing node, an unwired delay row, a definition that isn't there)
+export type ExposedEnd = { node: GraphNode; param: string; path: NodeId[]; bounds: ParamBounds; value: number };
+export const exposedEnd = (groups: readonly GroupDefinition[], definition: GroupDefinition, row: string): ExposedEnd | null => {
+  const walk = (definition: GroupDefinition, row: string, depth: number): ExposedEnd | null => {
+    const exposed = exposedParams(definition).find(({ id }) => id === row);
+    const end = exposed && behindDelays(definition, exposed.node, exposed.param);
+    if (!end || depth > groups.length) return null;
+    if (end.node.type === "group") {
+      const { group, params } = end.node.data;
+      const inner = groups.find(({ id }) => id === group);
+      const found = inner && walk(inner, end.param, depth + 1);
+      return found ? { ...found, path: [end.node.id, ...found.path], value: params?.[end.param] ?? found.value } : null;
+    }
+    const bounds = paramBounds(end.node.type, end.param);
+    const value = (end.node.data as Record<string, unknown>)[end.param];
+    return bounds && typeof value === "number" ? { node: end.node, param: end.param, path: [end.node.id], bounds, value } : null;
+  };
+  return walk(definition, row, 0);
+};
+
 // the instance an expanded node came from, or the id itself — a root node
 export const instanceOf = (graph: ToastGraph, id: NodeId): NodeId => {
   const instance = graph.nodes.find((node) => isInstance(node) && id.startsWith(`${node.id}${GROUP_SEPARATOR}`));
@@ -32,17 +80,29 @@ type End = { node: NodeId; handle?: string };
 // A plain graph out of one with groups (docs/sprints/sprint-5.spec.md, «node groups»): every instance becomes copies of
 // its definition's nodes (`<instance>/<inner>`, the instance's own param values written in), the inside's links copied;
 // a pixel link into an instance goes to what its groupInput feeds, one out of it leaves from what feeds its groupOutput
-// (groupInput → groupOutput straight — A → B); a param link out of an instance leaves the inner node's param. No groups,
-// no group nodes left. Assumes validateGroups passed — what doesn't resolve (a missing definition, …) is dropped.
-// `only` — expand just these instances (web's ungroup), the rest stay as they are, `groups` too; `id` — the id an inner
-// node or link of an instance gets (default `<instance>/<inner>`)
+// (groupInput → groupOutput straight — A → B); a param link out of an instance leaves what is wired into its row (a
+// node's param, a delay row, an inner instance's row). An instance inside one (nested, 19.11) is copied as an instance
+// and expanded on the next pass — `<outer>/<inner>/<node>`. No groups, no group nodes left. Assumes validateGroups
+// passed — what doesn't resolve (a missing definition, …) is dropped, a loop of definitions stops after a pass per
+// definition. `only` — expand just these instances, one level (web's ungroup), the rest stay as they are, `groups` too;
+// `id` — the id an inner node or link of an instance gets (default `<instance>/<inner>`)
 export type ExpandOptions = { only?: ReadonlySet<NodeId>; id?: (instance: NodeId, inner: string) => string };
-export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: ExpandOptions = {}): ToastGraph => {
+export const expandGroups = (graph: ToastGraph, options: ExpandOptions = {}): ToastGraph => {
+  if (options.only) return expandOnce(graph, options);
   const { groups, ...rest } = graph;
+  if (!graph.nodes.some(isInstance)) return groups ? rest : graph;
+  let expanded = graph;
+  for (let pass = 0; pass <= (groups ?? []).length && expanded.nodes.some(isInstance); pass++) expanded = expandOnce(expanded, options);
+  const { groups: _, ...plain } = expanded;
+  return { ...plain, nodes: plain.nodes.filter((node) => !isInstance(node)) };
+};
+
+// one level of expandGroups: the instances (or `only` these) into their insides, the groups kept
+const expandOnce = (graph: ToastGraph, { only, id: idOf = innerId }: ExpandOptions): ToastGraph => {
+  const { groups } = graph;
   const instances = graph.nodes.filter((node) => isInstance(node) && (!only || only.has(node.id))) as GroupNode[];
   const expanded = new Set(instances.map(({ id }) => id));
-  const kept = only ? graph : rest;
-  if (instances.length === 0) return groups && !only ? rest : graph;
+  if (instances.length === 0) return graph;
 
   const definitions = new Map<string, GroupDefinition>((groups ?? []).map((group) => [group.id, group]));
   const exposed = new Map<string, GroupParam[]>((groups ?? []).map((group) => [group.id, exposedParams(group)]));
@@ -93,13 +153,18 @@ export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: Ex
   for (const instance of instances) {
     const definition = definitions.get(instance.data.group);
     if (!definition) continue;
-    const own = instance.data.params ?? {};
+    // the instance's own values, each into the param its row ends at behind any delays — an inner instance's row
+    // goes into that instance's own values
+    const own = new Map<NodeId, Record<string, number>>();
+    for (const { id, node, param } of exposed.get(definition.id)!) {
+      const end = instance.data.params?.[id] !== undefined && behindDelays(definition, node, param);
+      if (end) own.set(end.node.id, { ...own.get(end.node.id), [end.param]: instance.data.params![id]! });
+    }
     for (const node of definition.nodes) {
       if (isGroupEnd(node)) continue;
-      const values = Object.fromEntries(
-        exposed.get(definition.id)!.flatMap(({ id, node: inner, param }) => (inner === node.id && id in own ? [[param, own[id]]] : [])),
-      );
-      nodes.push({ ...node, id: idOf(instance.id, node.id), data: { ...node.data, ...values } } as GraphNode);
+      const values = own.get(node.id) ?? {};
+      const data = isInstance(node) ? { ...node.data, params: { ...node.data.params, ...values } } : { ...node.data, ...values };
+      nodes.push({ ...node, id: idOf(instance.id, node.id), data: own.has(node.id) ? data : node.data } as GraphNode);
     }
     const ends = new Set(definition.nodes.filter(isGroupEnd).map(({ id }) => id));
     for (const edge of definition.edges) {
@@ -127,5 +192,5 @@ export const expandGroups = (graph: ToastGraph, { only, id: idOf = innerId }: Ex
       ),
     );
   }
-  return { ...kept, nodes, edges };
+  return { ...graph, nodes, edges };
 };

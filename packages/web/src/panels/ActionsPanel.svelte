@@ -73,7 +73,7 @@
           : `render ${session.exportFormat}`}</button
       >
       <span class="tooltip__content_ai-generated"
-        >one cycle of the animation node as .{session.exportFormat} — needs a track with keys</span
+        >the animation node's frames, start to end, as .{session.exportFormat} — needs a track with keys</span
       >
     </span>
     <button

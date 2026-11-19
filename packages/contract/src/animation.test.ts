@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { drivenValues, graphAtFrame, paramSources, valueAtFrame } from "./animation";
+import { drivenValues, graphAtFrame, timelineWindow, paramSources, valueAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
+import { AnimationTrackSchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
 import { PARAMS } from "./params";
 
 const keys = (...pairs: [frame: number, value: number][]) => pairs.map(([frame, value]) => ({ frame, value }));
@@ -15,6 +15,42 @@ describe("valueAtFrame", () => {
     ["on the last key", 20, 50],
   ])("%s", (_, frame, value) => {
     expect(valueAtFrame(keys([0, 0], [10, 100], [20, 50]), frame)).toBe(value);
+  });
+
+  test.each([
+    // 0 → 100 over 10 frames
+    ["linear", [0, 25, 50, 75, 100]],
+    ["constant", [0, 0, 0, 0, 100]],
+    ["ease-in", [0, 1.5625, 12.5, 42.1875, 100]],
+    ["ease-out", [0, 57.8125, 87.5, 98.4375, 100]],
+    ["ease-in-out", [0, 6.25, 50, 93.75, 100]],
+  ] as const)("%s: frames 0, 2.5, 5, 7.5, 10", (interpolation, values) => {
+    expect([0, 2.5, 5, 7.5, 10].map((frame) => valueAtFrame(keys([0, 0], [10, 100]), frame, interpolation))).toEqual([...values]);
+  });
+
+  test("the track's interpolation acts between every two keys; a track takes one or none", () => {
+    expect([5, 15].map((frame) => valueAtFrame(keys([0, 0], [10, 100], [20, 0]), frame, "constant"))).toEqual([0, 100]);
+    expect(AnimationTrackSchema.safeParse({ id: "t", keys: [], interpolation: "ease-in" }).success).toBe(true);
+    expect(AnimationTrackSchema.safeParse({ id: "t", keys: [] }).success).toBe(true);
+    expect(AnimationTrackSchema.safeParse({ id: "t", keys: [], interpolation: "bounce" }).success).toBe(false);
+  });
+
+  test("animatedValues reads the track's interpolation", () => {
+    const graph: ToastGraph = {
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "in", type: "input", data: { imageId: null } },
+        { id: "op", type: "opacity", data: { opacity: 1 } },
+        { id: "out", type: "output", data: {} },
+        { id: "an", type: "animation", data: { fps: 12, frames: 11, tracks: [{ id: "t", keys: keys([0, 0], [10, 1]), interpolation: "ease-in" }] } },
+      ],
+      edges: [
+        { id: "1", source: "in", target: "op" },
+        { id: "2", source: "op", target: "out" },
+        { id: "3", source: "op", sourceHandle: "opacity", target: "an", targetHandle: "t" },
+      ],
+    };
+    expect(graphAtFrame(graph, 5).nodes.find(({ id }) => id === "op")?.data).toEqual({ opacity: 0.125 });
   });
 
   test("keeps the nearest key's value outside the keys", () => {
@@ -200,6 +236,49 @@ describe("graphAtFrame through a delay", () => {
     expect(data(graphAtFrame(delayed(-4), 1), "mv")).toEqual({ x: 5, y: 10 });
   });
 
+  test("a cycling timeline: before frame 0 a delay reads the cycle before, past the end — the one after", () => {
+    const cycling = (frames = 4) => {
+      const graph = delayed(frames);
+      const anim = graph.nodes.find(({ type }) => type === "animation")!;
+      if (anim.type === "animation") anim.data.cycle = true;
+      return graph;
+    };
+    // frame 2 − 4 → frame 18 of 20: the track holds 10 there (y — 20)
+    expect(data(graphAtFrame(cycling(), 2), "mv")).toEqual({ x: 10, y: 20 });
+    // within the timeline nothing changes
+    expect(data(graphAtFrame(cycling(), 9), "mv")).toEqual({ x: 5, y: 10 });
+    // frame 18 + 4 → frame 2
+    expect(data(graphAtFrame(cycling(-4), 18), "mv")).toEqual({ x: 2, y: 4 });
+  });
+
+  test("a cycling window goes round its own frames, not from 0", () => {
+    const graph = delayed();
+    const anim = graph.nodes.find(({ type }) => type === "animation")!;
+    // the window 8–11: frame 9 − 4 → 5, before it → 5 + 4 = frame 9 of the cycle before (x: 9)
+    if (anim.type === "animation") Object.assign(anim.data, { start: 8, frames: 4, cycle: true });
+    expect(data(graphAtFrame(graph, 9), "mv")).toEqual({ x: 9, y: 18 });
+    // frame 12 − 4 → 8, inside: as it is
+    expect(data(graphAtFrame(graph, 12), "mv")).toEqual({ x: 8, y: 16 });
+  });
+
+  test("a cycling timeline wraps a delayed value's track too", () => {
+    const graph: ToastGraph = {
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "mv", type: "move", data: { x: 0, y: 0 } },
+        { id: "v", type: "value", data: { value: 0 } },
+        { id: "dl", type: "delay", data: { frames: 4, rows: [{ id: "r1" }] } },
+        { id: "anim", type: "animation", data: { fps: 24, frames: 20, cycle: true, tracks: [{ id: "t", keys: keys([0, 0], [10, 50]) }] } },
+      ],
+      edges: [
+        { id: "1", source: "mv", sourceHandle: "x", target: "dl", targetHandle: "r1" },
+        { id: "2", source: "dl", sourceHandle: "r1", target: "v" },
+        { id: "3", source: "v", sourceHandle: "value", target: "anim", targetHandle: "t" },
+      ],
+    };
+    expect(data(graphAtFrame(graph, 2), "mv")).toEqual({ x: 50, y: 0 });
+  });
+
   test("the source of a link: the param behind the delays and their shift; a row nothing goes into — none", () => {
     const sourceOf = paramSources(delayed());
     expect(sourceOf("dl", "r1")).toEqual({ node: "mv", param: "x", shift: 4 });
@@ -331,5 +410,12 @@ describe("graphAtFrame with a factor", () => {
     // the value's own param takes the half of −1000…1000 — 0; move.x takes the value's 0
     expect(data(graphAtFrame(back, 0), "mv")).toEqual({ x: 0, y: 0 });
     expect(data(graphAtFrame(back, 0), "v")).toEqual({ value: 0 });
+  });
+});
+
+describe("timelineWindow", () => {
+  test("frames from start (absent — 0), the last one included", () => {
+    expect(timelineWindow({ frames: 24 })).toEqual({ first: 0, last: 23, count: 24 });
+    expect(timelineWindow({ start: 23, frames: 25 })).toEqual({ first: 23, last: 47, count: 25 });
   });
 });

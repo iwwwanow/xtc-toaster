@@ -153,12 +153,23 @@ export const LayersNodeSchema = z.object({
   }),
 });
 
+// how a track's value goes from each key to the next (19.11, one for the whole track — the user): `linear` — evenly;
+// `constant` — it holds until the next key, then jumps; `ease-in` — starts slow, `ease-out` — ends slow,
+// `ease-in-out` — both (cubic, never past either key)
+export const INTERPOLATIONS = ["linear", "constant", "ease-in", "ease-out", "ease-in-out"] as const;
+export const InterpolationSchema = z.enum(INTERPOLATIONS);
+
 // a value on a frame; frames count from 0, as the playhead. May lie past the node's `frames` and out of the linked
 // param's bounds: see validateGraph, graphAtFrame
 export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
 
-// keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
-export const AnimationTrackSchema = z.object({ id: z.string().min(1), keys: z.array(AnimationKeySchema) });
+// keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id);
+// `interpolation` — between every two keys of it, absent — linear
+export const AnimationTrackSchema = z.object({
+  id: z.string().min(1),
+  keys: z.array(AnimationKeySchema),
+  interpolation: InterpolationSchema.optional(),
+});
 
 // one or the other, absent — the format's default. Strict: a plain object would drop one of the two in silence.
 // `seconds` rounds to whole cycles unless `wholeCycles` is false — then exactly `seconds`, the last cycle cut
@@ -171,21 +182,29 @@ export const ANIMATION_FORMATS = ["gif", "mp4"] as const;
 export const AnimationFormatSchema = z.enum(ANIMATION_FORMATS);
 
 // how `render-animation` writes the file — the toast's, not the animation node's: the node is the timeline.
-// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle)
+// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle). The frames are the
+// timeline's window (AnimationNode `start` / `frames`)
 export const AnimationExportSchema = z.object({
   format: AnimationFormatSchema.optional(),
   loop: AnimationLoopSchema.optional(),
 });
 
 // no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
-// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render
+// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render. The timeline's window
+// (19.11, blender's start / end): `frames` frames from `start` (absent — 0) — what plays, renders and exports; keys
+// may lie before and after it (a run-up a delay reads). `cycle` (19.11): the window goes round — a track read before
+// its first frame or past its last (through a delay) reads the cycle before or after, `frames` apart, instead of
+// holding its first or last key: delayed copies of one track make a seamless loop (a trail — a layer born every
+// `frames / n`); absent — off
 export const AnimationNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("animation"),
   data: z.object({
     fps: z.int().min(ANIMATION_FPS.min).max(ANIMATION_FPS.max),
+    start: z.int().min(0).optional(),
     frames: z.int().min(1),
     tracks: z.array(AnimationTrackSchema).superRefine(uniqueIds("track")),
+    cycle: z.boolean().optional(),
   }),
 });
 
@@ -300,6 +319,7 @@ export type BlendMode = LayerRow["blendMode"];
 export type AnimationNode = z.infer<typeof AnimationNodeSchema>;
 export type AnimationTrack = z.infer<typeof AnimationTrackSchema>;
 export type AnimationKey = z.infer<typeof AnimationKeySchema>;
+export type Interpolation = z.infer<typeof InterpolationSchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;

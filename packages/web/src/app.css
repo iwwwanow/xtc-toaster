@@ -354,6 +354,12 @@ legend {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* a track's curve: as wide as its longest option, the name takes the rest */
+.animation__curve {
+  flex: none;
+  width: auto;
+}
 .animation__timeline {
   overflow-x: auto;
   scrollbar-width: thin;
@@ -488,6 +494,10 @@ legend {
   pointer-events: none;
   background-color: var(--WHITE);
   opacity: 0.6;
+}
+/* before the window's start: the same veil from the timeline's left edge */
+.animation__past_before {
+  inset: 0 auto 0 0;
 }
 .animation__playhead {
   width: 1px;

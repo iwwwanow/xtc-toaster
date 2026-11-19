@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { TOAST_GRAPH_VERSION, type AnimationNode, type ToastGraph } from "@xtc-toaster/contract";
 import { animationLength, renderAnimation } from "./render-animation";
+import { sequenceFrameName } from "@xtc-toaster/lib";
 import { GraphError } from "./run-graph";
 
 const animation = (data: Partial<AnimationNode["data"]> = {}): AnimationNode => ({
@@ -65,5 +66,20 @@ describe("renderAnimation", () => {
     const error = await renderAnimation(options(animation({ frames: 49 }), 48)).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(GraphError);
     expect(error).toMatchObject({ nodeId: "anim", message: "frames: at most 48" });
+  });
+
+  test("the window: only its frames rendered, numbered from 0 in the sequence; the cap counts them", async () => {
+    const rendered: string[] = [];
+    const progress: string[] = [];
+    const error = await renderAnimation({
+      ...options(animation({ start: 8, frames: 5 }), 48),
+      renderFrameTo: async (_, path) => void rendered.push(path.split("/").at(-1)!),
+      onFrame: (frame, frames) => progress.push(`${frame}/${frames}`),
+    }).catch((e: unknown) => e);
+    // the assembly fails on /nowhere — the frames are what this checks
+    expect(error).toBeDefined();
+    expect(rendered).toHaveLength(5);
+    expect(rendered[0]).toBe(sequenceFrameName(0));
+    expect(progress.at(-1)).toBe("5/5");
   });
 });

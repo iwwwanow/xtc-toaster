@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "nodes": [
+    { "id": "in", "type": "input", "data": { "imageId": null } },
+    { "id": "w", "type": "group", "data": { "group": "wave" } },
+    { "id": "out", "type": "output", "data": {} },
+    {
+      "id": "anim",
+      "type": "animation",
+      "data": {
+        "fps": 12,
+        "frames": 24,
+        "tracks": [{ "id": "t1", "keys": [{ "frame": 0, "value": 0 }, { "frame": 8, "value": 1 }, { "frame": 16, "value": 0 }] }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "1", "source": "in", "target": "w" },
+    { "id": "2", "source": "w", "target": "out" },
+    { "id": "3", "source": "w", "sourceHandle": "fade", "target": "anim", "targetHandle": "t1" }
+  ],
+  "groups": [
+    {
+      "id": "spin",
+      "name": "spin fade",
+      "nodes": [
+        { "id": "gi", "type": "groupInput", "data": { "rows": [{ "id": "angle" }, { "id": "opacity" }, { "id": "row-3" }] } },
+        { "id": "rot", "type": "rotate", "data": { "angle": 15 } },
+        { "id": "op", "type": "opacity", "data": { "opacity": 0.8 } },
+        { "id": "go", "type": "groupOutput", "data": {} }
+      ],
+      "edges": [
+        { "id": "a", "source": "gi", "target": "rot" },
+        { "id": "b", "source": "rot", "target": "op" },
+        { "id": "c", "source": "op", "target": "go" },
+        { "id": "e", "source": "rot", "sourceHandle": "angle", "target": "gi", "targetHandle": "angle" },
+        { "id": "f", "source": "op", "sourceHandle": "opacity", "target": "gi", "targetHandle": "opacity" }
+      ]
+    },
+    {
+      "id": "wave",
+      "name": "wave",
+      "nodes": [
+        { "id": "gi", "type": "groupInput", "data": { "rows": [{ "id": "fade" }, { "id": "row-2" }] } },
+        { "id": "s1", "type": "group", "data": { "group": "spin", "params": { "angle": 0 } } },
+        { "id": "s2", "type": "group", "data": { "group": "spin", "params": { "angle": 20 } } },
+        { "id": "s3", "type": "group", "data": { "group": "spin", "params": { "angle": 40 } } },
+        { "id": "d4", "type": "delay", "data": { "frames": 4, "rows": [{ "id": "row-1" }, { "id": "row-2" }] } },
+        { "id": "d8", "type": "delay", "data": { "frames": 8, "rows": [{ "id": "row-1" }, { "id": "row-2" }] } },
+        { "id": "v", "type": "value", "data": { "value": 0 } },
+        {
+          "id": "ly",
+          "type": "layers",
+          "data": {
+            "layers": [
+              { "id": "layer-3", "blendMode": "normal" },
+              { "id": "layer-2", "blendMode": "normal" },
+              { "id": "layer-1", "blendMode": "normal" }
+            ]
+          }
+        },
+        { "id": "go", "type": "groupOutput", "data": {} }
+      ],
+      "edges": [
+        { "id": "a1", "source": "gi", "target": "s1" },
+        { "id": "a2", "source": "gi", "target": "s2" },
+        { "id": "a3", "source": "gi", "target": "s3" },
+        { "id": "l1", "source": "s1", "target": "ly", "targetHandle": "layer-1" },
+        { "id": "l2", "source": "s2", "target": "ly", "targetHandle": "layer-2" },
+        { "id": "l3", "source": "s3", "target": "ly", "targetHandle": "layer-3" },
+        { "id": "o", "source": "ly", "target": "go" },
+        { "id": "p1", "source": "s1", "sourceHandle": "opacity", "target": "v" },
+        { "id": "p2", "source": "s2", "sourceHandle": "opacity", "target": "d4", "targetHandle": "row-1" },
+        { "id": "p3", "source": "d4", "sourceHandle": "row-1", "target": "v" },
+        { "id": "p4", "source": "s3", "sourceHandle": "opacity", "target": "d8", "targetHandle": "row-1" },
+        { "id": "p5", "source": "d8", "sourceHandle": "row-1", "target": "v" },
+        { "id": "x", "source": "v", "sourceHandle": "value", "target": "gi", "targetHandle": "fade" }
+      ]
+    }
+  ]
+}

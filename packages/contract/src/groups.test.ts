@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { graphAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
 import { parseToastGraph, type GraphEdge, type GraphNode, type GroupDefinition, type ToastGraph } from "./graph";
-import { expandGroups, exposedParams, instanceOf } from "./groups";
+import { expandGroups, exposedEnd, exposedParams, instanceOf } from "./groups";
 import { validateGraph } from "./validate";
 
 // a group: in → blur → opacity → out, blur's radius shown as `r` (wired into the group input's row `r`)
@@ -141,10 +141,13 @@ describe("validateGraph with groups", () => {
 
   test.each([
     ["no group output", blurFade({ nodes: blurFade().nodes.filter(({ type }) => type !== "groupOutput"), edges: blurFade().edges.slice(0, 2) })],
-    ["a group inside", blurFade({ nodes: [...blurFade().nodes, instance("x")] })],
+    ["an instance of itself inside", blurFade({ nodes: [...blurFade().nodes, instance("x")] })],
+    ["an unwired delay row exposed", blurFade({
+      nodes: [...blurFade().nodes, { id: "d", type: "delay", data: { frames: 1, rows: [{ id: "x" }] } }],
+      edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "d", sourceHandle: "x", target: "gi", targetHandle: "r" }],
+    })],
     ["the animation node inside", blurFade({ nodes: [...blurFade().nodes, { id: "an", type: "animation", data: { fps: 24, frames: 1, tracks: [] } }] })],
     ["a loop inside", blurFade({ edges: [...blurFade().edges, { id: "d", source: "op", target: "bl" }] })],
-    ["a delay inside", blurFade({ nodes: [...blurFade().nodes, { id: "d", type: "delay", data: { frames: 1, rows: [] } }] })],
     ["a shown param that isn't numeric", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "bl", sourceHandle: "color", target: "gi", targetHandle: "r" }] })],
     ["a shown param of a missing node", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "ghost", sourceHandle: "radius", target: "gi", targetHandle: "r" }] })],
     ["a param into a missing row", blurFade({ edges: [...blurFade().edges.slice(0, 3), { id: "p", source: "bl", sourceHandle: "radius", target: "gi", targetHandle: "ghost" }] })],
@@ -210,5 +213,127 @@ describe("validateGraph with groups", () => {
     expect(parseToastGraph(chain({ r: 10 })).groups).toHaveLength(1);
     const { groups: _, ...plain } = chain();
     expect(parseToastGraph(plain)).not.toHaveProperty("groups");
+  });
+});
+
+// nested groups and delays inside (19.11): `outer` — in → an instance of blur fade → out, its row `r` exposed as `R`
+const outer = (extra: Partial<GroupDefinition> = {}): GroupDefinition => ({
+  id: "outer",
+  name: "outer",
+  nodes: [
+    { id: "gi", type: "groupInput", data: { rows: [{ id: "R" }] } },
+    { id: "i", type: "group", data: { group: "bf", params: { r: 6 } } },
+    { id: "go", type: "groupOutput", data: {} },
+  ],
+  edges: [
+    { id: "a", source: "gi", target: "i" },
+    { id: "b", source: "i", target: "go" },
+    { id: "p", source: "i", sourceHandle: "r", target: "gi", targetHandle: "R" },
+  ],
+  ...extra,
+});
+// blur fade with the radius exposed through a delay of 2 frames
+const delayed = blurFade({
+  nodes: [...blurFade().nodes, { id: "d", type: "delay", data: { frames: 2, rows: [{ id: "x" }] } }],
+  edges: [
+    ...blurFade().edges.slice(0, 3),
+    { id: "q", source: "bl", sourceHandle: "radius", target: "d", targetHandle: "x" },
+    { id: "p", source: "d", sourceHandle: "x", target: "gi", targetHandle: "r" },
+  ],
+});
+const anim = (keys = [{ frame: 0, value: 0 }, { frame: 10, value: 20 }]): GraphNode => ({
+  id: "anim",
+  type: "animation",
+  data: { fps: 24, frames: 11, tracks: [{ id: "t", keys }] },
+});
+const chainOf = (id: string, edges: GraphEdge[] = []) => [
+  { id: "1", source: "in", target: id },
+  { id: "2", source: id, target: "out" },
+  ...edges,
+];
+
+describe("nested groups", () => {
+  test("an instance inside an instance expands all the way down", () => {
+    const graph = toast([instance("o", undefined, "outer")], chainOf("o"), [blurFade(), outer()]);
+    expect(validateGraph(graph)).toBeNull();
+    const plain = expandGroups(graph);
+    expect(ids(plain)).toEqual(["in", "o/i/bl", "o/i/op", "out"]);
+    expect(links(plain)).toEqual(["in>o/i/bl", "o/i/bl>o/i/op", "o/i/op>out"]);
+    expect(plain).not.toHaveProperty("groups");
+  });
+
+  test("the inner instance's own value, overridden by the outer instance's", () => {
+    const graph = (params?: Record<string, number>) =>
+      expandGroups(toast([instance("o", params, "outer")], chainOf("o"), [blurFade(), outer()]));
+    expect(graph().nodes.find(({ id }) => id === "o/i/bl")?.data).toEqual({ radius: 6 });
+    expect(graph({ R: 11 }).nodes.find(({ id }) => id === "o/i/bl")?.data).toEqual({ radius: 11 });
+  });
+
+  test("a track on the outer instance's param reaches the innermost node", () => {
+    const graph = toast([instance("o", undefined, "outer"), anim()], chainOf("o", [{ id: "3", source: "o", sourceHandle: "R", target: "anim", targetHandle: "t" }]), [blurFade(), outer()]);
+    expect(validateGraph(graph)).toBeNull();
+    expect(graphAtFrame(expandGroups(graph), 10).nodes.find(({ id }) => id === "o/i/bl")?.data).toEqual({ radius: 20 });
+  });
+
+  test("ungroup (only) takes one level: the inner instance stays an instance", () => {
+    const graph = expandGroups(toast([instance("o", { R: 9 }, "outer")], chainOf("o"), [blurFade(), outer()]), { only: new Set(["o"]) });
+    expect(ids(graph)).toEqual(["in", "o/i", "out"]);
+    expect(graph.nodes.find(({ id }) => id === "o/i")?.data).toEqual({ group: "bf", params: { r: 9 } });
+    expect(validateGraph(graph)).toBeNull();
+  });
+
+  test("exposedEnd: through an inner instance and through a delay to the node's param", () => {
+    expect(exposedEnd([blurFade(), outer()], outer(), "R")).toMatchObject({ node: { id: "bl" }, param: "radius", path: ["i", "bl"], value: 6, bounds: { min: 0 } });
+    expect(exposedEnd([delayed], delayed, "r")).toMatchObject({ node: { id: "bl" }, param: "radius", value: 4 });
+    expect(exposedEnd([delayed], delayed, "free")).toBeNull();
+  });
+
+  test("a group holding a group that holds it is refused", () => {
+    const a = outer({ id: "a", nodes: [...outer().nodes.filter(({ id }) => id !== "i"), { id: "i", type: "group", data: { group: "b" } }], edges: outer().edges.slice(0, 2) });
+    const b = outer({ id: "b", nodes: [...outer().nodes.filter(({ id }) => id !== "i"), { id: "i", type: "group", data: { group: "a" } }], edges: outer().edges.slice(0, 2) });
+    expect(validateGraph(toast([], [{ id: "1", source: "in", target: "out" }], [a, b]))).toMatchObject({ message: "a group can't hold itself" });
+  });
+
+  test.each([
+    ["a missing group", outer({ nodes: outer().nodes.map((node) => (node.id === "i" ? { id: "i", type: "group", data: { group: "ghost" } } : node)) })],
+    ["an inner param out of its bounds", outer({ nodes: outer().nodes.map((node) => (node.id === "i" ? { id: "i", type: "group", data: { group: "bf", params: { r: 999 } } } : node)) })],
+    ["an inner instance's param it doesn't show", outer({ edges: [...outer().edges.slice(0, 2), { id: "p", source: "i", sourceHandle: "zz", target: "gi", targetHandle: "R" }] })],
+  ])("refuses an inner instance with %s, pointing at the outer group", (_, definition) => {
+    expect(validateGraph(toast([], [{ id: "1", source: "in", target: "out" }], [blurFade(), definition]))).toMatchObject({ group: "outer" });
+  });
+});
+
+describe("a delay inside a group", () => {
+  test("an exposed param through a delay plays the track `frames` later", () => {
+    const graph = toast([instance("g"), anim()], chainOf("g", [{ id: "3", source: "g", sourceHandle: "r", target: "anim", targetHandle: "t" }]), [delayed]);
+    expect(validateGraph(graph)).toBeNull();
+    expect(links(expandGroups(graph))).toContain("g/d.x>anim:t");
+    // the track is 2 per frame: at frame 6 the radius is the track's frame 4
+    expect(graphAtFrame(expandGroups(graph), 6).nodes.find(({ id }) => id === "g/bl")?.data).toEqual({ radius: 8 });
+  });
+
+  test("the instance's own value goes into the param behind the delay", () => {
+    const graph = toast([instance("g", { r: 9 })], chainOf("g"), [delayed]);
+    expect(validateGraph(graph)).toBeNull();
+    expect(expandGroups(graph).nodes.find(({ id }) => id === "g/bl")?.data).toEqual({ radius: 9 });
+  });
+
+  test("a delay inside feeds a value inside, the value exposed — the param follows it later", () => {
+    const viaValue = blurFade({
+      nodes: [
+        ...blurFade().nodes,
+        { id: "d", type: "delay", data: { frames: 2, rows: [{ id: "x" }] } },
+        { id: "v", type: "value", data: { value: 0 } },
+      ],
+      edges: [
+        ...blurFade().edges.slice(0, 3),
+        { id: "q", source: "bl", sourceHandle: "radius", target: "d", targetHandle: "x" },
+        { id: "w", source: "d", sourceHandle: "x", target: "v" },
+        { id: "p", source: "v", sourceHandle: "value", target: "gi", targetHandle: "r" },
+      ],
+    });
+    const graph = toast([instance("g"), anim()], chainOf("g", [{ id: "3", source: "g", sourceHandle: "r", target: "anim", targetHandle: "t" }]), [viaValue]);
+    expect(validateGraph(graph)).toBeNull();
+    expect(graphAtFrame(expandGroups(graph), 6).nodes.find(({ id }) => id === "g/bl")?.data).toEqual({ radius: 8 });
   });
 });

@@ -1,10 +1,11 @@
-// The render-animation use case: one cycle of the graph's animation node → a gif or an mp4. Every frame is the
+// The render-animation use case: one cycle of the graph's animation node — its timeline's window — → a gif or an mp4. Every frame is the
 // usual render of `graphAtFrame`, written as a png into a sequence on disk — the container's memory has no room
 // for the clip (docs/backlog/2026-11-06_animation-frames-in-memory.md) — then lib assembles the file from it.
 import { join } from "node:path";
 import {
   expandGroups,
   graphAtFrame,
+  timelineWindow,
   type AnimationExport,
   type AnimationFormat,
   type AnimationNode,
@@ -61,16 +62,19 @@ export const renderAnimation = async ({
 }: RenderAnimationOptions) => {
   const node = graph.nodes.find((node): node is AnimationNode => node.type === "animation");
   if (!node) throw new GraphError("add an animation node");
-  const { fps, frames } = node.data;
-  if (frames > maxFrames) throw new GraphError(`frames: at most ${maxFrames}`, node.id);
+  const { fps } = node.data;
+  // the cap counts what is rendered: the window, wherever it starts
+  const { first, count } = timelineWindow(node.data);
+  if (count > maxFrames) throw new GraphError(`frames: at most ${maxFrames}`, node.id);
 
-  // groups expanded once: a track wired to a group's param drives the inner node's param through the plain graphAtFrame
+  // groups expanded once: a track wired to a group's param drives the inner node's param through the plain graphAtFrame.
+  // The sequence is numbered from 0 whatever frame it starts on — it is the file's cycle
   const plain = expandGroups(graph);
-  for (let frame = 0; frame < frames; frame++) {
-    await renderFrameTo(graphAtFrame(plain, frame), join(framesDir, sequenceFrameName(frame)));
-    onFrame?.(frame + 1, frames);
+  for (let i = 0; i < count; i++) {
+    await renderFrameTo(graphAtFrame(plain, first + i), join(framesDir, sequenceFrameName(i)));
+    onFrame?.(i + 1, count);
   }
-  const length = animationLength(node.data, graph.export);
+  const length = animationLength({ fps, frames: count }, graph.export);
   if (animationFormat(graph) === "mp4") await assembleMp4FromFrames(framesDir, fps, outputPath, length);
   else await assembleGifFromFrames(framesDir, fps, outputPath, length);
 };
