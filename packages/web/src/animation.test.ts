@@ -33,10 +33,11 @@ import {
   timelineEnd,
   trackName,
   withoutAnimation,
+  stretchTimeline,
   setTrackInterpolation,
 } from "./animation";
 import { delayRowName, withFreeRow } from "./delay";
-import type { FlowNode } from "./graph";
+import type { FlowGroup, FlowNode, FlowNodeOf } from "./graph";
 
 const track = (): AnimationTrack => ({ id: "t", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 10 }] });
 const moveNode = { id: "m", type: "move", position: { x: 0, y: 0 }, data: { x: 7, y: 0 } } as FlowNode;
@@ -349,5 +350,44 @@ describe("setTrackInterpolation", () => {
     expect(eased[1]).toBe(tracks[1]!);
     expect(keyValueAt(eased[0]!, 5, null)).toBe(0.125);
     expect(setTrackInterpolation(eased, "t", "linear")[0]).toEqual(tracks[0]!);
+  });
+});
+
+describe("stretchTimeline", () => {
+  const anim = (data: Partial<FlowNodeOf<"animation">["data"]> = {}): FlowNode =>
+    ({
+      id: "an",
+      type: "animation",
+      position: { x: 0, y: 0 },
+      data: { fps: 24, frames: 12, cycle: true, tracks: [{ id: "t", keys: [{ frame: 0, value: 0 }, { frame: 5, value: 1 }, { frame: 11, value: 0 }], interpolation: "ease-in" }], ...data },
+    }) as FlowNode;
+  const delay = (id: string, frames: number): FlowNode => ({ id, type: "delay", position: { x: 0, y: 0 }, data: { frames, rows: [{ id: "r" }] } }) as FlowNode;
+  const group = { id: "g", name: "g", nodes: [delay("in-group", 3)], edges: [] } as FlowGroup;
+
+  test("×2: keys, the window, every delay — at the root and in groups — and the playhead", () => {
+    const result = stretchTimeline({ nodes: [anim({ start: 2 }), delay("d", -4)], groups: [group], playhead: 6 }, 2);
+    if ("error" in result) throw new Error(result.error);
+    const data = (result.nodes[0] as FlowNodeOf<"animation">).data;
+    expect(data.tracks[0]!.keys.map(({ frame }) => frame)).toEqual([0, 10, 22]);
+    expect(data.tracks[0]!.interpolation).toBe("ease-in");
+    expect([data.start, data.frames, data.cycle]).toEqual([4, 24, true]);
+    expect((result.nodes[1] as FlowNodeOf<"delay">).data.frames).toBe(-8);
+    expect((result.groups[0]!.nodes[0] as FlowNodeOf<"delay">).data.frames).toBe(6);
+    expect(result.playhead).toBe(12);
+  });
+
+  test("×0.5 rounds; start 0 leaves no field", () => {
+    const result = stretchTimeline({ nodes: [anim()], groups: [], playhead: 0 }, 0.5);
+    if ("error" in result) throw new Error(result.error);
+    const data = (result.nodes[0] as FlowNodeOf<"animation">).data;
+    expect(data.tracks[0]!.keys.map(({ frame }) => frame)).toEqual([0, 3, 6]);
+    expect(data.frames).toBe(6);
+    expect(data).not.toHaveProperty("start");
+  });
+
+  test("refused: two keys on one frame, a delay past its bounds, a factor out of range", () => {
+    expect(stretchTimeline({ nodes: [anim()], groups: [], playhead: 0 }, 0.1)).toEqual({ error: "two keys of a track would land on one frame" });
+    expect(stretchTimeline({ nodes: [delay("d", 200)], groups: [], playhead: 0 }, 2)).toMatchObject({ error: expect.stringContaining("a delay of 400") });
+    expect(stretchTimeline({ nodes: [], groups: [], playhead: 0 }, 0)).toMatchObject({ error: expect.stringContaining("stretch") });
   });
 });

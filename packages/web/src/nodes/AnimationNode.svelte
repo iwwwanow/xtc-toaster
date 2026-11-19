@@ -22,6 +22,7 @@
     setTrackInterpolation,
     setKeyValue,
     timelineEnd,
+    STRETCH,
     trackGroups,
     trackLink,
     trackParam,
@@ -64,6 +65,10 @@
   );
 
   let end = $derived(timelineEnd(data));
+  // stretch: the factor typed (×2 by default), why the last one was refused — until the next try
+  let stretchFactor = $state(2);
+  let stretchError = $state<string | null>(null);
+
   // the window (19.11, blender's start / end): what plays, renders, exports and, with `cycle`, goes round
   let win = $derived(timelineWindow(data));
   // a new window from its first and last frame; start 0 leaves the toast (setNodeData — setData would keep the field)
@@ -306,6 +311,24 @@
       />
       cycle
     </label>
+    <!-- time stretching: the same motion over `factor` times the frames, at the same fps — slower, smoother (19.11) -->
+    <input
+      class="nodrag input_ai-generated input-sm_ai-generated animation__number"
+      type="number"
+      step="any"
+      min={STRETCH.min}
+      max={STRETCH.max}
+      aria-label="stretch factor"
+      bind:value={stretchFactor}
+      disabled={locked}
+    />
+    <button
+      class="nodrag btn_ai-generated btn-sm_ai-generated"
+      type="button"
+      title="every key, the window and every delay (in groups too) × this factor — the same motion slower at the same fps; 0.5 — faster"
+      disabled={locked}
+      onclick={() => (stretchError = session.stretch(Number(stretchFactor)))}>stretch</button
+    >
     <button
       class="nodrag btn_ai-generated btn-sm_ai-generated"
       type="button"
@@ -314,6 +337,9 @@
       onclick={() => (zoom = null)}>fit</button
     >
   </div>
+  {#if stretchError}
+    <div class="field__error_ai-generated">{stretchError}</div>
+  {/if}
 
   <div class="animation__body">
     <!-- outside the scroll: it would clip the handles, they stick out of the node's frame -->
