@@ -12,7 +12,7 @@ import {
   type ServerMessage,
 } from "@xtc-toaster/contract";
 import { toast2signac } from "@xtc-toaster/toasts";
-import { addTrack, clampPlayhead, hasAnimatedParams, stretchTimeline, linkedTrackIndex, nextFrame, paramOf, paramValue, removeTrack, seedTrack, trackParam, withoutAnimation } from "./animation";
+import { addTrack, clampPlayhead, hasAnimatedParams, linkedTrackIndex, nextFrame, paramOf, paramValue, removeTrack, seedTrack, trackParam, withoutAnimation } from "./animation";
 import { removeLayer, removeRowEdges } from "./layers";
 import { base64ToBlob, outputFileName, saveBlob } from "./files";
 import {
@@ -446,18 +446,6 @@ class Session {
     const link = this.edges.find(({ source, sourceHandle }) => source === nodeId && sourceHandle === param);
     const type = link && this.nodes.find(({ id }) => id === link.target)?.type;
     return type === "value" || type === "factor" ? type : null;
-  }
-
-  // the timeline stretched (stretchTimeline): keys, window and delays everywhere, the playhead with them; one step.
-  // Null — done, else why not
-  stretch(factor: number): string | null {
-    if (this.animationLocked) return null;
-    const result = stretchTimeline({ nodes: this.rootNodes, groups: this.groups, playhead: this.frame }, factor);
-    if ("error" in result) return result.error;
-    this.rootNodes = result.nodes;
-    this.groups = result.groups;
-    this.playhead = result.playhead;
-    return null;
   }
 
   // a moved playhead is a new frame → App sends a new render, if the picture changes on it

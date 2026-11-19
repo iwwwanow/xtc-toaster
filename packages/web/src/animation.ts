@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, DELAY_FRAMES, isDriver, timelineWindow, valueAtFrame, type AnimationNode, type AnimationTrack, type Interpolation, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, isDriver, timelineWindow, valueAtFrame, type AnimationNode, type AnimationTrack, type Interpolation, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
 import { nodeLabel, ownParamValue, paramName, shiftLabel } from "./groups";
 
@@ -287,39 +287,3 @@ export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGrap
 // a gif worth exporting: some linked track with keys drives a param — else every frame is the same picture.
 // A track's value holds before its first key and after its last, so frame 0 tells
 export const hasAnimatedParams = (graph: ToastGraph): boolean => animatedValues(graph, 0).size > 0;
-
-// Time stretching (19.11, blender's time remapping): everything counted in frames times `factor` — the keys of every
-// track, the window (its start and its length) and every delay, at the root and inside every group — so the same
-// motion takes `factor` times the frames at the same fps: slower, with the frames in between. Whole frames, rounded.
-// Refused: a factor that isn't a positive number, two keys of a track on one frame (a squeeze), a delay past its
-// bounds. The nodes and groups with the frames stretched, the playhead's new frame — or why it can't
-export const STRETCH = { min: 0.1, max: 10 } as const;
-type Stretchable = { nodes: FlowNode[]; groups: FlowGroup[]; playhead: number };
-export const stretchTimeline = ({ nodes, groups, playhead }: Stretchable, factor: number): Stretchable | { error: string } => {
-  if (!(factor >= STRETCH.min && factor <= STRETCH.max)) return { error: `stretch: ${STRETCH.min}–${STRETCH.max}` };
-  const at = (frame: number) => Math.round(frame * factor);
-  let error: string | null = null;
-  const stretchNode = (node: FlowNode): FlowNode => {
-    if (node.type === "delay") {
-      const frames = at(node.data.frames);
-      if (frames < DELAY_FRAMES.min || frames > DELAY_FRAMES.max) error ??= `a delay of ${frames} frames — at most ${DELAY_FRAMES.max}`;
-      return { ...node, data: { ...node.data, frames } };
-    }
-    if (node.type !== "animation") return node;
-    const { start = 0, frames, tracks } = node.data;
-    const stretched = tracks.map((track) => {
-      const keys = track.keys.map((key) => ({ ...key, frame: at(key.frame) }));
-      if (new Set(keys.map(({ frame }) => frame)).size !== keys.length) error ??= "two keys of a track would land on one frame";
-      return { ...track, keys };
-    });
-    const { start: _, ...data } = node.data;
-    const first = at(start);
-    return { ...node, data: { ...data, ...(first > 0 && { start: first }), frames: Math.max(1, at(start + frames) - first), tracks: stretched } };
-  };
-  const next = {
-    nodes: nodes.map(stretchNode),
-    groups: groups.map((group) => ({ ...group, nodes: group.nodes.map(stretchNode) })),
-    playhead: at(playhead),
-  };
-  return error ? { error } : next;
-};
