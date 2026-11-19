@@ -1,16 +1,26 @@
-import { isDriver, type AnimationKey, type AnimationRange, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
+import { isDriver, type AnimationKey, type AnimationRange, type Interpolation, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
 import { paramBounds, type ParamBounds } from "./params";
 
-// linear between keys, the nearest key's value outside them (blender's constant extrapolation); null — no keys.
-// Clamped to the two keys: float noise past a bound would fail the param's schema on that one frame
+// the share of the way from a key to the next at `t` (0–1 of the time between them), by the first key's interpolation
+const EASE: Record<Interpolation, (t: number) => number> = {
+  linear: (t) => t,
+  constant: () => 0,
+  "ease-in": (t) => t ** 3,
+  "ease-out": (t) => 1 - (1 - t) ** 3,
+  "ease-in-out": (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2),
+};
+
+// between keys by the earlier key's interpolation (absent — linear), the nearest key's value outside them (blender's
+// constant extrapolation); null — no keys. Clamped to the two keys: float noise past a bound would fail the param's
+// schema on that one frame
 export const valueAtFrame = (keys: readonly AnimationKey[], frame: number): number | null => {
   const sorted = keys.toSorted((a, b) => a.frame - b.frame);
   const after = sorted.findIndex((key) => key.frame > frame);
   if (after === 0) return sorted[0]!.value;
   if (after === -1) return sorted.at(-1)?.value ?? null;
-  const { frame: fromFrame, value: from } = sorted[after - 1]!;
+  const { frame: fromFrame, value: from, interpolation = "linear" } = sorted[after - 1]!;
   const { frame: toFrame, value: to } = sorted[after]!;
-  const value = from + (to - from) * ((frame - fromFrame) / (toFrame - fromFrame));
+  const value = from + (to - from) * EASE[interpolation]((frame - fromFrame) / (toFrame - fromFrame));
   return Math.min(Math.max(from, to), Math.max(Math.min(from, to), value));
 };
 

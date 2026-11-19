@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { drivenValues, exportedFrames, graphAtFrame, paramSources, valueAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { AnimationExportSchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
+import { AnimationExportSchema, AnimationKeySchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
 import { PARAMS } from "./params";
 
 const keys = (...pairs: [frame: number, value: number][]) => pairs.map(([frame, value]) => ({ frame, value }));
@@ -15,6 +15,31 @@ describe("valueAtFrame", () => {
     ["on the last key", 20, 50],
   ])("%s", (_, frame, value) => {
     expect(valueAtFrame(keys([0, 0], [10, 100], [20, 50]), frame)).toBe(value);
+  });
+
+  test.each([
+    // 0 → 100 over 10 frames, the curve set on the first key
+    ["linear", [0, 25, 50, 75, 100]],
+    ["constant", [0, 0, 0, 0, 100]],
+    ["ease-in", [0, 1.5625, 12.5, 42.1875, 100]],
+    ["ease-out", [0, 57.8125, 87.5, 98.4375, 100]],
+    ["ease-in-out", [0, 6.25, 50, 93.75, 100]],
+  ] as const)("%s: frames 0, 2.5, 5, 7.5, 10", (interpolation, values) => {
+    const track = [{ frame: 0, value: 0, interpolation }, { frame: 10, value: 100 }];
+    expect([0, 2.5, 5, 7.5, 10].map((frame) => valueAtFrame(track, frame))).toEqual([...values]);
+  });
+
+  test("the later key's interpolation acts on the segment after it, not before", () => {
+    const track = [{ frame: 0, value: 0 }, { frame: 10, value: 100, interpolation: "constant" as const }, { frame: 20, value: 0 }];
+    expect(valueAtFrame(track, 5)).toBe(50);
+    expect(valueAtFrame(track, 15)).toBe(100);
+    expect(valueAtFrame(track, 20)).toBe(0);
+  });
+
+  test("a key takes one of the interpolations, or none", () => {
+    expect(AnimationKeySchema.safeParse({ frame: 0, value: 1, interpolation: "ease-in" }).success).toBe(true);
+    expect(AnimationKeySchema.safeParse({ frame: 0, value: 1 }).success).toBe(true);
+    expect(AnimationKeySchema.safeParse({ frame: 0, value: 1, interpolation: "bounce" }).success).toBe(false);
   });
 
   test("keeps the nearest key's value outside the keys", () => {

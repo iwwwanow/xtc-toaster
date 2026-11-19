@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationRange, type AnimationTrack, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationRange, type AnimationTrack, type Interpolation, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
 import { nodeLabel, ownParamValue, paramName, shiftLabel } from "./groups";
 
@@ -54,6 +54,16 @@ export const removeKey = (tracks: readonly AnimationTrack[], id: string, frame: 
 
 export const setKeyValue = (tracks: readonly AnimationTrack[], id: string, frame: number, value: number): AnimationTrack[] =>
   withKeys(tracks, id, (keys) => keys.map((key) => (key.frame === frame ? { ...key, value } : key)));
+
+// how a key goes on to the next one; linear — the default, the field leaves the key
+export const setKeyInterpolation = (tracks: readonly AnimationTrack[], id: string, frame: number, interpolation: Interpolation): AnimationTrack[] =>
+  withKeys(tracks, id, (keys) =>
+    keys.map((key) => {
+      if (key.frame !== frame) return key;
+      const { interpolation: _, ...rest } = key;
+      return interpolation === "linear" ? rest : { ...rest, interpolation };
+    }),
+  );
 
 // null — the frame is taken by another key of the track: nothing gets overwritten by a typed number
 export const moveKey = (tracks: readonly AnimationTrack[], id: string, from: number, to: number): AnimationTrack[] | null => {

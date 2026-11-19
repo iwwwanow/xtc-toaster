@@ -2,7 +2,7 @@
   import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/svelte";
   import { tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { ANIMATION_FPS, type AnimationTrack } from "@xtc-toaster/contract";
+  import { ANIMATION_FPS, INTERPOLATIONS, type AnimationTrack, type Interpolation } from "@xtc-toaster/contract";
   import {
     addKey,
     addTrack,
@@ -19,6 +19,7 @@
     prevKeyFrame,
     removeKey,
     rulerLabels,
+    setKeyInterpolation,
     setKeyValue,
     timelineEnd,
     trackGroups,
@@ -471,6 +472,21 @@
         disabled={locked}
         onchange={numberField(() => key.value, clampToParam, setSelectedValue)}
       />
+      <!-- the curve on the way to the next key, blender's per-key interpolation -->
+      <label class="field__label_ai-generated" for="{id}-key-interpolation">curve</label>
+      <select
+        id="{id}-key-interpolation"
+        class="nodrag select_ai-generated input-sm_ai-generated"
+        title="interpolation: how the value goes from this key to the next one — the last key's has nothing to act on"
+        value={key.interpolation ?? "linear"}
+        disabled={locked}
+        onchange={({ currentTarget }) =>
+          setData({ tracks: setKeyInterpolation(data.tracks, selected!.track, key.frame, currentTarget.value as Interpolation) })}
+      >
+        {#each INTERPOLATIONS as interpolation (interpolation)}
+          <option value={interpolation}>{interpolation.replaceAll("-", " ")}</option>
+        {/each}
+      </select>
       <button
         class="btn_ai-generated btn-sm_ai-generated"
         type="button"

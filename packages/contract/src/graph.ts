@@ -153,9 +153,19 @@ export const LayersNodeSchema = z.object({
   }),
 });
 
+// how the value goes from a key to the next one (19.11, blender's per-key interpolation): `linear` — evenly; `constant`
+// — it holds until the next key, then jumps; `ease-in` — starts slow, `ease-out` — ends slow, `ease-in-out` — both
+// (cubic, never past either key). The last key's has nothing to act on
+export const INTERPOLATIONS = ["linear", "constant", "ease-in", "ease-out", "ease-in-out"] as const;
+export const InterpolationSchema = z.enum(INTERPOLATIONS);
+
 // a value on a frame; frames count from 0, as the playhead. May lie past the node's `frames` and out of the linked
-// param's bounds: see validateGraph, graphAtFrame
-export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
+// param's bounds: see validateGraph, graphAtFrame. `interpolation` — on the way to the next key, absent — linear
+export const AnimationKeySchema = z.object({
+  frame: z.int().min(0),
+  value: z.number(),
+  interpolation: InterpolationSchema.optional(),
+});
 
 // keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
 export const AnimationTrackSchema = z.object({ id: z.string().min(1), keys: z.array(AnimationKeySchema) });
@@ -307,6 +317,7 @@ export type BlendMode = LayerRow["blendMode"];
 export type AnimationNode = z.infer<typeof AnimationNodeSchema>;
 export type AnimationTrack = z.infer<typeof AnimationTrackSchema>;
 export type AnimationKey = z.infer<typeof AnimationKeySchema>;
+export type Interpolation = z.infer<typeof InterpolationSchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
