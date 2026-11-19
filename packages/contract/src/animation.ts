@@ -47,7 +47,7 @@ export const paramSources = (graph: ToastGraph) => {
 };
 
 // What the tracks put into `data` on a frame: node → param → value. A track without keys or without a link gives
-// nothing; a track behind a delay is read `shift` frames earlier. A value is clamped to the param's bounds: the keys
+// nothing; a track behind a delay is read `shift` frames earlier — on a cycling timeline, wrapped round it. A value is clamped to the param's bounds: the keys
 // stay as they are, so a track rewired to another param and back loses nothing
 export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
   const values = new Map<NodeId, Record<string, number>>();
@@ -56,12 +56,14 @@ export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Re
 
   const typeOf = new Map(graph.nodes.map(({ id, type }) => [id, type]));
   const sourceOf = paramSources(graph);
+  const { frames, cycle } = animation.data;
+  const wrap = (at: number) => (cycle ? ((at % frames) + frames) % frames : at);
   for (const { source, sourceHandle, target, targetHandle } of graph.edges) {
     if (target !== animation.id || sourceHandle === undefined) continue;
     const from = sourceOf(source, sourceHandle);
     const track = animation.data.tracks.find(({ id }) => id === targetHandle);
     if (!from || !track) continue;
-    const value = valueAtFrame(track.keys, frame - from.shift, track.interpolation);
+    const value = valueAtFrame(track.keys, wrap(frame - from.shift), track.interpolation);
     const bounds = paramBounds(typeOf.get(from.node) ?? "", from.param);
     if (value === null || !bounds) continue;
     values.set(from.node, { ...values.get(from.node), [from.param]: Math.min(bounds.max, Math.max(bounds.min, value)) });

@@ -270,6 +270,23 @@
       disabled={locked}
       onchange={numberField(() => data.frames, wholeFrom(1), (frames) => setData({ frames }))}
     />
+    <!-- the timeline goes round: a delay before frame 0 reads the cycle before — a trail loops seamlessly (19.11) -->
+    <label
+      class="nodrag checkbox_ai-generated"
+      title="the timeline goes round: a param behind a delay reads the end of the cycle before frame 0, the start past the end — delayed copies loop without a seam"
+    >
+      <input
+        type="checkbox"
+        checked={data.cycle === true}
+        disabled={locked}
+        onchange={({ currentTarget }) => {
+          const { cycle: _, ...rest } = data;
+          // off leaves the toast — setData merges, it would keep the old field
+          session.setNodeData(id, currentTarget.checked ? { ...rest, cycle: true } : rest);
+        }}
+      />
+      cycle
+    </label>
     <button
       class="nodrag btn_ai-generated btn-sm_ai-generated"
       type="button"

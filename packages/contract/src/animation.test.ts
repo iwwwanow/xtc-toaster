@@ -236,6 +236,39 @@ describe("graphAtFrame through a delay", () => {
     expect(data(graphAtFrame(delayed(-4), 1), "mv")).toEqual({ x: 5, y: 10 });
   });
 
+  test("a cycling timeline: before frame 0 a delay reads the cycle before, past the end — the one after", () => {
+    const cycling = (frames = 4) => {
+      const graph = delayed(frames);
+      const anim = graph.nodes.find(({ type }) => type === "animation")!;
+      if (anim.type === "animation") anim.data.cycle = true;
+      return graph;
+    };
+    // frame 2 − 4 → frame 18 of 20: the track holds 10 there (y — 20)
+    expect(data(graphAtFrame(cycling(), 2), "mv")).toEqual({ x: 10, y: 20 });
+    // within the timeline nothing changes
+    expect(data(graphAtFrame(cycling(), 9), "mv")).toEqual({ x: 5, y: 10 });
+    // frame 18 + 4 → frame 2
+    expect(data(graphAtFrame(cycling(-4), 18), "mv")).toEqual({ x: 2, y: 4 });
+  });
+
+  test("a cycling timeline wraps a delayed value's track too", () => {
+    const graph: ToastGraph = {
+      version: TOAST_GRAPH_VERSION,
+      nodes: [
+        { id: "mv", type: "move", data: { x: 0, y: 0 } },
+        { id: "v", type: "value", data: { value: 0 } },
+        { id: "dl", type: "delay", data: { frames: 4, rows: [{ id: "r1" }] } },
+        { id: "anim", type: "animation", data: { fps: 24, frames: 20, cycle: true, tracks: [{ id: "t", keys: keys([0, 0], [10, 50]) }] } },
+      ],
+      edges: [
+        { id: "1", source: "mv", sourceHandle: "x", target: "dl", targetHandle: "r1" },
+        { id: "2", source: "dl", sourceHandle: "r1", target: "v" },
+        { id: "3", source: "v", sourceHandle: "value", target: "anim", targetHandle: "t" },
+      ],
+    };
+    expect(data(graphAtFrame(graph, 2), "mv")).toEqual({ x: 50, y: 0 });
+  });
+
   test("the source of a link: the param behind the delays and their shift; a row nothing goes into — none", () => {
     const sourceOf = paramSources(delayed());
     expect(sourceOf("dl", "r1")).toEqual({ node: "mv", param: "x", shift: 4 });

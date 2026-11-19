@@ -196,7 +196,10 @@ export const AnimationExportSchema = z.object({
 });
 
 // no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
-// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render
+// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render. `cycle` (19.11): the
+// timeline goes round — a track read before frame 0 or past the last one (through a delay) reads the cycle before or
+// after, `frames` apart, instead of holding its first or last key: delayed copies of one track make a seamless loop
+// (a trail — a layer born every `frames / n`); absent — off
 export const AnimationNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("animation"),
@@ -204,6 +207,7 @@ export const AnimationNodeSchema = z.object({
     fps: z.int().min(ANIMATION_FPS.min).max(ANIMATION_FPS.max),
     frames: z.int().min(1),
     tracks: z.array(AnimationTrackSchema).superRefine(uniqueIds("track")),
+    cycle: z.boolean().optional(),
   }),
 });
 
