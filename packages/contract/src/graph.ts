@@ -153,22 +153,23 @@ export const LayersNodeSchema = z.object({
   }),
 });
 
-// how the value goes from a key to the next one (19.11, blender's per-key interpolation): `linear` — evenly; `constant`
-// — it holds until the next key, then jumps; `ease-in` — starts slow, `ease-out` — ends slow, `ease-in-out` — both
-// (cubic, never past either key). The last key's has nothing to act on
+// how a track's value goes from each key to the next (19.11, one for the whole track — the user): `linear` — evenly;
+// `constant` — it holds until the next key, then jumps; `ease-in` — starts slow, `ease-out` — ends slow,
+// `ease-in-out` — both (cubic, never past either key)
 export const INTERPOLATIONS = ["linear", "constant", "ease-in", "ease-out", "ease-in-out"] as const;
 export const InterpolationSchema = z.enum(INTERPOLATIONS);
 
 // a value on a frame; frames count from 0, as the playhead. May lie past the node's `frames` and out of the linked
-// param's bounds: see validateGraph, graphAtFrame. `interpolation` — on the way to the next key, absent — linear
-export const AnimationKeySchema = z.object({
-  frame: z.int().min(0),
-  value: z.number(),
+// param's bounds: see validateGraph, graphAtFrame
+export const AnimationKeySchema = z.object({ frame: z.int().min(0), value: z.number() });
+
+// keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id);
+// `interpolation` — between every two keys of it, absent — linear
+export const AnimationTrackSchema = z.object({
+  id: z.string().min(1),
+  keys: z.array(AnimationKeySchema),
   interpolation: InterpolationSchema.optional(),
 });
-
-// keys in any order; the param a track animates is the link into it (source + sourceHandle → targetHandle = id)
-export const AnimationTrackSchema = z.object({ id: z.string().min(1), keys: z.array(AnimationKeySchema) });
 
 // one or the other, absent — the format's default. Strict: a plain object would drop one of the two in silence.
 // `seconds` rounds to whole cycles unless `wholeCycles` is false — then exactly `seconds`, the last cycle cut

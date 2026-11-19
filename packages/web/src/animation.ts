@@ -55,15 +55,13 @@ export const removeKey = (tracks: readonly AnimationTrack[], id: string, frame: 
 export const setKeyValue = (tracks: readonly AnimationTrack[], id: string, frame: number, value: number): AnimationTrack[] =>
   withKeys(tracks, id, (keys) => keys.map((key) => (key.frame === frame ? { ...key, value } : key)));
 
-// how a key goes on to the next one; linear — the default, the field leaves the key
-export const setKeyInterpolation = (tracks: readonly AnimationTrack[], id: string, frame: number, interpolation: Interpolation): AnimationTrack[] =>
-  withKeys(tracks, id, (keys) =>
-    keys.map((key) => {
-      if (key.frame !== frame) return key;
-      const { interpolation: _, ...rest } = key;
-      return interpolation === "linear" ? rest : { ...rest, interpolation };
-    }),
-  );
+// how a track goes from key to key; linear — the default, the field leaves the track
+export const setTrackInterpolation = (tracks: readonly AnimationTrack[], id: string, interpolation: Interpolation): AnimationTrack[] =>
+  tracks.map((track) => {
+    if (track.id !== id) return track;
+    const { interpolation: _, ...rest } = track;
+    return interpolation === "linear" ? rest : { ...rest, interpolation };
+  });
 
 // null — the frame is taken by another key of the track: nothing gets overwritten by a typed number
 export const moveKey = (tracks: readonly AnimationTrack[], id: string, from: number, to: number): AnimationTrack[] | null => {
@@ -208,7 +206,7 @@ export const groupKeyFrames = (group: TrackGroup): number[] =>
 
 // what a new key takes: the track's value on that frame, a track without keys — the param's own value
 export const keyValueAt = (track: AnimationTrack, frame: number, paramOwn: number | null): number | null =>
-  valueAtFrame(track.keys, frame) ?? paramOwn;
+  valueAtFrame(track.keys, frame, track.interpolation) ?? paramOwn;
 
 // the timeline goes as far as the rendered frames or the last key past them, whichever is later
 export const timelineEnd = ({ frames, tracks }: AnimationData): number =>

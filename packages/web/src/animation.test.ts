@@ -35,7 +35,7 @@ import {
   withoutAnimation,
   parseFrameRange,
   frameRangeText,
-  setKeyInterpolation,
+  setTrackInterpolation,
 } from "./animation";
 import { delayRowName, withFreeRow } from "./delay";
 import type { FlowNode } from "./graph";
@@ -356,13 +356,16 @@ describe("frame range", () => {
   });
 });
 
-describe("setKeyInterpolation", () => {
-  test("set on one key; linear takes the field off; a moved or re-valued key keeps it", () => {
-    const tracks: AnimationTrack[] = [{ id: "t", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] }];
-    const eased = setKeyInterpolation(tracks, "t", 0, "ease-in-out");
-    expect(eased[0]!.keys).toEqual([{ frame: 0, value: 0, interpolation: "ease-in-out" }, { frame: 10, value: 1 }]);
-    expect(moveKey(eased, "t", 0, 3)![0]!.keys[0]).toEqual({ frame: 3, value: 0, interpolation: "ease-in-out" });
-    expect(setKeyValue(eased, "t", 0, 0.5)[0]!.keys[0]).toEqual({ frame: 0, value: 0.5, interpolation: "ease-in-out" });
-    expect(setKeyInterpolation(eased, "t", 0, "linear")[0]!.keys[0]).toEqual({ frame: 0, value: 0 });
+describe("setTrackInterpolation", () => {
+  test("set on one track; linear takes the field off; keyValueAt follows it", () => {
+    const tracks: AnimationTrack[] = [
+      { id: "t", keys: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] },
+      { id: "u", keys: [] },
+    ];
+    const eased = setTrackInterpolation(tracks, "t", "ease-in");
+    expect(eased[0]).toEqual({ ...tracks[0]!, interpolation: "ease-in" });
+    expect(eased[1]).toBe(tracks[1]!);
+    expect(keyValueAt(eased[0]!, 5, null)).toBe(0.125);
+    expect(setTrackInterpolation(eased, "t", "linear")[0]).toEqual(tracks[0]!);
   });
 });
