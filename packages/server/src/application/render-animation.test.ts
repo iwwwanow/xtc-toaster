@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TOAST_GRAPH_VERSION, type AnimationExport, type AnimationNode, type ToastGraph } from "@xtc-toaster/contract";
+import { TOAST_GRAPH_VERSION, type AnimationNode, type ToastGraph } from "@xtc-toaster/contract";
 import { animationLength, renderAnimation } from "./render-animation";
 import { sequenceFrameName } from "@xtc-toaster/lib";
 import { GraphError } from "./run-graph";
@@ -10,9 +10,8 @@ const animation = (data: Partial<AnimationNode["data"]> = {}): AnimationNode => 
   data: { fps: 12, frames: 24, tracks: [], ...data },
 });
 
-const graph = (node?: AnimationNode, settings?: AnimationExport): ToastGraph => ({
+const graph = (node?: AnimationNode): ToastGraph => ({
   version: TOAST_GRAPH_VERSION,
-  ...(settings && { export: settings }),
   nodes: [
     { id: "in", type: "input", data: { imageId: null } },
     { id: "out", type: "output", data: {} },
@@ -69,12 +68,11 @@ describe("renderAnimation", () => {
     expect(error).toMatchObject({ nodeId: "anim", message: "frames: at most 48" });
   });
 
-  test("a range: only its frames rendered, numbered from 0 in the sequence; the cap counts them", async () => {
+  test("the window: only its frames rendered, numbered from 0 in the sequence; the cap counts them", async () => {
     const rendered: string[] = [];
     const progress: string[] = [];
     const error = await renderAnimation({
-      ...options(animation({ frames: 100 }), 48),
-      graph: graph(animation({ frames: 100 }), { range: { from: 8, to: 12 } }),
+      ...options(animation({ start: 8, frames: 5 }), 48),
       renderFrameTo: async (_, path) => void rendered.push(path.split("/").at(-1)!),
       onFrame: (frame, frames) => progress.push(`${frame}/${frames}`),
     }).catch((e: unknown) => e);
@@ -83,10 +81,5 @@ describe("renderAnimation", () => {
     expect(rendered).toHaveLength(5);
     expect(rendered[0]).toBe(sequenceFrameName(0));
     expect(progress.at(-1)).toBe("5/5");
-  });
-
-  test("a range past the timeline's end → a graph error on the node, nothing rendered", async () => {
-    const error = await renderAnimation({ ...options(), graph: graph(animation(), { range: { from: 20, to: 30 } }) }).catch((e: unknown) => e);
-    expect(error).toMatchObject({ nodeId: "anim", message: "frames 20–30: the timeline ends on 23" });
   });
 });

@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/svelte";
-import { animatedValues, isDriver, valueAtFrame, type AnimationNode, type AnimationRange, type AnimationTrack, type Interpolation, type ToastGraph } from "@xtc-toaster/contract";
+import { animatedValues, isDriver, timelineWindow, valueAtFrame, type AnimationNode, type AnimationTrack, type Interpolation, type ToastGraph } from "@xtc-toaster/contract";
 import type { FlowGroup, FlowNode } from "./graph";
 import { nodeLabel, ownParamValue, paramName, shiftLabel } from "./groups";
 
@@ -208,9 +208,12 @@ export const groupKeyFrames = (group: TrackGroup): number[] =>
 export const keyValueAt = (track: AnimationTrack, frame: number, paramOwn: number | null): number | null =>
   valueAtFrame(track.keys, frame, track.interpolation) ?? paramOwn;
 
-// the timeline goes as far as the rendered frames or the last key past them, whichever is later
-export const timelineEnd = ({ frames, tracks }: AnimationData): number =>
-  Math.max(frames, ...tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame + 1)));
+// the timeline goes as far as the window's end or the last key past it, whichever is later
+export const timelineEnd = ({ start = 0, frames, tracks }: AnimationData): number =>
+  Math.max(start + frames, ...tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame + 1)));
+
+// the timeline's window (19.11): `start` / `frames` of the animation node
+type Window = Pick<AnimationData, "start" | "frames">;
 
 // Timeline zoom: px a frame takes. Fit (blender's View All) by default — the frames fill the timeline's width;
 // Ctrl+wheel steps it around the cursor, between ZOOM.min and ZOOM.max (or the fit, if that's wider)
@@ -242,26 +245,35 @@ export const rulerLabels = (end: number, pxPerFrame: number): number[] => {
 // the frame under a point `x` px into the timeline's content
 export const frameAt = (x: number, pxPerFrame: number): number => Math.max(0, Math.floor(x / pxPerFrame));
 
-// blender's jump to keyframe: the nearest key of any track before / after the frame, among the rendered frames
-// (the playhead stops at the last one); null — none that way
-const renderedKeyFrames = ({ frames, tracks }: Pick<AnimationData, "frames" | "tracks">): number[] =>
-  [...new Set(tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame)))].filter((frame) => frame < frames);
+// blender's jump to keyframe: the nearest key of any track before / after the frame, inside the window (the playhead
+// stays in it); null — none that way
+const renderedKeyFrames = (data: Window & Pick<AnimationData, "tracks">): number[] => {
+  const { first, last } = timelineWindow(data);
+  return [...new Set(data.tracks.flatMap(({ keys }) => keys.map(({ frame }) => frame)))].filter((frame) => frame >= first && frame <= last);
+};
 
-export const prevKeyFrame = (data: Pick<AnimationData, "frames" | "tracks">, frame: number): number | null => {
+export const prevKeyFrame = (data: Window & Pick<AnimationData, "tracks">, frame: number): number | null => {
   const before = renderedKeyFrames(data).filter((key) => key < frame);
   return before.length > 0 ? Math.max(...before) : null;
 };
 
-export const nextKeyFrame = (data: Pick<AnimationData, "frames" | "tracks">, frame: number): number | null => {
+export const nextKeyFrame = (data: Window & Pick<AnimationData, "tracks">, frame: number): number | null => {
   const after = renderedKeyFrames(data).filter((key) => key > frame);
   return after.length > 0 ? Math.min(...after) : null;
 };
 
-// the playhead stops at the last rendered frame
-export const clampPlayhead = (frame: number, frames: number): number => Math.max(0, Math.min(frames - 1, frame));
+// the playhead stays in the window
+export const clampPlayhead = (frame: number, window: Window): number => {
+  const { first, last } = timelineWindow(window);
+  return Math.max(first, Math.min(last, frame));
+};
 
-// play: the frame after this one, the last goes back to the first
-export const nextFrame = (frame: number, frames: number): number => (clampPlayhead(frame, frames) + 1) % frames;
+// play: the frame after this one, the window's last goes back to its first
+export const nextFrame = (frame: number, window: Window): number => {
+  const { first, last } = timelineWindow(window);
+  const at = clampPlayhead(frame, window);
+  return at === last ? first : at + 1;
+};
 
 // what one frame's render needs: no animation node, no delays, no value / factor nodes, no param links. Fps, keys elsewhere,
 // track order, a delay's shift or a value's number once applied don't touch the picture, so they don't change this
@@ -275,18 +287,3 @@ export const withoutAnimation = ({ export: _, ...graph }: ToastGraph): ToastGrap
 // a gif worth exporting: some linked track with keys drives a param — else every frame is the same picture.
 // A track's value holds before its first key and after its last, so frame 0 tells
 export const hasAnimatedParams = (graph: ToastGraph): boolean => animatedValues(graph, 0).size > 0;
-
-// The frames to export as typed in the export settings (19.11): `8-12` — two frame numbers with anything between them
-// that isn't a digit (`8–12`, `8:12`, `8 12`, `8..12`), both included; one number — that frame alone; reversed ends
-// are put in order. Empty — null, every frame; undefined — not a range
-export const parseFrameRange = (text: string): AnimationRange | null | undefined => {
-  if (text.trim() === "") return null;
-  const match = /^\s*(\d+)(?:\D+(\d+))?\s*$/.exec(text);
-  if (!match) return undefined;
-  const [a, b] = [Number(match[1]), Number(match[2] ?? match[1])];
-  return { from: Math.min(a, b), to: Math.max(a, b) };
-};
-
-// how the field shows a range: `8-12`, one frame — `8`, none — empty
-export const frameRangeText = (range: AnimationRange | undefined): string =>
-  !range ? "" : range.from === range.to ? `${range.from}` : `${range.from}-${range.to}`;

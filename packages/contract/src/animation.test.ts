@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { drivenValues, exportedFrames, graphAtFrame, paramSources, valueAtFrame } from "./animation";
+import { drivenValues, graphAtFrame, timelineWindow, paramSources, valueAtFrame } from "./animation";
 import { TOAST_GRAPH_VERSION } from "./constants";
-import { AnimationExportSchema, AnimationTrackSchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
+import { AnimationTrackSchema, parseToastGraph, type GraphNode, type ToastGraph } from "./graph";
 import { PARAMS } from "./params";
 
 const keys = (...pairs: [frame: number, value: number][]) => pairs.map(([frame, value]) => ({ frame, value }));
@@ -251,6 +251,16 @@ describe("graphAtFrame through a delay", () => {
     expect(data(graphAtFrame(cycling(-4), 18), "mv")).toEqual({ x: 2, y: 4 });
   });
 
+  test("a cycling window goes round its own frames, not from 0", () => {
+    const graph = delayed();
+    const anim = graph.nodes.find(({ type }) => type === "animation")!;
+    // the window 8–11: frame 9 − 4 → 5, before it → 5 + 4 = frame 9 of the cycle before (x: 9)
+    if (anim.type === "animation") Object.assign(anim.data, { start: 8, frames: 4, cycle: true });
+    expect(data(graphAtFrame(graph, 9), "mv")).toEqual({ x: 9, y: 18 });
+    // frame 12 − 4 → 8, inside: as it is
+    expect(data(graphAtFrame(graph, 12), "mv")).toEqual({ x: 8, y: 16 });
+  });
+
   test("a cycling timeline wraps a delayed value's track too", () => {
     const graph: ToastGraph = {
       version: TOAST_GRAPH_VERSION,
@@ -403,17 +413,9 @@ describe("graphAtFrame with a factor", () => {
   });
 });
 
-describe("exportedFrames", () => {
-  test("no range — every frame; a range — its frames, both ends included; past the last frame — null", () => {
-    expect(exportedFrames(24)).toEqual({ first: 0, count: 24 });
-    expect(exportedFrames(24, { from: 8, to: 12 })).toEqual({ first: 8, count: 5 });
-    expect(exportedFrames(24, { from: 23, to: 23 })).toEqual({ first: 23, count: 1 });
-    expect(exportedFrames(24, { from: 20, to: 24 })).toBeNull();
-  });
-
-  test("the toast takes a range from a frame to a later one", () => {
-    expect(AnimationExportSchema.safeParse({ range: { from: 8, to: 12 } }).success).toBe(true);
-    expect(AnimationExportSchema.safeParse({ range: { from: 12, to: 8 } }).success).toBe(false);
-    expect(AnimationExportSchema.safeParse({ range: { from: -1, to: 8 } }).success).toBe(false);
+describe("timelineWindow", () => {
+  test("frames from start (absent — 0), the last one included", () => {
+    expect(timelineWindow({ frames: 24 })).toEqual({ first: 0, last: 23, count: 24 });
+    expect(timelineWindow({ start: 23, frames: 25 })).toEqual({ first: 23, last: 47, count: 25 });
   });
 });

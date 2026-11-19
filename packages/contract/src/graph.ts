@@ -181,30 +181,27 @@ export const AnimationLoopSchema = z.union([
 export const ANIMATION_FORMATS = ["gif", "mp4"] as const;
 export const AnimationFormatSchema = z.enum(ANIMATION_FORMATS);
 
-// a part of the timeline to export (19.11): frames `from` … `to`, both included, numbered as the timeline does — from 0.
-// It is the cycle the loop repeats
-export const AnimationRangeSchema = z
-  .strictObject({ from: z.int().min(0), to: z.int().min(0) })
-  .refine(({ from, to }) => from <= to, "a range runs from its first frame to a later one");
-
 // how `render-animation` writes the file — the toast's, not the animation node's: the node is the timeline.
-// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle), absent range — every frame
+// Absent format — gif, absent loop — the format's default (gif: forever, mp4: one cycle). The frames are the
+// timeline's window (AnimationNode `start` / `frames`)
 export const AnimationExportSchema = z.object({
   format: AnimationFormatSchema.optional(),
   loop: AnimationLoopSchema.optional(),
-  range: AnimationRangeSchema.optional(),
 });
 
 // no pixels in or out: the output's ancestry never reaches it, a frame is the graph with values put into `data`
-// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render. `cycle` (19.11): the
-// timeline goes round — a track read before frame 0 or past the last one (through a delay) reads the cycle before or
-// after, `frames` apart, instead of holding its first or last key: delayed copies of one track make a seamless loop
-// (a trail — a layer born every `frames / n`); absent — off
+// (graphAtFrame). No max frames here — the cap is a server env (RENDER_MAX_FRAMES), per render. The timeline's window
+// (19.11, blender's start / end): `frames` frames from `start` (absent — 0) — what plays, renders and exports; keys
+// may lie before and after it (a run-up a delay reads). `cycle` (19.11): the window goes round — a track read before
+// its first frame or past its last (through a delay) reads the cycle before or after, `frames` apart, instead of
+// holding its first or last key: delayed copies of one track make a seamless loop (a trail — a layer born every
+// `frames / n`); absent — off
 export const AnimationNodeSchema = z.object({
   id: NodeIdSchema,
   type: z.literal("animation"),
   data: z.object({
     fps: z.int().min(ANIMATION_FPS.min).max(ANIMATION_FPS.max),
+    start: z.int().min(0).optional(),
     frames: z.int().min(1),
     tracks: z.array(AnimationTrackSchema).superRefine(uniqueIds("track")),
     cycle: z.boolean().optional(),
@@ -326,7 +323,6 @@ export type Interpolation = z.infer<typeof InterpolationSchema>;
 export type AnimationLoop = z.infer<typeof AnimationLoopSchema>;
 export type AnimationFormat = z.infer<typeof AnimationFormatSchema>;
 export type AnimationExport = z.infer<typeof AnimationExportSchema>;
-export type AnimationRange = z.infer<typeof AnimationRangeSchema>;
 export type DelayNode = z.infer<typeof DelayNodeSchema>;
 export type DelayRow = z.infer<typeof DelayRowSchema>;
 export type ValueNode = z.infer<typeof ValueNodeSchema>;

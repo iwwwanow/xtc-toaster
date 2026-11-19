@@ -2,7 +2,6 @@ import type { Edge, XYPosition } from "@xyflow/svelte";
 import {
   drivenValues,
   expandGroups,
-  exportedFrames,
   graphAtFrame,
   GROUP_SEPARATOR,
   instanceOf,
@@ -182,7 +181,7 @@ class Session {
 
   // ui state, not in the toast; the wanted frame stays while `frames` shrinks and grows back
   private playhead = $state(0);
-  frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data.frames) : 0);
+  frame = $derived(this.animationNode ? clampPlayhead(this.playhead, this.animationNode.data) : 0);
 
   private graph = $derived(toGraph(this.rootNodes, this.rootEdges, this.exportSettings, this.groups));
   // the groups' instances turned into their insides — what is rendered, what the tracks reach
@@ -487,7 +486,7 @@ class Session {
     const node = this.animationNode;
     if (!this.playing || !node) return this.stop();
     const before = this.graphKey;
-    this.playhead = nextFrame(this.frame, node.data.frames);
+    this.playhead = nextFrame(this.frame, node.data);
     this.frameShownAt = performance.now();
     // the same picture (keys hold still here) — no render to wait for, App sends nothing
     if (this.graphKey === before) this.nextAfterFrame();
@@ -587,21 +586,15 @@ class Session {
     this.exportSettings = settings;
   }
 
-  // One cycle of the animation node — or the range of it the export settings name — as a gif / mp4, rendered on the
-  // server frame by frame, then downloaded. Renders wait until it's done (App), the editor is locked; a render already
-  // sent still comes back under its own id. A range past the timeline's end is refused here, before the server
+  // One cycle of the animation node — its timeline's window — as a gif / mp4, rendered on the server frame by frame,
+  // then downloaded. Renders wait until it's done (App), the editor is locked; a render already sent still comes back
+  // under its own id
   exportAnimation() {
     const node = this.animationNode;
     if (!this.canExport || !node) return;
-    const range = this.exportSettings.range;
-    const exported = exportedFrames(node.data.frames, range);
-    if (!exported) {
-      this.exportError = `frames ${range!.from}–${range!.to}: the timeline ends on ${node.data.frames - 1}`;
-      return;
-    }
     this.stop();
     this.exportId = ++this.lastRequestId;
-    this.exporting = { frame: 0, frames: exported.count };
+    this.exporting = { frame: 0, frames: node.data.frames };
     this.exportError = null;
     this.socket?.send({ type: "render-animation", requestId: this.exportId, graph: this.graph });
   }

@@ -495,6 +495,10 @@ legend {
   background-color: var(--WHITE);
   opacity: 0.6;
 }
+/* before the window's start: the same veil from the timeline's left edge */
+.animation__past_before {
+  inset: 0 auto 0 0;
+}
 .animation__playhead {
   width: 1px;
   position: absolute;

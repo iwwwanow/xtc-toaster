@@ -1,4 +1,4 @@
-import { isDriver, type AnimationKey, type AnimationRange, type Interpolation, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
+import { isDriver, type AnimationKey, type AnimationNode, type Interpolation, type GraphEdge, type GraphNode, type NodeId, type ToastGraph } from "./graph";
 import { paramBounds, type ParamBounds } from "./params";
 
 // the share of the way from a key to the next at `t` (0–1 of the time between them), by the track's interpolation
@@ -47,7 +47,7 @@ export const paramSources = (graph: ToastGraph) => {
 };
 
 // What the tracks put into `data` on a frame: node → param → value. A track without keys or without a link gives
-// nothing; a track behind a delay is read `shift` frames earlier — on a cycling timeline, wrapped round it. A value is clamped to the param's bounds: the keys
+// nothing; a track behind a delay is read `shift` frames earlier — on a cycling timeline, wrapped round its window. A value is clamped to the param's bounds: the keys
 // stay as they are, so a track rewired to another param and back loses nothing
 export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Record<string, number>> => {
   const values = new Map<NodeId, Record<string, number>>();
@@ -56,8 +56,8 @@ export const animatedValues = (graph: ToastGraph, frame: number): Map<NodeId, Re
 
   const typeOf = new Map(graph.nodes.map(({ id, type }) => [id, type]));
   const sourceOf = paramSources(graph);
-  const { frames, cycle } = animation.data;
-  const wrap = (at: number) => (cycle ? ((at % frames) + frames) % frames : at);
+  const { first, count } = timelineWindow(animation.data);
+  const wrap = (at: number) => (animation.data.cycle ? first + ((((at - first) % count) + count) % count) : at);
   for (const { source, sourceHandle, target, targetHandle } of graph.edges) {
     if (target !== animation.id || sourceHandle === undefined) continue;
     const from = sourceOf(source, sourceHandle);
@@ -142,9 +142,10 @@ export const graphAtFrame = (graph: ToastGraph, frame: number): ToastGraph => {
   return { ...graph, nodes };
 };
 
-// The frames an export renders: the range (absent — the whole timeline), `count` of them from `first`. Null — the range
-// runs past the timeline's last frame (`frames` − 1)
-export const exportedFrames = (frames: number, range?: AnimationRange): { first: number; count: number } | null => {
-  if (!range) return { first: 0, count: frames };
-  return range.to < frames ? { first: range.from, count: range.to - range.from + 1 } : null;
-};
+// The timeline's window — what plays, renders, exports and, with `cycle`, goes round: `count` frames from `first`,
+// the last one `last`
+export const timelineWindow = ({ start = 0, frames }: Pick<AnimationNode["data"], "start" | "frames">) => ({
+  first: start,
+  last: start + frames - 1,
+  count: frames,
+});

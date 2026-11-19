@@ -2,7 +2,6 @@
   import { Panel } from "@xyflow/svelte";
   import { onDestroy } from "svelte";
   import { ANIMATION_FORMATS, type AnimationFormat, type AnimationLoop } from "@xtc-toaster/contract";
-  import { frameRangeText, parseFrameRange } from "../animation";
   import { session } from "../session.svelte";
 
   let fileInput: HTMLInputElement;
@@ -48,15 +47,6 @@
     set({ loop: mode === "default" ? undefined : LOOP_INITIAL[mode] });
   };
 
-  // the frames to export, typed: `8-12`, empty — all; one that isn't a range shows the old one back
-  let range = $derived(settings.range);
-  let lastFrame = $derived((session.animationNode?.data.frames ?? 1) - 1);
-  const onrange = ({ currentTarget }: Event & { currentTarget: HTMLInputElement }) => {
-    const parsed = parseFrameRange(currentTarget.value);
-    currentTarget.value = frameRangeText(parsed === undefined ? range : (parsed ?? undefined));
-    if (parsed !== undefined) set({ range: parsed ?? undefined });
-  };
-
   // a typed number: the toast takes only a valid one, else the field shows the old one back
   const numberField =
     (current: () => number, parse: (value: number) => number | null, apply: (value: number) => void) =>
@@ -83,13 +73,13 @@
           : `render ${session.exportFormat}`}</button
       >
       <span class="tooltip__content_ai-generated"
-        >{range ? `frames ${range.from}–${range.to}` : "one cycle"} of the animation node as .{session.exportFormat} — needs a track with keys</span
+        >the animation node's frames, start to end, as .{session.exportFormat} — needs a track with keys</span
       >
     </span>
     <button
       class="btn_ai-generated"
       aria-expanded={exportOpen}
-      title={exportOpen ? "hide the export settings" : "export settings: format, loop, frames"}
+      title={exportOpen ? "hide the export settings" : "export settings: format, loop"}
       onclick={() => (exportOpen = !exportOpen)}>{exportOpen ? "▴" : "▾"}</button
     >
   </div>
@@ -110,21 +100,6 @@
           {/each}
         </select>
       </label>
-      <label class="param" title="the frames to export, both ends included — 8-12; empty — all, 0-{lastFrame}. They are the cycle the loop repeats">
-        <span class="param__label field__label_ai-generated">frames</span>
-        <input
-          class="input_ai-generated input-sm_ai-generated"
-          type="text"
-          inputmode="numeric"
-          placeholder="all: 0-{lastFrame}"
-          value={frameRangeText(range)}
-          disabled={locked}
-          onchange={onrange}
-        />
-      </label>
-      {#if range && range.to > lastFrame}
-        <div class="field__error_ai-generated">the timeline ends on {lastFrame}</div>
-      {/if}
       <label class="param">
         <span class="param__label field__label_ai-generated">loop</span>
         <select class="select_ai-generated input-sm_ai-generated" value={loopMode} disabled={locked} onchange={onloopmode}>
